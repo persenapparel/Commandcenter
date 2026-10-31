@@ -64,3 +64,41 @@
 .v5-agreement h4{margin:0 0 8px;font-size:17px}.v5-agreement p{margin:7px 0;line-height:1.6}.v5-agreement form{display:grid;gap:10px;margin-top:12px}.v5-agreement textarea{width:100%}.v5-agreement details{margin:12px 0;max-width:100%;overflow-wrap:anywhere}.v5-agreement summary{cursor:pointer;font-weight:700}.v5-agreement .btn{margin-top:10px}
 .v5-customer-agreements .saved-card{border:1px solid #c6d7ed;border-radius:14px;padding:18px;max-width:100%;overflow-wrap:anywhere}.v5-customer-agreements form{display:grid;gap:12px;margin:14px 0}.v5-customer-agreements details{margin:10px 0;padding:10px;background:#f2f6fc;border-radius:10px}.v5-customer-agreements summary{cursor:pointer;font-weight:700}.v5-customer-agreements .field{max-width:100%}
 @media(max-width:520px){.v5-agreement{padding:12px}.v5-customer-agreements .saved-card{padding:12px}}
+
+/* Rich holiday campaign preview with live layouts and subtle motion. */
+.seasonal-preview{position:relative;isolation:isolate;overflow:hidden;min-height:210px;box-shadow:0 12px 35px rgba(15,43,72,.09);background:linear-gradient(125deg,var(--season-bg),#fff 160%)}.seasonal-preview>*:not(.seasonal-preview-particles){position:relative;z-index:2}.seasonal-preview h3{font-size:clamp(29px,4vw,46px);letter-spacing:-.035em}.seasonal-preview.seasonal-layout-centered{text-align:center}.seasonal-preview.seasonal-layout-editorial h3{font-size:clamp(38px,5vw,58px);font-weight:900}.seasonal-preview-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}.seasonal-preview[data-anim]:not([data-anim="none"]) .seasonal-preview-particles:before{content:'✧  •  ✦  •  ✧';color:var(--season-accent);opacity:.22;font-size:25px;letter-spacing:32px;position:absolute;top:5%;left:4%;animation:persen-season-preview 8s linear infinite}.seasonal-preview[data-anim="snow"] .seasonal-preview-particles:before{content:'❄   ·   ❅   ·   ❄';color:#528ab9}.seasonal-preview[data-anim="leaves"] .seasonal-preview-particles:before{content:'🍁 · 🍂 · 🍁'}.seasonal-preview[data-anim="confetti"] .seasonal-preview-particles:before{content:'✦ ▪ ✧ ▪ ✦'}@keyframes persen-season-preview{to{transform:translateY(230px)}}@media(prefers-reduced-motion:reduce){.seasonal-preview-particles:before{animation:none!important}}
+
+.seasonal-preview.seasonal-layout-immersive{background:linear-gradient(90deg,#092429ee,#123d44b5),var(--season-bg);color:#fff;min-height:270px;padding:36px}.seasonal-preview.seasonal-layout-immersive h3{font-size:clamp(36px,6vw,65px);text-transform:uppercase;max-width:660px}.seasonal-preview.seasonal-layout-immersive p{color:#f4f5f6;max-width:440px}
+
+/* V5.3: Holiday Studio editor displays the same featured apparel scene as the storefront. */
+.seasonal-studio .seasonal-presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
+.seasonal-studio .seasonal-preset{min-height:55px;font-size:13px;font-weight:800;border-radius:12px;border:1px solid #d9e3ef;background:linear-gradient(110deg,var(--preview-accent),var(--preview-bg));color:#fff;text-shadow:0 1px 5px #0008;box-shadow:inset 0 0 0 1px #fff5;cursor:pointer}
+.seasonal-studio .seasonal-preset:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.seasonal-studio .seasonal-preview{position:relative;isolation:isolate;min-height:350px;border:0;border-radius:18px;overflow:hidden;background:linear-gradient(110deg,#122637,#213b43);color:#fff;padding:42px 36% 35px 36px;display:flex;align-items:flex-start;justify-content:center;flex-direction:column;box-shadow:0 16px 40px #132f4f22}
+.seasonal-studio .seasonal-preview:before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 85% 47%,var(--season-accent),transparent 47%),linear-gradient(110deg,#081a26ed,#102d3baf);opacity:.85}
+.seasonal-studio .seasonal-preview .preview-eyebrow{position:relative;z-index:2;color:#f1d28b;font-size:10px;letter-spacing:.2em;font-weight:900}
+.seasonal-studio .seasonal-preview h3{position:relative;z-index:2;color:#fffaf0!important;font-family:Georgia,'Times New Roman',serif;font-weight:850;font-size:clamp(26px,3.5vw,56px);max-width:650px;line-height:1.02;text-transform:uppercase;text-shadow:0 3px 14px #0008;overflow-wrap:break-word}
+.seasonal-studio .seasonal-preview p{position:relative;z-index:2;color:#eee!important;font-size:14px;line-height:1.5;max-width:420px}
+.seasonal-studio .seasonal-preview .seasonal-preview-cta{position:relative;z-index:3;background:var(--season-accent);border:1px solid #e8d29a;padding:10px 15px;border-radius:10px;font-size:12px;font-weight:900;color:#fff}
+.seasonal-editor-merch{position:absolute;right:-2%;bottom:-5%;z-index:1;width:55%;height:100%;object-fit:contain;object-position:right bottom;filter:drop-shadow(0 10px 15px #0004)}
+.seasonal-editor-merch[hidden]{display:none!important}
+@media(max-width:700px){.seasonal-studio .seasonal-preview{padding:25px 22px 225px;min-height:420px}.seasonal-editor-merch{bottom:-6%;right:0;width:90%;height:255px}.seasonal-studio .seasonal-preview h3{font-size:35px}}
+
+/* V5.4 — no-code Site Studio */
+.v54-studio-nav{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}.v54-studio-nav button{padding:11px 14px;background:#eef4fb;border:1px solid #d5e5f5;border-radius:11px;color:#16436f;font-size:12px;font-weight:800;cursor:pointer}.v54-studio-nav button.active{background:#1762cb;border-color:#1762cb;color:white}.v54-studio-hints{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:17px 0;font-size:13px;color:#4e6684}.v54-studio-list{display:grid;gap:12px;margin:20px 0}.v54-studio-entry,.v54-studio-new{border:1px solid #dce7f3;border-radius:15px;padding:18px;background:#fafdff}.v54-studio-entry summary,.v54-studio-new summary{display:flex;align-items:center;gap:13px;justify-content:space-between;cursor:pointer;font-size:14px;font-weight:900;color:#183b63}.v54-studio-entry form,.v54-studio-new form{padding-top:20px}.v54-studio-thumb{max-width:260px;max-height:170px;object-fit:cover;display:block;margin-top:18px;border-radius:11px}.v54-settings{border-radius:14px;padding:19px;background:#eff6ff;border:1px solid #cfdef1}.v54-settings .field-wrap{max-width:720px}.v54-settings .btn{margin:9px 0}.v54-editor-prompt{background:linear-gradient(130deg,#f5f9ff,#fff);border-color:#c6d9f0}
+@media(max-width:600px){.v54-studio-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.v54-studio-entry,.v54-studio-new{padding:14px}}
+
+/* V5.5 limited-edition order details */
+.v55-order-summary{border:1px solid #c3d7eb;background:#f3f8ff;border-radius:12px;padding:16px;margin:12px 0;}
+.v55-order-summary p{margin:8px 0;overflow-wrap:anywhere;}
+
+/* V5.6: organized itemized estimates, invoices and manual receipt payments. */
+.v56-lines{display:grid;gap:16px;margin:12px 0 14px}
+.v56-line-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border:1px solid #dbe5f3;border-radius:16px;background:#f9fbff;padding:16px;align-items:end}
+.v56-line-row>div{min-width:0}
+.v56-line-row>button{justify-self:start;align-self:end}
+.v56-total-preview{padding:16px 18px;border-radius:12px;background:#eaf2ff;color:#143f77;font-weight:800;line-height:1.6}
+.v56-payment-panel{background:#eff7ff;border:1px solid #b9d1ec;border-radius:14px;padding:16px;margin-top:18px}
+.v56-payment-panel .owner-mini{margin:0}
+@media(max-width:950px){.v56-line-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:570px){.v56-line-row{grid-template-columns:1fr;padding:13px}}
