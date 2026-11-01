@@ -1,6 +1,6 @@
 /* Persen Apparel: owner-only bulk public media uploader. Uses existing Supabase site-photos bucket. */
 (()=>{
- const types={'image/jpeg':['jpg',5],'image/png':['png',5],'image/webp':['webp',5],'video/mp4':['mp4',45],'video/quicktime':['mov',45],'video/webm':['webm',45]};
+ const types={'image/jpeg':['jpg',5],'image/png':['png',5],'image/webp':['webp',5]};
  const bucket='site-photos';
  function setup(){
   const form=document.querySelector('form[data-form="upload-site-photo"]');
@@ -11,12 +11,12 @@
   input.multiple=true;
   input.accept=Object.keys(types).join(',');
   const heading=form.closest('section')?.querySelector('h2');
-  if(heading)heading.textContent='Photo & Video Library';
-  const label=input.closest('div')?.querySelector('label');if(label)label.textContent='SELECT UP TO 20 PHOTOS OR VIDEOS';
+  if(heading)heading.textContent='Bulk Photo Library';
+  const label=input.closest('div')?.querySelector('label');if(label)label.textContent='SELECT UP TO 20 PHOTOS';
   const btn=form.querySelector('button');if(btn)btn.textContent='Upload Selected Media';
   const status=document.getElementById('photo-upload-result');
-  if(status){status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.textContent='Up to 20 JPG, PNG, WebP, MP4, MOV or WebM files. Images: 5 MB each; videos: 45 MB each. Supabase bucket restrictions also apply. Uploaded media is public.';}
-  const listButton=document.createElement('button');listButton.type='button';listButton.className='btn ghost sm';listButton.textContent='Show All Photos & Videos';
+  if(status){status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.textContent='Upload up to 20 JPG, PNG or WebP photos at a time (5 MB each). Uploaded photos are public.';}
+  const listButton=document.createElement('button');listButton.type='button';listButton.className='btn ghost sm';listButton.textContent='Show All Photos';
   listButton.addEventListener('click',async()=>{
    const list=document.getElementById('site-photo-list');if(!list)return;
    list.textContent='Loading media…';
@@ -26,10 +26,10 @@
    list.replaceChildren();
    for(const item of r.data||[]){
     const extension=item.name.split('.').pop().toLowerCase();
-    if(!['jpg','jpeg','png','webp','mp4','mov','webm'].includes(extension))continue;
+    if(!['jpg','jpeg','png','webp'].includes(extension))continue;
     const url=PA.db.storage.from(bucket).getPublicUrl('site/'+item.name).data.publicUrl;
     const article=document.createElement('article');
-    const media=document.createElement(['mp4','mov','webm'].includes(extension)?'video':'img');
+    const media=document.createElement('img');
     media.src=url;media.style.cssText='width:240px;max-width:100%;border-radius:12px';
     if(media.tagName==='VIDEO'){media.controls=true;media.preload='metadata';media.playsInline=true;}else{media.loading='lazy';media.alt='Uploaded website photo';}
     const p=document.createElement('p'),link=document.createElement('input');
@@ -66,7 +66,7 @@
     try{const result=await PA.db.storage.from(bucket).upload(path,file,{contentType:file.type,upsert:false});if(result.error)throw result.error;good++;}
     catch(error){errors.push(file.name+': '+(error.message||String(error)));}
    }
-   show(good+' of '+files.length+' uploaded.'+(errors.length?' Failed: '+errors.join('; '):'')+' Use Show All Photos & Videos to see uploaded files and copy URLs.');
+   show(good+' of '+files.length+' uploaded.'+(errors.length?' Failed: '+errors.join('; '):'')+' Use Show All Photos to see uploaded files and copy URLs.');
    if(good)input.value='';
   }finally{if(button)button.disabled=false;}
  },true);
