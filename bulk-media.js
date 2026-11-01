@@ -63,10 +63,23 @@
     const file=files[i],ext=types[file.type][0];
     show('Uploading '+(i+1)+' of '+files.length+': '+file.name);
     const path='site/'+crypto.randomUUID()+'.'+ext;
-    try{const result=await PA.db.storage.from(bucket).upload(path,file,{contentType:file.type,upsert:false});if(result.error)throw result.error;good++;}
+    try{
+     const result=await PA.db.storage.from(bucket).upload(path,file,{contentType:file.type,upsert:false});
+     if(result.error)throw result.error;
+     const url=PA.db.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+     let gallery=[];
+     const current=await PA.db.from('site_content').select('value').eq('key','v54_gallery').maybeSingle();
+     if(current.error)throw current.error;
+     try{gallery=JSON.parse(current.data?.value||'[]');if(!Array.isArray(gallery))gallery=[];}catch{gallery=[];}
+     const base=file.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim();
+     gallery.push({id:crypto.randomUUID(),title:base.slice(0,120)||'Custom apparel project',caption:'',category:'Other',placement:'all',alt:base.slice(0,200)||'Persen Apparel custom work',sort:gallery.length,published:true,imageUrl:url});
+     const saved=await PA.db.from('site_content').upsert({key:'v54_gallery',value:JSON.stringify(gallery),updated_at:new Date().toISOString()},{onConflict:'key'});
+     if(saved.error)throw saved.error;
+     good++;
+    }
     catch(error){errors.push(file.name+': '+(error.message||String(error)));}
    }
-   show(good+' of '+files.length+' uploaded.'+(errors.length?' Failed: '+errors.join('; '):'')+' Use Show All Photos to see uploaded files and copy URLs.');
+   show(good+' of '+files.length+' uploaded.'+(errors.length?' Failed: '+errors.join('; '):'')+' Published photos appear in Our Work and homepage photo showcases. Refresh the customer website to see them.');
    if(good)input.value='';
   }finally{if(button)button.disabled=false;}
  },true);
