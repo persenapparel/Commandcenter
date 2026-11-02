@@ -1,0 +1,15 @@
+/* Inventory variant manager: responsive grouped stock grid */
+.variant-manager{margin:22px 0;padding:22px;border:1px solid #d5e2f1;border-radius:16px;background:#f8fbff;color:#132a46}
+.variant-manager h3{margin:0 0 8px}
+.variant-manager p{margin:0 0 15px}
+.variant-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin:16px 0}
+.variant-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700}
+.variant-field .field,.variant-field .select{width:100%;box-sizing:border-box}
+.variant-matrix{overflow-x:auto;border:1px solid #dce5f0;border-radius:10px;background:#fff;margin:12px 0}
+.variant-table{border-collapse:collapse;width:100%;min-width:760px;font-size:12px}
+.variant-table th,.variant-table td{padding:7px;border-bottom:1px solid #e3eaf2;text-align:center;white-space:nowrap}
+.variant-table th:first-child{text-align:left;position:sticky;left:0;background:#fff;z-index:1}
+.variant-table thead th{background:#eaf2ff}
+.variant-table input.field{width:59px;min-width:59px;box-sizing:border-box;padding:8px 5px;text-align:center}
+.variant-total{font-weight:800;color:#174f9b}
+#inventory-grid-status{margin-top:12px;font-size:13px;font-weight:700}
