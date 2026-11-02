@@ -17,7 +17,7 @@ node('h3',{text:'Size & Color Inventory Manager'},host);
 node('p',{text:'Manage different colors and sizes under one product. Saving replaces the quantities shown for each selected size, not quantities from another color. Existing stock remains available below.'},host);
 const controls=node('div',{class:'variant-controls'},host);
 const product=field(controls,'PRODUCT / STYLE','e.g. Christmas Long Island Embroidered Hoodie');
-const catalog=dropdown(controls,'CATALOG TYPE',[['','General inventory'],...(window.__inventoryCatalog||[]).map(x=>[x.id,x.name])]);
+const catalog=dropdown(controls,'CATALOG TYPE',[['','General inventory'],...[...document.querySelectorAll('form[data-form="new-stock"] select[name="product_id"] option')].filter(x=>x.value).map(x=>[x.value,x.textContent])]);
 const colors=field(controls,'COLORS (COMMA OR NEW LINE SEPARATED)','Red, Forest Green, Black');
 const threshold=field(controls,'REORDER ALERT AT','5','5');threshold.type='number';threshold.min='0';
 const existing=[...new Set(rows.map(x=>clean(x.product_name)).filter(Boolean))].sort();
