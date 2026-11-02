@@ -102,3 +102,10 @@
 .v56-payment-panel .owner-mini{margin:0}
 @media(max-width:950px){.v56-line-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:570px){.v56-line-row{grid-template-columns:1fr;padding:13px}}
+
+
+/* Faster owner workflow */
+.owner-quick-actions{margin:20px 0;display:flex;align-items:center;justify-content:space-between;gap:22px;padding:22px 24px;border:1px solid #cfe0f8;border-radius:16px;background:linear-gradient(125deg,#f8fbff,#edf5ff)}
+.owner-quick-actions h2{margin:4px 0 7px;font-size:20px}.owner-quick-actions p{margin:0;color:#64748b;font-size:13px;line-height:1.5}
+.owner-quick-action-buttons{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:700px){.owner-quick-actions{align-items:flex-start;flex-direction:column;padding:18px}.owner-quick-action-buttons{justify-content:flex-start}.owner-quick-action-buttons .btn{flex:1 1 calc(50% - 9px)}}
