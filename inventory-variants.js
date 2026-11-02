@@ -23,7 +23,7 @@ const threshold=field(controls,'REORDER ALERT AT','5','5');threshold.type='numbe
 const existing=[...new Set(rows.map(x=>clean(x.product_name)).filter(Boolean))].sort();
 if(existing.length){const pick=dropdown(controls,'LOAD EXISTING PRODUCT',[['','New product'],...existing.map(x=>[x,x])]);pick.addEventListener('change',()=>{product.value=pick.value;const samples=rows.filter(x=>x.product_name===pick.value);colors.value=[...new Set(samples.map(x=>x.color).filter(Boolean))].join(', ');catalog.value=samples.find(x=>x.product_id)?.product_id||'';threshold.value=String(samples[0]?.reorder_at??5);fill();});}
 const grid=node('div',{class:'variant-matrix'},host);
-const summary=node('div',{class:'owner-mini'},host);
+const summary=node('div',{class:'owner-mini'},host);node('p',{id:'inventory-grid-status',role:'status','aria-live':'polite'},host);
 const save=btn(host,'Save All Color & Size Quantities',async()=>{
  if(busy)return;const name=clean(product.value).slice(0,140);if(!name){notify('Enter a product name.');return;}
  const entries=[...grid.querySelectorAll('input[data-size]')].map(i=>({color:i.dataset.color,size:i.dataset.size,quantity:Number(i.value)}));
