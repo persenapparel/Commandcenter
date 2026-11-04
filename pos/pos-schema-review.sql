@@ -252,7 +252,7 @@ end $$;
 create or replace function public.pos_set_customer_progress(
  p_secret uuid,p_checkout uuid,p_step text,p_need_help boolean default false
 )
-returns boolean language plpgsql security definer set search_path='' as $
+returns boolean language plpgsql security definer set search_path='' as $$
 declare r public.pos_registers; c public.pos_checkouts;
 begin
  if p_step is null or p_step not in
@@ -273,7 +273,7 @@ begin
      updated_at=now()
  where id=c.id;
  return true;
-end $;
+end $$;
 
 create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false,p_rating integer default null,p_interest text default 'not_answered',p_payment_preference text default 'cash',p_print_receipt boolean default true,p_email_receipt boolean default false)
 returns boolean language plpgsql security definer set search_path='' as $$
