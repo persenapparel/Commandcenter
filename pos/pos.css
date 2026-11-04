@@ -210,3 +210,13 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 @media(prefers-reduced-motion:reduce){.receipt-choice,.method-tile,.product,.cash-bill-grid button{transition:none!important}}
 [data-season="christmas"] .customer-device .experience-overline span[data-season-easter-egg]{transform:rotate(-8deg)}
 [data-season="halloween"] .customer-device .experience-overline span[data-season-easter-egg]{transform:rotate(9deg)}
+
+
+/* Official brand logo and monochrome-friendly seasonal receipt heading. */
+.pos-brand-logo{width:42px;height:42px;object-fit:contain;flex-shrink:0;background:#fff;border-radius:8px;padding:3px}
+.pos-brand-logo[hidden]{display:none!important}
+.paper-logo{display:block;width:auto;max-width:40mm;max-height:18mm;margin:0 auto 6px;object-fit:contain;filter:grayscale(1) contrast(2.5)}
+.paper-logo[hidden]{display:none!important}
+.receipt-season-heading{display:block;text-align:center;border-top:1px dashed #111;border-bottom:1px dashed #111;font-size:10px;font-weight:900;line-height:1.4;padding:5px 0;letter-spacing:.02em;overflow-wrap:anywhere}
+.receipt-season-heading[hidden]{display:none!important}
+@media print{.paper-logo{max-height:16mm;filter:grayscale(1) contrast(3)}.receipt-season-heading{color:#000}}
