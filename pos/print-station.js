@@ -24,7 +24,7 @@ function renderReceipt(sale){
  const parent=$('receipt-lines');parent.replaceChildren();
  for(const item of sale.items||[])line(parent,item);
  for(const k of ['subtotal','discount','tax','total'])text('receipt-'+k,(k==='discount'?'−':'')+C.money(sale[k+'_cents']||0));
- const presentation=R.presentation({headline:template?.headline,promotion:template?.promotion,footer:template?.footer,review:template?.review_message,showReview:template?.show_review,showSeason:template?.show_seasonal,reviewLink,season});
+ text('receipt-cash-tendered',C.money(sale.tendered_cents??sale.total_cents));text('receipt-cash-change',C.money(sale.change_cents||0));const presentation=R.presentation({headline:template?.headline,promotion:template?.promotion,footer:template?.footer,review:template?.review_message,showReview:template?.show_review,showSeason:template?.show_seasonal,reviewLink,season});
  text('receipt-headline',presentation.headline);
  text('receipt-seasonal',presentation.seasonal);
  $('receipt-seasonal').hidden=!presentation.seasonal;
@@ -123,7 +123,7 @@ async function signIn(e){
 $('print-login').onsubmit=signIn;
 $('arm').onclick=()=>{armed=true;showArmed();message('Automatic print station armed. Keep Chrome open and the USB printer powered on.');void processQueue();};
 $('disarm').onclick=()=>{armed=false;showArmed();message('Print station paused. Paid receipts stay queued for later printing.');};
-$('test-print').onclick=()=>{const t={is_test:true,sale_id:'TEST',created_at:new Date().toISOString(),items:[{name:'Persen Apparel test item',qty:1,unit_cents:1000,color:'',size:'M'}],subtotal_cents:1000,discount_cents:0,tax_cents:0,total_cents:1000};try{printReceipt(t);message('Test sent to Chrome. Confirm paper size and whether your NELKO actually printed it.')}catch(e){message(errorText(e))}};
+$('test-print').onclick=()=>{const t={is_test:true,sale_id:'TEST',created_at:new Date().toISOString(),items:[{name:'Persen Apparel test item',qty:1,unit_cents:1000,color:'',size:'M'}],subtotal_cents:1000,discount_cents:0,tax_cents:0,total_cents:1000,tendered_cents:2000,change_cents:1000};try{printReceipt(t);message('Test sent to Chrome. Confirm paper size and whether your NELKO actually printed it.')}catch(e){message(errorText(e))}};
 $('paper').onchange=applyPaper;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&armed)void processQueue()});
 window.addEventListener('beforeunload',()=>{armed=false});
