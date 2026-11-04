@@ -1,0 +1,50 @@
+name: Persen POS development checks
+
+on:
+  push:
+    branches:
+      - feature/persen-pos-foundation
+    paths:
+      - 'pos/**'
+      - '.github/workflows/pos-tests.yml'
+  pull_request:
+    paths:
+      - 'pos/**'
+      - '.github/workflows/pos-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pos-static-and-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Get source
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check pos/pos-core.js
+          node --check pos/pos-events.js
+          node --check pos/pos-receipt.js
+          node --check pos/pos-cash.js
+          node --check pos/register.js
+          node --check pos/display.js
+          node --check pos/print-station.js
+      - name: Run 26 POS unit tests
+        run: node pos/tests.cjs
+      - name: Build separate static POS project
+        run: |
+          node pos/build-pages.mjs
+          test -f pos-dist/register.html
+          test -f pos-dist/display.html
+          test -f pos-dist/print-station.html
+          test -f pos-dist/pos-cash.js
+      - name: Verify no payment backend is executed by tests
+        run: |
+          echo "Static build and offline unit tests only; do not run live payments or production DB changes"
