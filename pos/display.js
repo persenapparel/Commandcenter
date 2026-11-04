@@ -100,6 +100,7 @@ function showStep(next,focus=false){
  $('wizard-back').hidden=stepIndex===0;
  $('wizard-next').hidden=stepIndex===Wizard.steps.length-1;
  $('wizard-finish').hidden=stepIndex!==Wizard.steps.length-1;
+ $('wizard-skip-optional').hidden=!['promos','rating','custom'].includes(selected.id);
  $('wizard-next').textContent=selected.id==='rating'||selected.id==='custom'||selected.id==='promos'
   ?'Continue or skip →':'Continue →';
  error();
@@ -252,6 +253,7 @@ for(const input of form.querySelectorAll('input[name="receipt_mode"]')){
 }
 $('wizard-next').addEventListener('click',navigateNext);
 $('wizard-back').addEventListener('click',navigateBack);
+$('wizard-skip-optional').addEventListener('click',()=>{if(!submitting)showStep(Wizard.steps.findIndex(x=>x.id==='review'),true)});
 $('wizard-finish').addEventListener('click',finish);
 form.addEventListener('submit',event=>event.preventDefault());
 form.addEventListener('keydown',event=>{
