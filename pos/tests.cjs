@@ -1,7 +1,7 @@
 /* Run locally: node pos/tests.cjs — no database writes. */
 'use strict';
 const assert=require('node:assert/strict');
-const C=require('./pos-core.js'), E=require('./pos-events.js');
+const C=require('./pos-core.js'), E=require('./pos-events.js'), R=require('./pos-receipt.js');
 const tests=[];
 function test(name,fn){fn();tests.push(name)}
 test('Basic cash totals',()=>assert.deepEqual(C.totals([{qty:2,unit_cents:4000,taxable:true}],10,0),{subtotal_cents:8000,discount_cents:800,tax_cents:0,total_cents:7200}));
@@ -32,4 +32,30 @@ test('Event report excludes other events',()=>{
  assert.equal(E.report(rows,'B').transactions,1);
 });
 test('Walk-in report',()=>assert.equal(E.report([{event_id:null,snapshot:{items:[]},total_cents:0}],null).transactions,1));
+test('Google review link validation',()=>{
+ assert.equal(R.reviewUrl('https://g.page/r/CcaTpFjy7JllEBM/review'),'https://g.page/r/CcaTpFjy7JllEBM/review');
+ assert.equal(R.reviewUrl('https://example.com/review'),'');
+ assert.equal(R.reviewUrl('javascript:alert(1)'),'');
+ assert.equal(R.reviewUrl('https://google.com.evil.test/review'),'');
+});
+test('Receipt promotes honest review only when link is valid',()=>{
+ const enabled=R.presentation({reviewLink:'https://g.page/r/CcaTpFjy7JllEBM/review'});
+ assert.ok(enabled.review.includes('honest Google review'));
+ assert.ok(enabled.review_url.startsWith('https://g.page/'));
+ assert.equal(R.presentation({reviewLink:'https://example.com/review'}).review_url,'');
+ assert.equal(R.presentation({reviewLink:'https://g.page/r/CcaTpFjy7JllEBM/review',showReview:false}).review_url,'');
+});
+test('Active seasonal promotion respects opt out',()=>{
+ const campaign={published:true,title:'Winter Collection',announcement:'Winter collection available now'};
+ assert.equal(R.presentation({season:campaign}).seasonal,'Winter collection available now');
+ assert.equal(R.presentation({season:campaign,showSeason:false}).seasonal,'');
+ assert.equal(R.presentation({season:{...campaign,published:false}}).seasonal,'');
+});
+test('Receipt preserves account amounts separately from presentation',()=>{
+ const saved={total_cents:3500,subtotal_cents:4000,discount_cents:500,tax_cents:0};
+ const visible=R.presentation({headline:'THANK YOU'});
+ assert.equal(saved.total_cents,3500);
+ assert.equal(visible.headline,'THANK YOU');
+ assert.equal(saved.total_cents,3500);
+});
 console.log('Persen POS: '+tests.length+' tests passed: '+tests.join('; '));
