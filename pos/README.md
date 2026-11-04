@@ -1,27 +1,41 @@
-# Persen POS — foundation preview (NOT production-ready)
+# Persen POS — separate Cloudflare Pages application in the Commandcenter repository
 
-This branch contains a standalone cashier/iPad/receipt **UI preview** at `/pos/`. It does **not** communicate with Supabase, process payment, persist customer data, or deduct live inventory. Sample inventory is clearly marked as demo. Do not use it to collect real customer payments.
+**Status: development branch only. Not deployed, not approved for real customer checkout.**
 
-## Verified existing integration points
-- `stock_items`: `id,sku,product_name,product_id,color,size,quantity,reorder_at`. Inventory has separate size/color variants.
-- `admin_users` is the existing owner allowlist; maintain RLS for any future POS tables.
-- `site_content.seasonal_campaigns_v1` is the existing Seasonal Studio JSON source. Read-only POS styling should use the same `PersenSeasonal.active`/theme logic; never overwrite public seasonal data.
-- Existing `payment_receipts` is for invoices/customer orders. POS should use a separate immutable transaction record with adjustable *templates*, not editable historical payment facts.
+Architecture: reuse the existing `persenapparel/Commandcenter` GitHub repository, deploy its POS module as a **separate Cloudflare Pages project**, and reuse the existing Supabase database. No new GitHub repository is necessary.
 
-## Next implementation (before public use)
-1. Implement a reviewed SQL migration for `pos_sessions`, `pos_sales`, receipt templates, and atomic server-side inventory settlement; prohibit double selling/duplicate payment settlement.
-2. Use short-lived, single-session pairing codes with rate limits and explicit owner approval. Do not expose customer phone/email in public Realtime payloads. Ensure a customer can see only their own session, and rotate/revoke pairing credentials.
-3. Subscribe via Supabase Realtime for laptop and iPad with reconnect/resync and stale-state warnings. Do not rely on refresh.
-4. Add payment integration only through a verified provider with authorized merchant onboarding. Do not treat customer-selected Apple Pay, Venmo, or card as confirmation. Cash requires owner confirmation. Keep POS cashier and customer display permissions separate.
-5. Read/write live `stock_items` and test atomic stock decrement with competing concurrent checkouts, out-of-stock rejection, and idempotency. Support quick-add untracked products.
-6. Receipt Studio: branded templates, rotating promotion/QR code, 58 mm print CSS, printed invoice/transaction ID, and reprint without changing sale facts. Test NELKO PL70 paper handling and print driver: continuous non-adhesive rolls are not confirmed.
-7. Validate sales tax setup, discounts, refund/void flows, phone capture, optional email, explicit marketing opt-in, customer privacy and retention.
-8. Cloudflare Pages: create separate project from reviewed POS build; attach `pos.persenapparel.com` custom domain (correct spelling); configure HTTPS and correct DNS. Never publish demo UI as real checkout.
-9. Run automated JS/SQL tests, manual iPad+computer two-device tests, RLS penetration tests and printer test before merge.
+- `pos/register.html`: owner cashier login, actual inventory search by size/color, quick-add, discounts, tax setting, cash confirmation, receipt template editor and live customer status.
+- `pos/display.html`: customer iPad checkout display, required phone, optional email, independent marketing opt-in; 1.8-second status polling so no refresh is required.
+- `pos/pos-core.js`: shared, unit-tested cart totals, discount, tax, phone and seasonal utilities.
+- `pos/pos-schema-review.sql`: proposed database tables, RLS and atomic cash settlement functions. **NOT APPLIED**. Security review and abuse prevention required before deployment.
+- `pos/index.html`: original standalone, fake-data design preview, deliberately not a live checkout.
+- `pos/build-pages.mjs`: separate build target; copies the POS into `pos-dist` and rewrites shared script paths without modifying Commandcenter files.
 
-## Current preview checks
-- Sample product search, add/remove, quantity and percentage discount are client-side only.
-- Customer phone is required in the demo; email is optional and marketing consent unchecked.
-- Apple Pay/card/Venmo are disabled, preventing fake payment confirmation.
-- 58 mm thermal receipt uses `@page`/print CSS; browser and printer support need physical testing.
-- No production configuration or deployment was changed.
+## Separate Cloudflare Pages deployment (after review)
+
+1. Use GitHub repository `persenapparel/Commandcenter` and a POS-specific Cloudflare Pages project.
+2. Build command: `node pos/build-pages.mjs`.
+3. Build output directory: `pos-dist`.
+4. First deploy the `feature/persen-pos-foundation` branch to a **private/staging** preview only; no production sales.
+5. After SQL/security reviews and payment testing, connect `pos.persenapparel.com` (correct spelling), enable HTTPS, and protect the cashier page with authentication.
+6. Confirm that the POS site `/register.html` and `/display.html` load correctly. Root redirects to `/register.html`.
+7. The database migration is not yet installed. Until then, login/register actions referencing `pos_*` tables/functions will fail; this is intentional.
+
+## Security and business blockers before real use
+
+- Add **short-lived, rate-limited pairing**: current proposed database register secret is long-lived and must not be exposed to arbitrary devices. Do not deploy the anonymous display functions without server-side abuse limits and token rotation.
+- The POS schema needs SQL syntax, authorization, concurrency, idempotency, and database integration tests. Test customer polling/reconnect, checkout cancellation, duplicate attempts, and out-of-stock rejection with two cashiers.
+- Receipt templates are editable; the transaction snapshot and financial totals are immutable. Reprints must always use the stored sale, not the current cart.
+- Only cash is implemented in the proposed schema; card, Apple Pay, Venmo and payment-reader flows are disabled until an authorized processor confirms funds. A merchant account may require an adult account holder.
+- Confirm the correct tax rate and product taxability with the business's responsible adult/accountant before use; the register starts at 0% as a safe, explicit unconfigured value.
+- The 58 mm CSS layout is untested with physical printer hardware. The NELKO PL70 may not support continuous non-adhesive receipt rolls; verify before buying paper.
+- Seasonal Studio `site_content.seasonal_campaigns_v1` is read-only in the POS. Avoid overwriting campaigns from the POS.
+- Do not store sensitive card numbers, card tokens, or merchant secrets in browser storage or public JavaScript.
+
+## Current verification
+
+JavaScript syntax verified for `pos-core.js`, `register.js`, `display.js` and the demo `pos.js`. Nine POS-core tests passed (discounts, tax, phone, seasonal, rounding). File presence verified on GitHub. **No end-to-end live database tests, no real payments, no Cloudflare deployment, no physical printer testing.**
+
+## Existing integration points
+
+`stock_items` includes `id,sku,product_name,color,size,quantity,reorder_at`; `admin_users` is the owner allowlist; `site_content.seasonal_campaigns_v1` holds Seasonal Studio campaign metadata. Current production records remain unchanged.
