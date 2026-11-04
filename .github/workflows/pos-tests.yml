@@ -32,11 +32,13 @@ jobs:
           node --check pos/pos-core.js
           node --check pos/pos-events.js
           node --check pos/pos-receipt.js
+          node --check pos/pos-digital-receipt.js
+          node --check pos/pos-experience.js
           node --check pos/pos-cash.js
           node --check pos/register.js
           node --check pos/display.js
           node --check pos/print-station.js
-      - name: Run 26 POS unit tests
+      - name: Run POS unit tests
         run: node pos/tests.cjs
       - name: Validate unapplied SQL draft structure
         run: node pos/sql-draft-check.cjs
@@ -47,6 +49,8 @@ jobs:
           test -f pos-dist/display.html
           test -f pos-dist/print-station.html
           test -f pos-dist/pos-cash.js
+          test -f pos-dist/pos-experience.js
+          test -f pos-dist/pos-digital-receipt.js
       - name: Verify no payment backend is executed by tests
         run: |
           echo "Static build and offline unit tests only; do not run live payments or production DB changes"
