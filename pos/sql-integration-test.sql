@@ -69,7 +69,7 @@ select 1/(case when count(*)=1 then 1 else 0 end) as no_duplicate_sales
 
 -- Closing an event preserves its previous sales and blocks new sales assigned to it.
 update public.pos_events set status='closed' where id='44444444-4444-4444-8444-444444444444';
-do $
+do $$
 declare rejected boolean:=false;
 begin
  begin
@@ -79,7 +79,7 @@ begin
    0,0,'44444444-4444-4444-8444-444444444444');
  exception when others then rejected:=true; end;
  if not rejected then raise exception 'Closed event unexpectedly accepted a new sale'; end if;
-end $;
+end $$;
 
 -- A second sale must not complete with too little cash or impossible change.
 select public.pos_begin_checkout(
@@ -92,7 +92,7 @@ select public.pos_submit_customer(:'secret'::uuid,:'second_checkout'::uuid,
  '(631) 555-0188',null,false,null,'no','cash',true,false);
 set role authenticated;
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
-do $
+do $$
 declare target_checkout uuid; failures integer:=0;
 begin
  select c.id into target_checkout from public.pos_checkouts c
