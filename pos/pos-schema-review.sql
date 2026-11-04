@@ -40,6 +40,30 @@ create table if not exists public.pos_sales(
  payment_method text not null check(payment_method='cash'),
  created_at timestamptz not null default now()
 );
+-- Events are administrative records. Prior sales retain the event they were recorded under.
+create table if not exists public.pos_events(
+ id uuid primary key default gen_random_uuid(),
+ owner_id uuid not null references auth.users(id),
+ name text not null check(length(trim(name)) between 1 and 100),
+ event_date date not null,
+ venue text not null default '' check(length(venue)<=140),
+ status text not null default 'open' check(status in ('open','closed')),
+ created_at timestamptz not null default now()
+);
+alter table public.pos_events enable row level security;
+revoke all on public.pos_events from anon,authenticated;
+grant select,insert,update on public.pos_events to authenticated;
+create policy pos_event_admin_read on public.pos_events for select to authenticated using(public.is_persen_admin());
+create policy pos_event_admin_add on public.pos_events for insert to authenticated with check(owner_id=(select auth.uid()) and public.is_persen_admin());
+create policy pos_event_admin_edit on public.pos_events for update to authenticated using(owner_id=(select auth.uid()) and public.is_persen_admin()) with check(owner_id=(select auth.uid()) and public.is_persen_admin());
+-- POS services are restricted labels for meaningful historical reports.
+alter table public.pos_checkouts add column if not exists event_id uuid references public.pos_events(id);
+alter table public.pos_sales add column if not exists event_id uuid references public.pos_events(id);
+create index if not exists pos_sales_event_date on public.pos_sales(event_id,created_at);
+alter table public.pos_checkouts add column if not exists rating smallint check(rating between 1 and 5);
+alter table public.pos_checkouts add column if not exists custom_interest text not null default 'not_answered' check(custom_interest in ('yes','maybe','no','not_answered'));
+alter table public.pos_checkouts add column if not exists consent_updated_at timestamptz;
+-- Event-level historical data is internal-only, never exposed on the customer display.
 create table if not exists public.pos_receipt_templates(
  id uuid primary key default gen_random_uuid(),
  owner_id uuid not null references auth.users(id),
@@ -66,13 +90,14 @@ create policy pos_checkout_owner_select on public.pos_checkouts for select to au
 create policy pos_sale_owner_select on public.pos_sales for select to authenticated using(owner_id=(select auth.uid()) and public.is_persen_admin());
 create policy pos_template_owner on public.pos_receipt_templates for all to authenticated using(owner_id=(select auth.uid()) and public.is_persen_admin()) with check(owner_id=(select auth.uid()) and public.is_persen_admin());
 -- All sensitive mutations run in carefully scoped RPCs; clients cannot edit checkout totals, status, or sales directly.
-create or replace function public.pos_begin_checkout(p_register uuid,p_items jsonb,p_discount_bps integer default 0,p_tax_milli integer default 0)
+create or replace function public.pos_begin_checkout(p_register uuid,p_items jsonb,p_discount_bps integer default 0,p_tax_milli integer default 0,p_event uuid default null)
 returns uuid language plpgsql security definer set search_path='' as $$
 declare r public.pos_registers; line jsonb; sid uuid; qty integer; unit integer; subtotal bigint:=0; taxable bigint:=0; discount bigint; tax bigint; total bigint; stock_id uuid; canonical jsonb:='[]'::jsonb; stockrow public.stock_items; seen uuid[]:='{}';
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then raise exception 'Unauthorized'; end if;
  select * into r from public.pos_registers where id=p_register and owner_id=(select auth.uid()) and active for update;
  if not found then raise exception 'Register unavailable'; end if;
+ if p_event is not null and not exists(select 1 from public.pos_events where id=p_event and status='open') then raise exception 'Choose an open event'; end if;
  if p_discount_bps not between 0 and 10000 or p_tax_milli not between 0 and 20000 then raise exception 'Invalid discount or tax'; end if;
  if jsonb_typeof(p_items)<>'array' or jsonb_array_length(p_items) not between 1 and 80 then raise exception 'Invalid cart'; end if;
  if exists(select 1 from public.pos_checkouts where register_id=p_register and status in ('awaiting_customer','contact_received')) then raise exception 'Close current checkout first'; end if;
@@ -89,11 +114,11 @@ begin
      -- Cashier chooses the sale price; actual inventory identity is taken from the database.
      if coalesce(line->>'unit_cents','') !~ '^[0-9]{1,8}$' then raise exception 'Invalid price'; end if;
      unit:=(line->>'unit_cents')::integer;
-     canonical:=canonical||jsonb_build_array(jsonb_build_object('stock_id',stock_id,'name',stockrow.product_name,'sku',stockrow.sku,'color',stockrow.color,'size',stockrow.size,'qty',qty,'unit_cents',unit,'taxable',coalesce((line->>'taxable')::boolean,true)));
+     canonical:=canonical||jsonb_build_array(jsonb_build_object('stock_id',stock_id,'name',stockrow.product_name,'sku',stockrow.sku,'color',stockrow.color,'size',stockrow.size,'qty',qty,'unit_cents',unit,'service',case when (line->>'service') in ('Apparel','Custom Printing','Personalization','Accessories','Other') then line->>'service' else 'Other' end,'taxable',coalesce((line->>'taxable')::boolean,true)));
    else
      if length(trim(coalesce(line->>'name',''))) not between 1 and 120 or coalesce(line->>'unit_cents','') !~ '^[0-9]{1,8}$' then raise exception 'Invalid custom item'; end if;
      unit:=(line->>'unit_cents')::integer;
-     canonical:=canonical||jsonb_build_array(jsonb_build_object('stock_id',null,'name',left(trim(line->>'name'),120),'sku','','color','','size','','qty',qty,'unit_cents',unit,'taxable',coalesce((line->>'taxable')::boolean,true)));
+     canonical:=canonical||jsonb_build_array(jsonb_build_object('stock_id',null,'name',left(trim(line->>'name'),120),'sku','','color','','size','','qty',qty,'unit_cents',unit,'service',case when (line->>'service') in ('Apparel','Custom Printing','Personalization','Accessories','Other') then line->>'service' else 'Other' end,'taxable',coalesce((line->>'taxable')::boolean,true)));
    end if;
    if unit>10000000 then raise exception 'Item price too high'; end if;
    subtotal:=subtotal+qty::bigint*unit::bigint;
@@ -103,8 +128,8 @@ begin
  discount:=round(subtotal*p_discount_bps/10000.0);
  tax:=case when subtotal=0 then 0 else round((taxable*(subtotal-discount)/subtotal)*p_tax_milli/100000.0) end;
  total:=subtotal-discount+tax;
- insert into public.pos_checkouts(register_id,owner_id,items,discount_bps,tax_milli,subtotal_cents,discount_cents,tax_cents,total_cents)
- values(p_register,(select auth.uid()),canonical,p_discount_bps,p_tax_milli,subtotal::integer,discount::integer,tax::integer,total::integer)
+ insert into public.pos_checkouts(register_id,owner_id,event_id,items,discount_bps,tax_milli,subtotal_cents,discount_cents,tax_cents,total_cents)
+ values(p_register,(select auth.uid()),p_event,canonical,p_discount_bps,p_tax_milli,subtotal::integer,discount::integer,tax::integer,total::integer)
  returning id into sid;
  return sid;
 end $$;
@@ -119,7 +144,7 @@ begin
  if c.created_at<now()-interval '12 hours' then return jsonb_build_object('status','idle','register',r.label); end if;
  return jsonb_build_object('status',c.status,'register',r.label,'checkout_id',c.id,'items',c.items,'subtotal_cents',c.subtotal_cents,'discount_cents',c.discount_cents,'tax_cents',c.tax_cents,'total_cents',c.total_cents,'updated_at',c.updated_at);
 end $$;
-create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false)
+create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false,p_rating integer default null,p_interest text default 'not_answered')
 returns boolean language plpgsql security definer set search_path='' as $$
 declare r public.pos_registers; c public.pos_checkouts; digits text;
 begin
@@ -130,7 +155,9 @@ begin
  if not found then raise exception 'Register unavailable'; end if;
  select * into c from public.pos_checkouts where id=p_checkout and register_id=r.id for update;
  if not found or c.status not in ('awaiting_customer','contact_received') or c.created_at<now()-interval '30 minutes' then raise exception 'Checkout unavailable'; end if;
- update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),status='contact_received',updated_at=now() where id=c.id;
+ if p_rating is not null and p_rating not between 1 and 5 then raise exception 'Invalid rating'; end if;
+ if coalesce(p_interest,'not_answered') not in ('yes','maybe','no','not_answered') then raise exception 'Invalid interest'; end if;
+ update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),rating=p_rating::smallint,custom_interest=coalesce(p_interest,'not_answered'),consent_updated_at=case when p_marketing_opt_in=true then now() else null end,status='contact_received',updated_at=now() where id=c.id;
  return true;
 end $$;
 create or replace function public.pos_cancel_checkout(p_checkout uuid)
@@ -160,14 +187,14 @@ begin
     if updated<>1 then raise exception 'Stock changed; cancel and rebuild checkout'; end if;
   end if;
  end loop;
- insert into public.pos_sales(checkout_id,owner_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method)
- values(c.id,(select auth.uid()),jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,'marketing_opt_in',c.marketing_opt_in),
+ insert into public.pos_sales(checkout_id,owner_id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method)
+ values(c.id,(select auth.uid()),c.event_id,jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,'rating',c.rating,'custom_interest',c.custom_interest),
  c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,'cash') returning id into sid;
  update public.pos_checkouts set status='completed',updated_at=now() where id=c.id;
  return sid;
 end $$;
-revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) from public;
-grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) to authenticated;
-grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean) to anon,authenticated;
+revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) from public;
+grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) to authenticated;
+grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text) to anon,authenticated;
 -- For production: put anonymous display RPCs behind an Edge Function with rate limits, short-lived tokens, and rotation.
 -- Do not activate these RPCs for untrusted public traffic until security review and abuse controls.
