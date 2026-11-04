@@ -208,4 +208,24 @@ test('Payment methods are validated and are not auto-verified',()=>{
  assert.equal(Wizard.checkStep('payment',{payment:'venmo_info'}),'');
  assert.ok(Wizard.checkStep('payment',{payment:'paid'}));
 });
+test('Cashier progress reports only screen metadata',()=>{
+ const progress=Wizard.monitor('payment');
+ assert.equal(progress.step_number,4);
+ assert.equal(progress.total_steps,8);
+ assert.equal(progress.step_label,'Choose a payment option');
+ assert.equal(progress.needs_help,false);
+ assert.ok(!Object.keys(progress).includes('phone'));
+ assert.ok(!Object.keys(progress).includes('email'));
+});
+test('Customer assistance flag is separate from answers',()=>{
+ const progress=Wizard.monitor('email',true);
+ assert.equal(progress.needs_help,true);
+ assert.equal(progress.step_number,3);
+ assert.equal(Wizard.monitor('email',false).needs_help,false);
+});
+test('Progress step fallback does not leak arbitrary input',()=>{
+ const progress=Wizard.monitor('phone: 631-644-0633');
+ assert.equal(progress.step_id,'phone');
+ assert.equal(progress.step_number,1);
+});
 console.log('Persen POS: '+tests.length+' tests passed: '+tests.join('; '));
