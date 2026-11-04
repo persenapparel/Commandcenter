@@ -26,6 +26,8 @@ function renderReceipt(sale){
  for(const k of ['subtotal','discount','tax','total'])text('receipt-'+k,(k==='discount'?'−':'')+C.money(sale[k+'_cents']||0));
  text('receipt-cash-tendered',C.money(sale.tendered_cents??sale.total_cents));text('receipt-cash-change',C.money(sale.change_cents||0));const presentation=R.presentation({headline:template?.headline,promotion:template?.promotion,footer:template?.footer,review:template?.review_message,showReview:template?.show_review,showSeason:template?.show_seasonal,reviewLink,season});
  text('receipt-headline',presentation.headline);
+ text('receipt-season-heading',presentation.season_style.icon+'  '+presentation.season_style.label+'  '+presentation.season_style.icon);
+ $('receipt-season-heading').hidden=!presentation.season_style.label;
  text('receipt-seasonal',presentation.seasonal);
  $('receipt-seasonal').hidden=!presentation.seasonal;
  text('receipt-promotion',presentation.promotion);
