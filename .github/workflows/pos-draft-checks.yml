@@ -4,10 +4,12 @@ on:
     branches: [feature/persen-pos-foundation]
     paths:
       - 'pos/**'
+      - 'supabase/functions/pos-receipt-email/**'
       - '.github/workflows/pos-draft-checks.yml'
   pull_request:
     paths:
       - 'pos/**'
+      - 'supabase/functions/pos-receipt-email/**'
       - '.github/workflows/pos-draft-checks.yml'
   workflow_dispatch:
 permissions:
@@ -25,6 +27,8 @@ jobs:
           for f in pos/*.js pos/*.cjs pos/*.mjs; do node --check "$f"; done
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Test Resend receipt worker with offline mock provider
+        run: node pos/receipt-worker-smoke.cjs
       - name: Run POS structural checks
         run: |
           if [ -f pos/structural-tests.cjs ]; then node pos/structural-tests.cjs; fi
