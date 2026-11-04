@@ -71,6 +71,9 @@ create table if not exists public.pos_receipt_templates(
  headline text not null default 'YOU LOOK GOOD IN PERSEN!',
  promotion text not null default 'See new drops at persenapparel.com',
  footer text not null default 'Made with care on Long Island',
+ review_message text not null default 'Enjoyed your experience? Leave an honest Google review.' check(length(review_message)<=130),
+ show_review boolean not null default true,
+ show_seasonal boolean not null default true,
  active boolean not null default false,
  updated_at timestamptz not null default now()
 );
