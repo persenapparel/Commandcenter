@@ -28,6 +28,16 @@
     if(!enabled||!campaign||campaign.published!==true)return '';
     return text(campaign.announcement,140)||'Discover '+text(campaign.title,75)+' at persenapparel.com';
   }
+  const THEME_LABELS={christmas:'CHRISTMAS · LONG ISLAND',winter:'WINTER COLLECTION',thanksgiving:'THANKFUL FOR LONG ISLAND',halloween:'HALLOWEEN COLLECTION',valentines:'MADE WITH LOVE',spring:'SPRING COLLECTION',summer:'LONG ISLAND SUMMER'};
+  // Thermal stock prints only black/white; themed headers are typography, not colored backgrounds.
+  function seasonalReceipt(campaign,enabled=true){
+    if(!enabled||!campaign||campaign.published!==true)return {label:'',border:'',icon:''};
+    const raw=String(campaign.theme||campaign.slug||campaign.title||'').toLowerCase();
+    const key=Object.keys(THEME_LABELS).find(k=>raw.includes(k));
+    const label=key?THEME_LABELS[key]:text(campaign.title,60,'SPECIAL COLLECTION').toUpperCase();
+    const icon=key==='christmas'||key==='winter'?'* * *':key==='halloween'?'o o o':key==='thanksgiving'?'~ ~ ~':'· · ·';
+    return {label,border:'--------------------------------',icon};
+  }
   function presentation(settings={}){
     return {
       headline:text(settings.headline,100,DEFAULTS.headline),
@@ -36,9 +46,10 @@
       review:text(settings.review,130,DEFAULTS.review),
       review_url:settings.showReview===false?'':reviewUrl(settings.reviewLink),
       seasonal:campaignMessage(settings.season,settings.showSeason!==false),
+      season_style:seasonalReceipt(settings.season,settings.showSeason!==false),
       site:'persenapparel.com',
       instagram:'@persenapparel'
     };
   }
-  return {DEFAULTS,reviewUrl,campaignMessage,presentation};
+  return {DEFAULTS,reviewUrl,campaignMessage,seasonalReceipt,presentation};
 });
