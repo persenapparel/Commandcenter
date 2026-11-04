@@ -4,10 +4,12 @@
 
 Architecture: reuse the existing `persenapparel/Commandcenter` GitHub repository, deploy its POS module as a **separate Cloudflare Pages project**, and reuse the existing Supabase database. No new GitHub repository is necessary.
 
-- `pos/register.html`: owner cashier login, actual inventory search by size/color, quick-add, discounts, tax setting, cash confirmation, receipt template editor and live customer status.
-- `pos/display.html`: customer iPad checkout display, required phone, optional email, independent marketing opt-in; 1.8-second status polling so no refresh is required.
+- `pos/register.html`: responsive mobile/laptop owner cashier login, actual inventory search by size/color, quick-add, service classification, discounts, tax setting, cash confirmation, receipt template editor, live customer status, and event manager.
+- `pos/display.html`: customer iPad checkout display, required phone, optional email, and exactly three **optional** questions: explicit promotional-text consent, private 1–5 satisfaction rating, and need for custom apparel. 1.8-second status polling means no refresh is required.
 - `pos/pos-core.js`: shared, unit-tested cart totals, discount, tax, phone and seasonal utilities.
-- `pos/pos-schema-review.sql`: proposed database tables, RLS and atomic cash settlement functions. **NOT APPLIED**. Security review and abuse prevention required before deployment.
+- `pos/pos-events.js`: pure event/service sales reporting with gross merchandise totals, discounts, taxes, collected revenue, sales count, units, private average rating, opt-ins and custom-apparel leads.
+- `pos/tests.cjs`: reproducible calculation, consent/reporting, and event isolation tests (`node pos/tests.cjs`).
+- `pos/pos-schema-review.sql`: proposed database tables, RLS and atomic cash settlement functions, event records and event-linked sales, validated service labels and private customer survey snapshots. **NOT APPLIED**. Security review and abuse prevention required before deployment.
 - `pos/index.html`: original standalone, fake-data design preview, deliberately not a live checkout.
 - `pos/build-pages.mjs`: separate build target; copies the POS into `pos-dist` and rewrites shared script paths without modifying Commandcenter files.
 
@@ -29,12 +31,14 @@ Architecture: reuse the existing `persenapparel/Commandcenter` GitHub repository
 - Only cash is implemented in the proposed schema; card, Apple Pay, Venmo and payment-reader flows are disabled until an authorized processor confirms funds. A merchant account may require an adult account holder.
 - Confirm the correct tax rate and product taxability with the business's responsible adult/accountant before use; the register starts at 0% as a safe, explicit unconfigured value.
 - The 58 mm CSS layout is untested with physical printer hardware. The NELKO PL70 may not support continuous non-adhesive receipt rolls; verify before buying paper.
+- Event manager shows a walk-in bucket and saved past events. Every sale is attributed to an event at checkout; service subtotals are **gross before discounts/tax**, while collected sales totals include discount and tax. For large history, reporting must be paginated beyond the initial 2,000 transaction query.
+- Survey ratings are private operational feedback, **not public reviews**. Marketing consent is recorded as a separate optional choice, but **not yet synchronized with Resend or SMS subscribers**. Only send promotional communications after proper opt-in and verified integration; do not merge contact capture with consent.
 - Seasonal Studio `site_content.seasonal_campaigns_v1` is read-only in the POS. Avoid overwriting campaigns from the POS.
 - Do not store sensitive card numbers, card tokens, or merchant secrets in browser storage or public JavaScript.
 
 ## Current verification
 
-JavaScript syntax verified for `pos-core.js`, `register.js`, `display.js` and the demo `pos.js`. Nine POS-core tests passed (discounts, tax, phone, seasonal, rounding). File presence verified on GitHub. **No end-to-end live database tests, no real payments, no Cloudflare deployment, no physical printer testing.**
+JavaScript syntax verified for `pos-core.js`, `register.js`, `display.js` and the demo `pos.js`. Ten POS unit tests passed (discounts, tax, phone, rating validation, event/service totals, and event isolation). File presence verified on GitHub. **No end-to-end live database tests, no real payments, no Cloudflare deployment, no physical printer testing.**
 
 ## Existing integration points
 
