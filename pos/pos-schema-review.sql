@@ -24,6 +24,11 @@ create table if not exists public.pos_checkouts(
  phone text,
  email text,
  marketing_opt_in boolean not null default false,
+ payment_preference text not null default 'cash'
+  check(payment_preference in ('cash','venmo_info','apple_cash_info')),
+ receipt_print boolean not null default true,
+ receipt_email boolean not null default false,
+ receipt_sms boolean not null default false,
  created_at timestamptz not null default now(),
  updated_at timestamptz not null default now()
 );
@@ -64,6 +69,29 @@ grant select on public.pos_print_jobs to authenticated;
 create policy pos_print_jobs_owner_read on public.pos_print_jobs
 for select to authenticated
 using(owner_id=(select auth.uid()) and public.is_persen_admin());
+
+-- Receipt delivery choices remain separate from marketing consent.
+-- No emails or texts are sent until an authorized sender is configured.
+create table if not exists public.pos_receipt_delivery_jobs(
+ id uuid primary key default gen_random_uuid(),
+ sale_id uuid not null references public.pos_sales(id),
+ owner_id uuid not null references auth.users(id),
+ channel text not null check(channel in ('email','sms')),
+ status text not null default 'awaiting_sender'
+   check(status in ('awaiting_sender','queued','sending','sent','failed')),
+ attempts smallint not null default 0 check(attempts between 0 and 5),
+ sent_at timestamptz,
+ provider_id text,
+ last_error text,
+ created_at timestamptz not null default now(),
+ unique(sale_id,channel)
+);
+alter table public.pos_receipt_delivery_jobs enable row level security;
+revoke all on public.pos_receipt_delivery_jobs from anon,authenticated;
+grant select on public.pos_receipt_delivery_jobs to authenticated;
+create policy pos_receipt_delivery_owner_read on public.pos_receipt_delivery_jobs
+ for select to authenticated
+ using(owner_id=(select auth.uid()) and public.is_persen_admin());
 
 -- Events are administrative records. Prior sales retain the event they were recorded under.
 create table if not exists public.pos_events(
@@ -172,7 +200,7 @@ begin
  if c.created_at<now()-interval '12 hours' then return jsonb_build_object('status','idle','register',r.label); end if;
  return jsonb_build_object('status',c.status,'register',r.label,'checkout_id',c.id,'items',c.items,'subtotal_cents',c.subtotal_cents,'discount_cents',c.discount_cents,'tax_cents',c.tax_cents,'total_cents',c.total_cents,'updated_at',c.updated_at);
 end $$;
-create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false,p_rating integer default null,p_interest text default 'not_answered')
+create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false,p_rating integer default null,p_interest text default 'not_answered',p_payment_preference text default 'cash',p_print_receipt boolean default true,p_email_receipt boolean default false,p_sms_receipt boolean default false)
 returns boolean language plpgsql security definer set search_path='' as $$
 declare r public.pos_registers; c public.pos_checkouts; digits text;
 begin
@@ -185,7 +213,11 @@ begin
  if not found or c.status not in ('awaiting_customer','contact_received') or c.created_at<now()-interval '30 minutes' then raise exception 'Checkout unavailable'; end if;
  if p_rating is not null and p_rating not between 1 and 5 then raise exception 'Invalid rating'; end if;
  if coalesce(p_interest,'not_answered') not in ('yes','maybe','no','not_answered') then raise exception 'Invalid interest'; end if;
- update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),rating=p_rating::smallint,custom_interest=coalesce(p_interest,'not_answered'),consent_updated_at=case when p_marketing_opt_in=true then now() else null end,status='contact_received',updated_at=now() where id=c.id;
+ if coalesce(p_payment_preference,'cash') not in ('cash','venmo_info','apple_cash_info')
+  then raise exception 'Invalid payment method'; end if;
+ if p_email_receipt=true and nullif(trim(coalesce(p_email,'')),'') is null
+  then raise exception 'Email required when requesting an email receipt';end if;
+ update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),payment_preference=coalesce(p_payment_preference,'cash'),receipt_print=coalesce(p_print_receipt,true),receipt_email=coalesce(p_email_receipt,false),receipt_sms=coalesce(p_sms_receipt,false),rating=p_rating::smallint,custom_interest=coalesce(p_interest,'not_answered'),consent_updated_at=case when p_marketing_opt_in=true then now() else null end,status='contact_received',updated_at=now() where id=c.id;
  return true;
 end $$;
 create or replace function public.pos_cancel_checkout(p_checkout uuid)
@@ -205,6 +237,8 @@ begin
  if (select auth.uid()) is null or not public.is_persen_admin() then raise exception 'Unauthorized'; end if;
  select * into c from public.pos_checkouts where id=p_checkout and owner_id=(select auth.uid()) for update;
  if not found or c.status<>'contact_received' then raise exception 'Customer contact required or checkout already closed'; end if;
+ if c.payment_preference<>'cash' then
+  raise exception 'This is an information-only electronic payment selection. Cash checkout must not be used to record it as paid';end if;
  if length(regexp_replace(coalesce(c.phone,''),'[^0-9]','','g'))<10 then raise exception 'Customer phone required'; end if;
  -- Lock and decrement each row atomically. Any insufficient stock rolls back the entire transaction.
  for line in select value from jsonb_array_elements(c.items) order by (value->>'stock_id') nulls last loop
@@ -216,11 +250,22 @@ begin
   end if;
  end loop;
  insert into public.pos_sales(checkout_id,owner_id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method)
- values(c.id,(select auth.uid()),c.event_id,jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,'rating',c.rating,'custom_interest',c.custom_interest),
+ values(c.id,(select auth.uid()),c.event_id,jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,'rating',c.rating,'custom_interest',c.custom_interest,'receipt_print',c.receipt_print,'receipt_email',c.receipt_email,'receipt_sms',c.receipt_sms,'payment_preference',c.payment_preference),
  c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,'cash') returning id into sid;
- -- Printing is queued even when the physical printer is offline.
- insert into public.pos_print_jobs(sale_id,owner_id,register_id)
- values(sid,(select auth.uid()),c.register_id);
+ -- Only print if the customer requested a printed receipt.
+ if c.receipt_print then
+  insert into public.pos_print_jobs(sale_id,owner_id,register_id)
+  values(sid,(select auth.uid()),c.register_id);
+ end if;
+ -- Record digital receipt requests. No sender is enabled automatically.
+ if c.receipt_email and nullif(trim(coalesce(c.email,'')),'') is not null then
+  insert into public.pos_receipt_delivery_jobs(sale_id,owner_id,channel)
+  values(sid,(select auth.uid()),'email');
+ end if;
+ if c.receipt_sms and nullif(trim(coalesce(c.phone,'')),'') is not null then
+  insert into public.pos_receipt_delivery_jobs(sale_id,owner_id,channel)
+  values(sid,(select auth.uid()),'sms');
+ end if;
  update public.pos_checkouts set status='completed',updated_at=now() where id=c.id;
  return sid;
 end $$;
@@ -293,8 +338,8 @@ public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) from pub
 grant execute on function public.pos_claim_print_job(uuid),
 public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) to authenticated;
 
-revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) from public;
+revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean,boolean),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) from public;
 grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) to authenticated;
-grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text) to anon,authenticated;
+grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean,boolean) to anon,authenticated;
 -- For production: put anonymous display RPCs behind an Edge Function with rate limits, short-lived tokens, and rotation.
 -- Do not activate these RPCs for untrusted public traffic until security review and abuse controls.
