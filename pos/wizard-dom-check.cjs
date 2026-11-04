@@ -30,4 +30,9 @@ assert.ok(cashier.includes('@persenapparel')&&cashier.includes('(631) 644-0633')
 assert.ok(js.includes('identifier:')&&js.includes('@persenapparel')&&js.includes('(631) 644-0633'),'Customer payment references missing');
 assert.ok(sql.includes('public.pos_set_customer_progress(')&&sql.includes('help_requested boolean not null default false'),'SQL draft must support assistance');
 assert.ok(!/jsonb_build_object\([^)]*phone/i.test(sql.slice(sql.indexOf('public.pos_set_customer_progress'),sql.indexOf('public.pos_submit_customer'))),'Step updates should not include customer contact details');
-console.log('Persen POS kiosk + cashier help monitoring: 19 offline checks passed.');
+const cashierStatusSource=cashierJs.slice(cashierJs.indexOf('async function status()'),cashierJs.indexOf('async function begin()'));
+assert.ok(!/\bdraw\(\)/.test(cashierStatusSource),'Customer polling must not rebuild cart inputs');
+assert.ok(cashierJs.includes('syncCheckoutUI();renderCash();'),'Polling should only update lightweight checkout controls');
+assert.ok(cashierJs.includes('btn.disabled=remaining<=0||!meta'),'Unpriced inventory must not be added silently');
+assert.ok(cashierJs.includes("upsert(metadata,{onConflict:'stock_id'})"),'Existing variants need a price editor');
+console.log('Persen POS kiosk + cashier help monitoring and inventory UI: 23 offline checks passed.');
