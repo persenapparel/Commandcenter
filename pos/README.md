@@ -63,3 +63,17 @@ JavaScript syntax verified for `pos-core.js`, `register.js`, `display.js` and th
 - This model needs no recurring printing cloud service; the Chrome kiosk flag might permit silent printing on Windows with the NELKO set as the default printer. Exact hardware/driver tests are mandatory.
 - Cloudflare build includes `print-station.html` and supporting assets. **No deployment or database schema changes have been made.**
 - Refer to `pos/PRINTING-AND-DEVICE-PLAN.md` for setup and paper compatibility cautions. An exact model label/photo will resolve whether this is PL70 or PL70E.
+
+## Advanced cash checkout and cash drawer (November 4, 2026 development)
+
+- `pos/pos-cash.js` is the pure, 26-test-compatible cash planner. Counts $100, $50, $20, $10, $5, $1, quarters, dimes, nickels and pennies. Searches for a valid exact-change breakdown with backtracking instead of falsely assuming a greedy first choice always works.
+- Cashier has a premium blue cash terminal with quick **+ bill** buttons, exact/change clear, direct cash received amount, real-time change due, colored status, suggested change denominations, and safe disabled confirmation for underpayment or when exact change is unavailable.
+- Cash can be counted while the customer is finishing the iPad questionnaire, but the cashier cannot settle until the iPad customer contact status is complete.
+- Register drawer settings are **explicit counted values**, stored with a version number and owner-only cash-drawer RPC. All manual recounts are logged in `pos_drawer_recounts` for financial traceability.
+- The **unapplied draft** `pos_complete_cash` server function independently validates tendered cash, known bill breakdown, the latest register float and exact change before recording a paid sale, updating the drawer balance and queueing a receipt atomically. If a manually typed cash amount has unknown bill denominations, the system does **not** pretend to know which notes were added; the float remains conservative until a recount.
+- Printed receipts now show cash tendered and change returned from the server-saved sale record.
+- `.github/workflows/pos-tests.yml` runs offline Node unit tests, JavaScript syntax checks and the isolated POS static build for development branch pushes/PRs.
+- **No production database changes**, payments, Cloudflare deployment, or physical cash/receipt-printer testing have been performed as part of this coding work.
+
+### Remaining blockers
+Review and integration-test the SQL carefully with staged Supabase auth/RLS, high-value cash, stale drawer version conflicts and simultaneous cashiers. Confirm price-list support and taxes before taking real money. Verify iPad portrait/landscape touch layouts on actual devices. Install printer driver and test automatic printing with the NELKO; automated browser print requests are not evidence of printed paper.
