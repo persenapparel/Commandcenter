@@ -62,5 +62,13 @@
    receipt:receipt(values.receipt),payment:values.payment||'cash',
    promo:values.marketing==='yes',rating:values.rating||null,interest:values.interest||'not_answered'};
  }
- return {steps,digits,dial,formatPhone,validPhone,receiptModes,receipt,validEmail,checkStep,summary};
+ function monitor(stepId,needsHelp=false){
+  const i=steps.findIndex(s=>s.id===stepId);
+  const current=i>=0?i:0;
+  return {step_id:steps[current].id,step_label:steps[current].title,
+    step_number:current+1,total_steps:steps.length,
+    percentage:Math.round((current+1)/steps.length*100),
+    needs_help:needsHelp===true};
+ }
+ return {steps,digits,dial,formatPhone,validPhone,checkStep,receiptModes,receipt,validEmail,summary,monitor};
 });
