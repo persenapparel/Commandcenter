@@ -108,7 +108,7 @@ function showStep(next,focus=false){
  if(focus){
   const heading=stepSections[stepIndex].querySelector('h1');
   if(heading)heading.focus({preventScroll:true});
-  form.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  form.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
  }
 }
 function resetWizard(){
@@ -220,8 +220,7 @@ async function finish(){
    p_interest:v.interest||'not_answered',
    p_payment_preference:v.payment,
    p_print_receipt:receipts.print,
-   p_email_receipt:receipts.email,
-   p_sms_receipt:false
+   p_email_receipt:receipts.email
   }));
   form.hidden=true;
   $('waiting-payment').hidden=false;
