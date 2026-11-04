@@ -70,6 +70,7 @@ const PA={
  me:async()=>({id:'11111111-1111-4111-8111-111111111111'}),
  isAdmin:async()=>true
 };
+window.PA=PA;
 const timers=[];
 const context={document,window,PA,console,
  setInterval(fn,ms){timers.push({fn,ms});return timers.length},
