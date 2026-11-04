@@ -161,13 +161,14 @@ function renderCash(){
  by('cash-due').textContent=C.money(due);
  const paid=cashCents(),indicator=by('change-indicator'),change=by('change-amount'),
        message=by('change-message'),breakdown=by('change-breakdown');
+ const inputAllowed=!!checkout&&!busy;
  const allowed=!!checkout&&checkout.status==='contact_received'&&!busy;
- for(const b of by('cash-bills').querySelectorAll('button'))b.disabled=!allowed;
- by('cash-exact').disabled=!allowed;by('cash-clear').disabled=!allowed;
- by('cash-received').disabled=!allowed;
+ for(const b of by('cash-bills').querySelectorAll('button'))b.disabled=!inputAllowed;
+ by('cash-exact').disabled=!inputAllowed;by('cash-clear').disabled=!inputAllowed;
+ by('cash-received').disabled=!inputAllowed;
  indicator.className='change-indicator';breakdown.textContent='';
  by('cash').disabled=true;
- if(paid===null){change.textContent='$0.00';indicator.textContent='Enter cash';message.textContent=allowed?'Tap the cash received, choose Exact, or type an amount.':'Waiting for the customer to finish their iPad checkout.';return}
+ if(paid===null){change.textContent='$0.00';indicator.textContent='Enter cash';message.textContent=inputAllowed?'Tap bills now; checkout confirms when the customer finishes on the iPad.':'Start a checkout to enter the cash received.';return}
  try{
   const result=CASH.plan(due,paid,drawer,drawerConfigured,manualTender?tenderBills:{});
   change.textContent=C.money(result.change_cents);
@@ -182,7 +183,7 @@ function renderCash(){
    message.textContent='Your counted drawer cannot make this exact change. Ask for a different bill, take an exact amount or replenish the drawer.';
   }else{
    indicator.textContent=result.change_cents===0?'Exact payment':'Change available';indicator.classList.add('ready');
-   message.textContent=result.change_cents===0?'No change to return.':'Count and hand back this change before confirming payment.';
+   message.textContent=!allowed?'Cash counted. Waiting for customer confirmation on the iPad.':result.change_cents===0?'No change to return.':'Count and hand back this change before confirming payment.';
    if(allowed)by('cash').disabled=false;
    const steps=Object.entries(result.breakdown||{}).filter(([_,n])=>n>0)
       .map(([v,n])=>n+' × '+(CASH.DENOMS.find(d=>d.value===Number(v))?.label||v));
