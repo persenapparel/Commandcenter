@@ -370,3 +370,16 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 #edit-event[hidden]{display:none}
 .product-variant-row{display:flex;justify-content:space-between;gap:12px;padding:9px 3px;border-bottom:1px solid #dbe7f4;font-size:12px}
 @media(max-width:650px){#new-product,#edit-event{grid-template-columns:1fr}.product-variant-row{flex-direction:column;gap:3px}}
+
+
+/* Quick price editing for existing inventory without remaking a product. */
+.product-variant-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 14px;border:1px solid #e0eafa;border-radius:13px;background:#fff;margin:8px 0}
+.variant-info{min-width:150px;flex:1 1 180px}
+.variant-info strong{display:block;font-size:13px;color:#12345f;line-height:1.35}
+.variant-info small{display:block;color:#637b99;font-size:11px;line-height:1.5}
+.variant-quick-price{flex:1 1 220px;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.variant-quick-price input[type=number]{width:105px;min-height:40px;margin:0;font-size:14px}
+.variant-tax-check{display:inline-flex;align-items:center;gap:5px;color:#375d86;font-size:11px;font-weight:750;margin:0;white-space:nowrap}
+.variant-tax-check input{width:auto!important;accent-color:#246bd0;margin:0!important}
+.variant-quick-price button{min-height:41px;background:#eaf3ff;border-color:#bad4f9;color:#1555a2;font-size:12px}
+@media(max-width:650px){.variant-quick-price{justify-content:flex-start}.variant-quick-price input[type=number]{width:105px}}
