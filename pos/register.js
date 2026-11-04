@@ -31,6 +31,8 @@ async function status(){if(!register||busy)return;try{const list=await check(db.
  const method=checkout?.payment_preference||'cash';
  by('payment-preference-badge').textContent=method==='venmo_info'?'Venmo instructions':method==='apple_cash_info'?'Apple Cash instructions':'Cash checkout';
  by('external-payment-notice').hidden=!checkout||method==='cash';
+ const receiptChannels=checkout?[checkout.receipt_print?'Print':null,checkout.receipt_email?'Email (delivery pending)':null,checkout.receipt_sms?'Text (delivery pending)':null].filter(Boolean):[];
+ by('receipt-request-status').textContent=receiptChannels.length?'Requested receipt: '+receiptChannels.join(' · '):'No receipt selected yet.';
  by('status').textContent=c?({awaiting_customer:'Waiting for customer phone number',contact_received:'Customer ready · waiting for cashier cash confirmation',completed:'Sale complete · receipt ready',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
  draw();
  }catch(e){notice('Connection lost: '+e.message)}}
