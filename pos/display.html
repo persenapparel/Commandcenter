@@ -1,34 +1,145 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Persen Apparel | Customer Checkout (Development)</title><link rel="stylesheet" href="pos.css"><script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="../config.js"></script><script defer src="../backend.js"></script><script defer src="pos-core.js"></script><script defer src="pos-experience.js"></script><script defer src="display.js"></script></head><body><header><img class="pos-brand-logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><strong>PERSEN <span>APPAREL</span></strong><small>CUSTOMER DISPLAY · DEVELOPMENT</small></header><main class="customer-device"><section class="panel" style="margin-top:25px;text-align:center"><div class="experience-overline"><span data-season-icon aria-hidden="true">✦</span> <span data-season-label>Persen Apparel</span> <span data-season-easter-egg aria-hidden="true" hidden></span></div><h1>Welcome to Persen Apparel!</h1><p class="display-intro">Made for you on Long Island <span aria-hidden="true">✦</span></p><p id="state" role="status">Connecting to your register…</p><div id="items" class="cart" style="text-align:left"></div><div class="total"><span>Total</span><strong id="total">$0.00</strong></div><form id="contact" hidden><h2>Contact for your receipt</h2><label>Phone number (required) <input type="tel" name="phone" autocomplete="tel" required placeholder="(631) 555-0100"></label><label>Email (optional) <input type="email" name="email" autocomplete="email" placeholder="you@example.com"></label><section class="customer-receipt-options" aria-label="Receipt preferences">
- <h2>How would you like your receipt?</h2>
- <div class="receipt-choice-grid">
-  <label class="receipt-choice"><input type="checkbox" name="receipt_print" checked><span>🧾 <strong>Printed</strong><small>Pick it up at the register</small></span></label>
-  <label class="receipt-choice"><input type="checkbox" name="receipt_email"><span>✉️ <strong>Email</strong><small>Requires an email address</small></span></label>
-  <label class="receipt-choice"><input type="checkbox" name="receipt_sms"><span>💬 <strong>Text</strong><small>Uses your phone number</small></span></label>
- </div>
- <p class="hint">Receipt email and text delivery are being connected and are not sent in this development version. These choices are separate from promotional messages.</p>
- </section>
- <section class="customer-pay-method" aria-label="Preferred payment method">
-  <h2>How would you like to pay?</h2>
-  <div class="method-grid">
-   <label class="method-tile"><input type="radio" name="payment_preference" value="cash" checked><span><strong>💵 Cash</strong><small>Pay the cashier</small></span></label>
-   <label class="method-tile"><input type="radio" name="payment_preference" value="venmo_info"><span><strong>Venmo information</strong><small>Manual verification only</small></span></label>
-   <label class="method-tile"><input type="radio" name="payment_preference" value="apple_cash_info"><span><strong>Apple Cash information</strong><small>Via Messages · not Apple Pay</small></span></label>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0e2c5c">
+<title>Persen Apparel | Customer Checkout</title>
+<link rel="stylesheet" href="pos.css">
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="../config.js"></script>
+<script defer src="../backend.js"></script>
+<script defer src="pos-core.js"></script>
+<script defer src="pos-experience.js"></script>
+<script defer src="checkout-flow.js"></script>
+<script defer src="display.js"></script>
+</head>
+<body class="kiosk-body">
+<header class="kiosk-header">
+  <img class="pos-brand-logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true">
+  <strong>PERSEN <span>APPAREL</span></strong>
+  <small>SECURE CUSTOMER DISPLAY · DEVELOPMENT</small>
+</header>
+<main class="customer-device customer-wizard">
+<section class="panel kiosk-shell">
+  <div class="experience-overline"><span data-season-icon aria-hidden="true">✦</span><span data-season-label>Persen Apparel</span><span data-season-easter-egg hidden aria-hidden="true"></span></div>
+  <div id="seasonal-banner" class="display-season-banner" hidden><strong id="seasonal-banner-title"></strong><p id="seasonal-banner-description"></p></div>
+  <div class="kiosk-order-summary">
+    <div class="order-summary-head">
+      <div><span class="eyebrow">YOUR ORDER</span><p id="state" role="status">Connecting to register…</p></div>
+      <div class="order-total-box"><span>Total due</span><strong id="total">$0.00</strong></div>
+    </div>
+    <details class="order-details" id="order-details">
+      <summary>View order items <span aria-hidden="true">⌄</span></summary>
+      <div id="items" class="cart" aria-label="Purchased items"></div>
+    </details>
   </div>
-  <div id="payment-instructions" class="payment-instructions" role="status">
-   <strong>Cash</strong><p>Pay the cashier. Your sale is saved only when they confirm the money was received.</p>
-  </div>
-  <p class="hint">Selecting Venmo or Apple Cash does not transfer money or complete a sale. Ask the cashier which payment methods are approved and available.</p>
- </section><section class="customer-questions" aria-label="Three quick questions"><h2>Three quick questions</h2>
- <fieldset><legend>1. Want to sign up for occasional Persen Apparel promotions?</legend>
- <label><input type="radio" name="marketing" value="yes"> Yes, I agree to receive promotional texts at the phone number above.</label>
- <label><input type="radio" name="marketing" value="no"> No, thanks.</label>
- </fieldset>
- <fieldset><legend>2. How would you rate your experience today?</legend>
- <div class="rating-choices" role="group" aria-label="Experience rating from 1 to 5"><label><input type="radio" name="rating" value="1">1 ★</label><label><input type="radio" name="rating" value="2">2 ★</label><label><input type="radio" name="rating" value="3">3 ★</label><label><input type="radio" name="rating" value="4">4 ★</label><label><input type="radio" name="rating" value="5">5 ★</label></div>
- <small>Optional private feedback — not published as a review.</small></fieldset>
- <fieldset><legend>3. Need any custom shirts or apparel for an upcoming event?</legend>
- <label><input type="radio" name="interest" value="yes"> Yes, please tell me more.</label>
- <label><input type="radio" name="interest" value="maybe"> Maybe later.</label>
- <label><input type="radio" name="interest" value="no"> Not right now.</label>
- </fieldset><p class="hint">These questions are optional. Choosing “yes” to promotions is separate from checkout and does not affect your purchase.</p></section>
- <button class="primary" type="submit">Continue · Confirm my choices</button></form><div id="seasonal-banner" class="display-season-banner" hidden><strong id="seasonal-banner-title"></strong><p id="seasonal-banner-description"></p></div><div id="thanks" hidden><h2>Thank you for shopping local!</h2><p>Thank you for supporting a Long Island small business! Your cashier will help with payment and receipt delivery.</p></div><p class="hint">Development preview: Cash is the only payment method that the POS can record. Venmo and Apple Cash information are not connected to automatic payment verification.</p></section></main></body></html>
+  <form id="contact" novalidate hidden>
+    <div class="wizard-progress">
+      <span id="progress-label">Step 1 of 8</span>
+      <span id="progress-percent" aria-hidden="true">13%</span>
+    </div>
+    <div id="progress-track" class="progress-track" role="progressbar" aria-label="Checkout progress" aria-valuemin="1" aria-valuemax="8" aria-valuenow="1"><span id="progress-fill"></span></div>
+    <p id="step-error" class="step-error" role="alert" hidden></p>
+    <section class="wizard-step" data-step="phone" aria-labelledby="step-phone-title">
+      <span class="step-icon" aria-hidden="true">☎</span>
+      <h1 id="step-phone-title" tabindex="-1">What's your phone number?</h1>
+      <p class="step-subtitle">A phone number is required for your order. Use the number pad below—no iPad keyboard needed.</p>
+      <label class="sr-only" for="phone-display">Phone number</label>
+      <input id="phone-display" name="phone" type="tel" inputmode="none" autocomplete="off" readonly
+             placeholder="( _ _ _ ) _ _ _ - _ _ _ _" aria-label="Phone number entered with on-screen dialer"
+             class="kiosk-phone-display">
+      <div id="phone-keypad" class="phone-keypad" role="group" aria-label="Phone number dial pad">
+        <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2<small>ABC</small></button><button type="button" data-digit="3">3<small>DEF</small></button>
+        <button type="button" data-digit="4">4<small>GHI</small></button><button type="button" data-digit="5">5<small>JKL</small></button><button type="button" data-digit="6">6<small>MNO</small></button>
+        <button type="button" data-digit="7">7<small>PQRS</small></button><button type="button" data-digit="8">8<small>TUV</small></button><button type="button" data-digit="9">9<small>WXYZ</small></button>
+        <button type="button" data-digit="clear" class="key-action" aria-label="Clear phone number">Clear</button><button type="button" data-digit="0">0</button><button type="button" data-digit="back" class="key-action" aria-label="Delete last digit">⌫</button>
+      </div>
+      <p class="step-helper" id="phone-helper" aria-live="polite">0 of 10 digits</p>
+    </section>
+    <section class="wizard-step" data-step="receipt" aria-labelledby="step-receipt-title" hidden>
+      <span class="step-icon" aria-hidden="true">▤</span>
+      <h1 id="step-receipt-title" tabindex="-1">How would you like your receipt?</h1>
+      <p class="step-subtitle">Choose one option. You can take home a printed receipt, receive an email, or both.</p>
+      <div class="wizard-choice-stack" role="radiogroup" aria-label="Receipt delivery">
+        <label class="wizard-choice"><input type="radio" name="receipt_mode" value="print" checked><span class="choice-icon">🧾</span><span class="choice-copy"><strong>Printed</strong><small>Pick it up from the cashier</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="receipt_mode" value="email"><span class="choice-icon">✉</span><span class="choice-copy"><strong>Email</strong><small>Sent to the address you enter next, after email delivery is enabled</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="receipt_mode" value="both"><span class="choice-icon">▤</span><span class="choice-copy"><strong>Both</strong><small>A printed copy and an emailed copy</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+      </div>
+      <p class="step-helper">Email receipt delivery is still being connected. Printed receipts require the NELKO print station to be set up.</p>
+    </section>
+    <section class="wizard-step" data-step="email" aria-labelledby="step-email-title" hidden>
+      <span class="step-icon" aria-hidden="true">✉</span>
+      <h1 id="step-email-title" tabindex="-1">What's your email address?</h1>
+      <p class="step-subtitle" id="email-explanation">You can share your email for order contact. This does not sign you up for promotions.</p>
+      <label for="email-address" class="wizard-field-label">Email address</label>
+      <input id="email-address" class="kiosk-email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off"
+        spellcheck="false" maxlength="250" placeholder="you@example.com">
+      <p class="step-helper" id="email-helper">Optional unless you selected Email or Both receipts.</p>
+    </section>
+    <section class="wizard-step" data-step="payment" aria-labelledby="step-payment-title" hidden>
+      <span class="step-icon" aria-hidden="true">◈</span>
+      <h1 id="step-payment-title" tabindex="-1">How would you like to pay?</h1>
+      <p class="step-subtitle">The cashier will help finish the payment.</p>
+      <div class="wizard-choice-stack" role="radiogroup" aria-label="Payment method information">
+        <label class="wizard-choice"><input type="radio" name="payment_preference" value="cash" checked><span class="choice-icon">💵</span><span class="choice-copy"><strong>Cash</strong><small>Pay the cashier directly</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="payment_preference" value="venmo_info"><span class="choice-icon">V</span><span class="choice-copy"><strong>Venmo information</strong><small>Manual verification — @persenapparel</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="payment_preference" value="apple_cash_info"><span class="choice-icon">●</span><span class="choice-copy"><strong>Apple Cash information</strong><small>Via Messages — not Apple Pay checkout</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+      </div>
+      <div id="payment-instructions" class="payment-instructions" role="status" aria-live="polite"><strong>Cash</strong><p>Pay the cashier. Selecting another option doesn't send money or complete your order.</p></div>
+    </section>
+    <section class="wizard-step" data-step="promos" aria-labelledby="step-promos-title" hidden>
+      <span class="step-icon" aria-hidden="true">✦</span>
+      <h1 id="step-promos-title" tabindex="-1">Want to hear about our latest offers?</h1>
+      <p class="step-subtitle">Optional. Promotions are separate from your receipt and regular order messages.</p>
+      <div class="wizard-choice-stack" role="radiogroup" aria-label="Promotional messages consent">
+        <label class="wizard-choice"><input type="radio" name="marketing" value="yes"><span class="choice-icon">✓</span><span class="choice-copy"><strong>Yes, sign me up</strong><small>I agree to receive occasional promotional messages at the contact information I provided.</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="marketing" value="no"><span class="choice-icon">×</span><span class="choice-copy"><strong>No, thanks</strong><small>Just my order-related communications</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+      </div>
+      <p class="step-helper">Leave this unanswered to skip it. You won't be subscribed automatically.</p>
+    </section>
+    <section class="wizard-step" data-step="rating" aria-labelledby="step-rating-title" hidden>
+      <span class="step-icon" aria-hidden="true">★</span>
+      <h1 id="step-rating-title" tabindex="-1">How was your experience today?</h1>
+      <p class="step-subtitle">Tap a star rating, or skip this question. This feedback stays private.</p>
+      <div class="wizard-stars" role="radiogroup" aria-label="Experience rating">
+        <label><input type="radio" name="rating" value="1"><span>★</span><small>1</small></label>
+        <label><input type="radio" name="rating" value="2"><span>★</span><small>2</small></label>
+        <label><input type="radio" name="rating" value="3"><span>★</span><small>3</small></label>
+        <label><input type="radio" name="rating" value="4"><span>★</span><small>4</small></label>
+        <label><input type="radio" name="rating" value="5"><span>★</span><small>5</small></label>
+      </div>
+      <p class="step-helper">This is not a public Google review.</p>
+    </section>
+    <section class="wizard-step" data-step="custom" aria-labelledby="step-custom-title" hidden>
+      <span class="step-icon" aria-hidden="true">◉</span>
+      <h1 id="step-custom-title" tabindex="-1">Need any custom shirts or apparel?</h1>
+      <p class="step-subtitle">For your business, team, club, school, or an upcoming event?</p>
+      <div class="wizard-choice-stack" role="radiogroup" aria-label="Custom apparel interest">
+        <label class="wizard-choice"><input type="radio" name="interest" value="yes"><span class="choice-icon">✓</span><span class="choice-copy"><strong>Yes, I'd love more information</strong><small>Tell me about custom apparel</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="interest" value="maybe"><span class="choice-icon">?</span><span class="choice-copy"><strong>Maybe in the future</strong><small>I'll keep Persen Apparel in mind</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="interest" value="no"><span class="choice-icon">×</span><span class="choice-copy"><strong>Not right now</strong><small>Thanks for asking!</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+      </div>
+      <p class="step-helper">You can skip this question.</p>
+    </section>
+    <section class="wizard-step" data-step="review" aria-labelledby="step-review-title" hidden>
+      <span class="step-icon" aria-hidden="true">✓</span>
+      <h1 id="step-review-title" tabindex="-1">Almost done!</h1>
+      <p class="step-subtitle">Review your choices. Your cashier will confirm the payment and provide your receipt.</p>
+      <div id="wizard-review-summary" class="wizard-review-summary"></div>
+      <p class="step-helper">Email receipts aren't being sent in this development build. Selecting Venmo or Apple Cash only displays instructions.</p>
+    </section>
+    <div class="wizard-navigation">
+      <button id="wizard-back" type="button" class="wizard-back" hidden>← Back</button>
+      <button id="wizard-next" type="button" class="primary wizard-next">Continue <span aria-hidden="true">→</span></button>
+      <button id="wizard-finish" type="button" class="primary wizard-next" hidden>Finish checkout <span aria-hidden="true">✓</span></button>
+    </div>
+    <p id="wizard-secure-note" class="wizard-secure-note">Your phone and email are used for your order. Promotions are optional.</p>
+  </form>
+  <div id="waiting-payment" class="kiosk-finished" hidden><span class="finished-icon">✓</span><h2>You're all set!</h2><p>Thank you. The cashier will help you finish payment and your receipt.</p></div>
+  <div id="thanks" class="kiosk-finished" hidden><span class="finished-icon">★</span><h2>Thank you for shopping local!</h2><p>We appreciate your support of Persen Apparel. Have a great day!</p></div>
+</section>
+</main>
+</body>
+</html>
