@@ -9,9 +9,9 @@ const C=window.PersenPOSCore;
 const Wizard=window.PersenPOSWizard;
 const Experience=window.PersenPOSExperience;
 const PAYMENT_INFO={
- cash:{label:'Cash',message:'Please pay the cashier. Your order is only recorded as paid once the cashier confirms the money received.'},
- venmo_info:{label:'Venmo instructions only',message:'Business account: @persenapparel. Ask the cashier to confirm this is an approved account before sending anything. This screen cannot verify funds or complete the payment.'},
- apple_cash_info:{label:'Apple Cash via Messages — not Apple Pay',message:'Contact: (631) 644-0633. Ask the cashier to confirm the number is registered for Apple Cash before sending. This screen cannot verify or complete a payment.'}
+ cash:{label:'Cash',identifier:null,message:'Please pay the cashier. Your order is only recorded as paid once the cashier confirms the money received.'},
+ venmo_info:{label:'Venmo instructions only',identifier:'@persenapparel',message:'Business account: @persenapparel. Ask the cashier to confirm this is an approved account before sending anything. This screen cannot verify funds or complete the payment.'},
+ apple_cash_info:{label:'Apple Cash via Messages — not Apple Pay',identifier:'(631) 644-0633',message:'Contact: (631) 644-0633. Ask the cashier to confirm the number is registered for Apple Cash before sending. This screen cannot verify or complete a payment.'}
 };
 const form=$('contact');
 const stepSections=[...document.querySelectorAll('.wizard-step')];
@@ -22,7 +22,7 @@ const checked=async query=>{
 };
 let token=new URL(location.href).searchParams.get('pair');
 let db=null,checkoutId=null,activeId=null,phoneDigits='',stepIndex=0,submitting=false,waiting=false;
-let lastStatus=null;
+let lastStatus=null,needsHelp=false,progressQueue=Promise.resolve();
 const show=text=>$('state').textContent=text;
 function chosen(name){return form.querySelector('input[name="'+name+'"]:checked')?.value||''}
 function values(){
@@ -41,15 +41,44 @@ function error(message=''){
  box.textContent=message;
  box.hidden=!message;
 }
+function queueProgress(){
+ if(!db||!token||!checkoutId||submitting)return;
+ const sessionId=checkoutId;
+ const current=Wizard.steps[stepIndex]?.id||'phone';
+ const help=needsHelp;
+ progressQueue=progressQueue.catch(()=>{}).then(async()=>{
+   if(sessionId!==checkoutId||!db)return;
+   await checked(db.rpc('pos_set_customer_progress',{
+     p_secret:token,p_checkout:sessionId,p_step:current,p_need_help:help
+   }));
+ }).catch(()=>{
+   $('wizard-help-state').textContent='Could not update the cashier view. You can still ask the cashier for help directly.';
+ });
+}
+function showHelpState(){
+ const b=$('wizard-help');
+ b.setAttribute('aria-pressed',String(needsHelp));
+ b.classList.toggle('requested',needsHelp);
+ b.textContent=needsHelp?'✓ Help requested · Tap to cancel':'? Need help from your cashier?';
+ $('wizard-help-state').textContent=needsHelp
+  ?'Your cashier should see a help request shortly. Please ask them directly if needed.'
+  :'Your cashier can see which step you are on, not what you type.';
+}
 function showPaymentInfo(value){
  const info=PAYMENT_INFO[value]||PAYMENT_INFO.cash;
  const target=$('payment-instructions');
  target.replaceChildren();
  const title=document.createElement('strong');
  title.textContent=info.label;
+ if(info.identifier){
+  const identifier=document.createElement('div');
+  identifier.className='kiosk-payment-identifier';
+  identifier.textContent=info.identifier;
+  target.append(title,identifier);
+ }else target.append(title);
  const p=document.createElement('p');
  p.textContent=info.message;
- target.append(title,p);
+ target.append(p);
  target.dataset.method=value;
 }
 function phoneDisplay(){
@@ -106,6 +135,7 @@ function showStep(next,focus=false){
  error();
  if(selected.id==='email')emailContext();
  if(selected.id==='review')reviewSummary();
+ queueProgress();
  if(focus){
   const heading=stepSections[stepIndex].querySelector('h1');
   if(heading)heading.focus({preventScroll:true});
@@ -115,7 +145,8 @@ function showStep(next,focus=false){
 function resetWizard(){
  form.reset();
  phoneDigits='';
- stepIndex=0;submitting=false;
+ stepIndex=0;submitting=false;needsHelp=false;progressQueue=Promise.resolve();
+ showHelpState();
  phoneDisplay();
  showPaymentInfo('cash');
  $('waiting-payment').hidden=true;
@@ -224,6 +255,7 @@ async function finish(){
    p_email_receipt:receipts.email
   }));
   form.hidden=true;
+  needsHelp=false;showHelpState();
   $('waiting-payment').hidden=false;
   show('Thanks! Your choices were saved. Please see the cashier.');
   await refresh();
@@ -253,6 +285,7 @@ for(const input of form.querySelectorAll('input[name="receipt_mode"]')){
 }
 $('wizard-next').addEventListener('click',navigateNext);
 $('wizard-back').addEventListener('click',navigateBack);
+$('wizard-help').addEventListener('click',()=>{if(!checkoutId||submitting)return;needsHelp=!needsHelp;showHelpState();queueProgress();});
 $('wizard-skip-optional').addEventListener('click',()=>{if(!submitting)showStep(Wizard.steps.findIndex(x=>x.id==='review'),true)});
 $('wizard-finish').addEventListener('click',finish);
 form.addEventListener('submit',event=>event.preventDefault());
