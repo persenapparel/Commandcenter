@@ -21,8 +21,8 @@ function palette(campaign){
  const k=presetFor(campaign),base=presets[k];
  const name=campaign?.published===true?String(campaign.title||base.name).trim().slice(0,80):'Persen Apparel';
  return {key:k,name,icon:base.icon,secondary:base.secondary,
-  accent:safeHex(campaign?.accent,base.accent),
-  background:safeHex(campaign?.background,base.background),
+  accent:campaign?.published===true?safeHex(campaign.accent,base.accent):presets.default.accent,
+  background:campaign?.published===true?safeHex(campaign.background,base.background):presets.default.background,
   message:campaign?.published===true?String(campaign.announcement||base.message).trim().slice(0,170):base.message,
   active:campaign?.published===true};
 }
