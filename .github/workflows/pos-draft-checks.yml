@@ -1,0 +1,38 @@
+name: POS draft checks
+on:
+  push:
+    branches: [feature/persen-pos-foundation]
+    paths:
+      - 'pos/**'
+      - '.github/workflows/pos-draft-checks.yml'
+  pull_request:
+    paths:
+      - 'pos/**'
+      - '.github/workflows/pos-draft-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          for f in pos/*.js pos/*.cjs pos/*.mjs; do node --check "$f"; done
+      - name: Run POS unit tests
+        run: node pos/tests.cjs
+      - name: Run POS structural checks
+        run: |
+          if [ -f pos/structural-tests.cjs ]; then node pos/structural-tests.cjs; fi
+      - name: Build isolated POS site
+        run: node pos/build-pages.mjs
+      - name: Verify isolated build
+        run: |
+          test -f pos-dist/register.html
+          test -f pos-dist/display.html
+          test -f pos-dist/print-station.html
+          test -f pos-dist/assets/persen-logo.png
