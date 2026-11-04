@@ -43,3 +43,15 @@ JavaScript syntax verified for `pos-core.js`, `register.js`, `display.js` and th
 ## Existing integration points
 
 `stock_items` includes `id,sku,product_name,color,size,quantity,reorder_at`; `admin_users` is the owner allowlist; `site_content.seasonal_campaigns_v1` holds Seasonal Studio campaign metadata. Current production records remain unchanged.
+
+## Seasonal Studio, customer thanks, Google reviews, and quicker printing (current draft)
+
+- Customer-facing iPad display loads the **published active** seasonal campaign from the existing `site_content.seasonal_campaigns_v1` record. It displays the campaign title/announcement without giving the public customer access to any owner permissions.
+- Cashier uses the same active seasonal campaign to decorate its receipt promotions; unconfigured, unpublished and out-of-date campaigns are skipped.
+- Printed receipts contain saved-sale totals and itemization, explicit **THANK YOU FOR YOUR ORDER**, an optional owner-edited promotion, a Google-review invitation, the website and Instagram, and the existing Google Business review URL from `site_content.v54_google_reviews`. The link is validated to be HTTPS on Google's own domains; actual QR generation is **not implemented yet**.
+- Receipt templates now include `review_message`, `show_review` and `show_seasonal` in the **draft, unapplied** schema. Existing template editing UI reads and writes these options when the reviewed schema is installed.
+- Cashier includes an optional **open print dialog after confirmed cash sale** checkbox. This uses the standard browser print dialog, **not silent printing**, and is contingent on saving a paid sale successfully. For truly automatic receipt printing from iPad or phone, a securely paired computer-based print station and tested printer are necessary.
+- Cashier CSS handles iPad **portrait** with a spacious single-column layout and **landscape** with multiple checkout panels, plus phone and laptop layouts. The Event Manager is collapsed by default for quick event checkouts.
+- Full printing workflow and PL70E compatibility cautions: see `pos/PRINTING-AND-DEVICE-PLAN.md`.
+
+**Status reminder:** all of the above is saved only to this GitHub development branch. The POS database migration is not applied, the site is not deployed, and actual live payment/auto-print reliability is not validated.
