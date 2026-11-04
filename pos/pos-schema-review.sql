@@ -199,7 +199,7 @@ begin
  if (select auth.uid()) is null or not public.is_persen_admin() then raise exception 'Unauthorized'; end if;
  select * into r from public.pos_registers where id=p_register and owner_id=(select auth.uid()) and active for update;
  if not found then raise exception 'Register unavailable'; end if;
- if p_event is not null and not exists(select 1 from public.pos_events where id=p_event and status='open') then raise exception 'Choose an open event'; end if;
+ if p_event is not null and not exists(select 1 from public.pos_events where id=p_event and owner_id=(select auth.uid()) and status='open') then raise exception 'Choose an open event'; end if;
  if p_discount_bps not between 0 and 10000 or p_tax_milli not between 0 and 20000 then raise exception 'Invalid discount or tax'; end if;
  if jsonb_typeof(p_items)<>'array' or jsonb_array_length(p_items) not between 1 and 80 then raise exception 'Invalid cart'; end if;
  if exists(select 1 from public.pos_checkouts where register_id=p_register and status in ('awaiting_customer','contact_received')) then raise exception 'Close current checkout first'; end if;
@@ -513,3 +513,32 @@ grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,u
 grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean) to anon,authenticated;
 -- For production: put anonymous display RPCs behind an Edge Function with rate limits, short-lived tokens, and rotation.
 -- Do not activate these RPCs for untrusted public traffic until security review and abuse controls.
+
+-- Supabase may grant EXECUTE directly to anon despite revoking from PUBLIC.
+-- Owner RPCs must be callable only by authenticated users and enforce is_persen_admin().
+revoke execute on function
+ public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),
+ public.pos_cancel_checkout(uuid),
+ public.pos_complete_cash(uuid,integer,jsonb,jsonb,integer),
+ public.pos_claim_print_job(uuid),
+ public.pos_finish_print_job(uuid,text),
+ public.pos_retry_print_job(uuid),
+ public.pos_set_cash_drawer(uuid,jsonb,integer)
+from public,anon;
+-- Unsafe reusable display pairing: disable ALL customer RPCs until short-lived pairing and throttling are implemented.
+-- A future reviewed gateway migration must regrant these intentionally; NEVER do so for this draft.
+revoke execute on function
+ public.pos_customer_view(uuid),
+ public.pos_set_customer_progress(uuid,uuid,text,boolean),
+ public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean)
+from public,anon,authenticated;
+-- Cover foreign-key lookups for growing production-like inventories / receipt history.
+create index if not exists pos_checkout_event_idx on public.pos_checkouts(event_id);
+create index if not exists pos_checkout_owner_idx on public.pos_checkouts(owner_id);
+create index if not exists pos_recounts_owner_idx on public.pos_drawer_recounts(owner_id);
+create index if not exists pos_recounts_register_idx on public.pos_drawer_recounts(register_id);
+create index if not exists pos_events_owner_idx on public.pos_events(owner_id);
+create index if not exists pos_print_register_idx on public.pos_print_jobs(register_id);
+create index if not exists pos_email_owner_idx on public.pos_receipt_delivery_jobs(owner_id);
+create index if not exists pos_registers_owner_idx on public.pos_registers(owner_id);
+create index if not exists pos_sales_owner_idx on public.pos_sales(owner_id);
