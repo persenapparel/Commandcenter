@@ -6,11 +6,11 @@ import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {join} from 'node:path';
 const dest='pos-dist';
 await mkdir(dest,{recursive:true});
-for(const f of ['pos.css','pos.js','pos-core.js','pos-events.js','pos-receipt.js','register.js','display.js','pos-schema-review.sql']){
+for(const f of ['pos.css','pos.js','pos-core.js','pos-events.js','pos-receipt.js','register.js','display.js','pos-schema-review.sql','print-station.js','print-station.css']){
  await copyFile(join('pos',f),join(dest,f));
 }
 for(const f of ['config.js','backend.js','seasonal.js'])await copyFile(f,join(dest,f));
-for(const f of ['register.html','display.html','index.html']){
+for(const f of ['register.html','display.html','index.html','print-station.html']){
  let s=await readFile(join('pos',f),'utf8');
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  await writeFile(join(dest,f),s);
