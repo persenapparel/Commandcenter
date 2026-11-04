@@ -119,6 +119,26 @@ create policy pos_receipt_delivery_owner_read on public.pos_receipt_delivery_job
  for select to authenticated
  using(owner_id=(select auth.uid()) and public.is_persen_admin());
 
+-- POS variant prices: stock_items has NO price column in the live schema.
+-- Separate owner-only POS metadata prevents falsely assuming one exists.
+-- Apply only after full RLS and transactional integration testing.
+create table if not exists public.pos_variant_details(
+ stock_id uuid primary key references public.stock_items(id) on delete cascade,
+ price_cents integer not null check(price_cents between 0 and 10000000),
+ taxable boolean not null default true,
+ category text not null default 'Apparel' check(length(category)<=90),
+ product_type text not null default 'other' check(length(product_type)<=40),
+ description text not null default '' check(length(description)<=500),
+ created_at timestamptz not null default now()
+);
+alter table public.pos_variant_details enable row level security;
+revoke all on public.pos_variant_details from anon,authenticated;
+grant select,insert,update,delete on public.pos_variant_details to authenticated;
+create policy pos_variant_owner_select on public.pos_variant_details for select to authenticated using(public.is_persen_admin());
+create policy pos_variant_owner_insert on public.pos_variant_details for insert to authenticated with check(public.is_persen_admin());
+create policy pos_variant_owner_update on public.pos_variant_details for update to authenticated using(public.is_persen_admin()) with check(public.is_persen_admin());
+create policy pos_variant_owner_delete on public.pos_variant_details for delete to authenticated using(public.is_persen_admin());
+
 -- Events are administrative records. Prior sales retain the event they were recorded under.
 create table if not exists public.pos_events(
  id uuid primary key default gen_random_uuid(),
