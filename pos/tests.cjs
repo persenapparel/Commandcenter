@@ -1,7 +1,7 @@
 /* Run locally: node pos/tests.cjs — no database writes. */
 'use strict';
 const assert=require('node:assert/strict');
-const C=require('./pos-core.js'), E=require('./pos-events.js'), R=require('./pos-receipt.js'), Cash=require('./pos-cash.js');
+const C=require('./pos-core.js'), E=require('./pos-events.js'), R=require('./pos-receipt.js'), Cash=require('./pos-cash.js'), Seasonal=require('./pos-experience.js'), Digital=require('./pos-digital-receipt.js');
 const tests=[];
 function test(name,fn){fn();tests.push(name)}
 test('Basic cash totals',()=>assert.deepEqual(C.totals([{qty:2,unit_cents:4000,taxable:true}],10,0),{subtotal_cents:8000,discount_cents:800,tax_cents:0,total_cents:7200}));
@@ -108,5 +108,29 @@ test('Change payout cannot exceed actual counted denominations',()=>{
 test('Bill and coin inputs have bounded amounts',()=>{
  assert.throws(()=>Cash.makeChange(50001,{}),/range/);
  assert.throws(()=>Cash.calcChange(5000,-1),/Invalid/);
+});
+test('Published holiday themes use Seasonal Studio palette',()=>{
+ const p=Seasonal.palette({theme:'christmas',title:'Christmas Collection',published:true,accent:'#a32736'});
+ assert.equal(p.active,true);assert.equal(p.icon,'❄️');assert.equal(p.accent,'#a32736');
+});
+test('Unpublished seasonal treatment remains classic',()=>{
+ const p=Seasonal.palette({theme:'halloween',published:false});assert.equal(p.active,false);
+ assert.equal(p.name,'Persen Apparel');
+});
+test('Unsupported seasonal accent falls back safely',()=>{
+ const p=Seasonal.palette({theme:'summer',published:true,accent:'red'});assert.equal(p.accent,'#c17725');
+});
+test('Digital email receipt escapes item HTML',()=>{
+ const sale={id:'abcd1234',items:[{name:'Hoodie <script>alert(1)</script>',qty:2,unit_cents:2500}],subtotal_cents:5000,discount_cents:0,tax_cents:0,total_cents:5000};
+ const result=Digital.email(sale);assert.ok(result.subject.includes('abcd1234'.toUpperCase()));
+ assert.ok(result.html.includes('&lt;script&gt;'));assert.ok(!result.html.includes('<script>'));
+});
+test('Text receipt is transactional, not marketing consent',()=>{
+ const sale={id:'12345678',items:[],subtotal_cents:2000,discount_cents:0,tax_cents:0,total_cents:2000};
+ const body=Digital.sms(sale);assert.ok(body.includes('$20.00'));assert.ok(body.includes('one-time purchase receipt'));
+});
+test('Digital receipt excludes untrusted review links',()=>{
+ const sale={id:'12345678',items:[],subtotal_cents:2000,discount_cents:0,tax_cents:0,total_cents:2000};
+ assert.ok(!Digital.email(sale,{review_url:'javascript:alert(1)'}).html.includes('javascript:'));
 });
 console.log('Persen POS: '+tests.length+' tests passed: '+tests.join('; '));
