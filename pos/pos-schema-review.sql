@@ -40,6 +40,31 @@ create table if not exists public.pos_sales(
  payment_method text not null check(payment_method='cash'),
  created_at timestamptz not null default now()
 );
+-- Pending print jobs are created transactionally with sales.
+-- A print station marks jobs as submitted to the local browser, NOT confirmed on paper.
+-- Clients cannot directly insert, change sale associations, or change state.
+create table if not exists public.pos_print_jobs(
+  id uuid primary key default gen_random_uuid(),
+  sale_id uuid not null unique references public.pos_sales(id),
+  owner_id uuid not null references auth.users(id),
+  register_id uuid not null references public.pos_registers(id),
+  state text not null default 'queued'
+    check(state in ('queued','printing','submitted_to_browser','failed')),
+  attempts integer not null default 0 check(attempts between 0 and 10),
+  claimed_at timestamptz,
+  submitted_at timestamptz,
+  last_error text,
+  created_at timestamptz not null default now()
+);
+create index if not exists pos_print_jobs_owner_state_created
+on public.pos_print_jobs(owner_id,state,created_at);
+alter table public.pos_print_jobs enable row level security;
+revoke all on public.pos_print_jobs from anon,authenticated;
+grant select on public.pos_print_jobs to authenticated;
+create policy pos_print_jobs_owner_read on public.pos_print_jobs
+for select to authenticated
+using(owner_id=(select auth.uid()) and public.is_persen_admin());
+
 -- Events are administrative records. Prior sales retain the event they were recorded under.
 create table if not exists public.pos_events(
  id uuid primary key default gen_random_uuid(),
@@ -193,9 +218,81 @@ begin
  insert into public.pos_sales(checkout_id,owner_id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method)
  values(c.id,(select auth.uid()),c.event_id,jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,'rating',c.rating,'custom_interest',c.custom_interest),
  c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,'cash') returning id into sid;
+ -- Printing is queued even when the physical printer is offline.
+ insert into public.pos_print_jobs(sale_id,owner_id,register_id)
+ values(sid,(select auth.uid()),c.register_id);
  update public.pos_checkouts set status='completed',updated_at=now() where id=c.id;
  return sid;
 end $$;
+
+-- Print station authenticated with an authorized owner account.
+-- Atomic claim stops two devices printing the same queued receipt simultaneously.
+-- This RPC returns only receipt data, never phone/email or survey details.
+create or replace function public.pos_claim_print_job(p_job uuid)
+returns jsonb language plpgsql security definer set search_path='' as $
+declare j public.pos_print_jobs; sale public.pos_sales;
+begin
+ if (select auth.uid()) is null or not public.is_persen_admin() then
+   raise exception 'Unauthorized';
+ end if;
+ update public.pos_print_jobs
+ set state='printing', attempts=attempts+1, claimed_at=now(), last_error=null
+ where id=p_job and owner_id=(select auth.uid())
+   and state='queued' and attempts<5
+ returning * into j;
+ if not found then return null; end if;
+ select * into sale from public.pos_sales where id=j.sale_id and owner_id=(select auth.uid());
+ if not found then raise exception 'Sale no longer available'; end if;
+ return jsonb_build_object(
+    'job_id',j.id,'sale_id',sale.id,
+    'items',sale.snapshot->'items',
+    'subtotal_cents',sale.subtotal_cents,
+    'discount_cents',sale.discount_cents,
+    'tax_cents',sale.tax_cents,
+    'total_cents',sale.total_cents,
+    'payment_method',sale.payment_method,
+    'created_at',sale.created_at
+ );
+end $;
+
+create or replace function public.pos_finish_print_job(p_job uuid,p_error text default null)
+returns boolean language plpgsql security definer set search_path='' as $
+declare n integer;
+begin
+ if (select auth.uid()) is null or not public.is_persen_admin() then
+   raise exception 'Unauthorized';
+ end if;
+ update public.pos_print_jobs
+ set state=case when nullif(trim(p_error),'') is null
+   then 'submitted_to_browser' else 'failed' end,
+   submitted_at=case when nullif(trim(p_error),'') is null then now() else null end,
+   last_error=nullif(left(trim(p_error),200),'')
+ where id=p_job and owner_id=(select auth.uid()) and state='printing';
+ get diagnostics n=row_count;
+ return n=1;
+end $;
+
+-- Recovery is a MANUAL action: automatic retries could print duplicates after a crash.
+create or replace function public.pos_retry_print_job(p_job uuid)
+returns boolean language plpgsql security definer set search_path='' as $
+declare n integer;
+begin
+ if (select auth.uid()) is null or not public.is_persen_admin() then
+   raise exception 'Unauthorized';
+ end if;
+ update public.pos_print_jobs
+ set state='queued',claimed_at=null,submitted_at=null,last_error=null
+ where id=p_job and owner_id=(select auth.uid()) and attempts<5
+   and state in ('failed','printing','submitted_to_browser');
+ get diagnostics n=row_count;
+ return n=1;
+end $;
+
+revoke all on function public.pos_claim_print_job(uuid),
+public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) from public;
+grant execute on function public.pos_claim_print_job(uuid),
+public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) to authenticated;
+
 revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) from public;
 grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) to authenticated;
 grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text) to anon,authenticated;
