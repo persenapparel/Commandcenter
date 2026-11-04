@@ -33,7 +33,7 @@ async function status(){if(!register||busy)return;try{const list=await check(db.
  by('external-payment-notice').hidden=!checkout||method==='cash';
  const receiptChannels=checkout?[checkout.receipt_print?'Print':null,checkout.receipt_email?'Email (delivery pending)':null].filter(Boolean):[];
  by('receipt-request-status').textContent=receiptChannels.length?'Requested receipt: '+receiptChannels.join(' · '):'No receipt selected yet.';
- by('status').textContent=c?({awaiting_customer:'Waiting for customer phone number',contact_received:'Customer ready · waiting for cashier cash confirmation',completed:'Sale complete · receipt ready',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
+ by('status').textContent=c?({awaiting_customer:'Customer completing checkout screens',contact_received:'Customer choices saved · ready for cashier',completed:'Sale complete · receipt ready',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
  draw();
  }catch(e){notice('Connection lost: '+e.message)}}
 async function begin(){if(busy||checkout)return;busy=true;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=Math.round(C.percent(by('discount').value)*100),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
