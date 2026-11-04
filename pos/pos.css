@@ -95,3 +95,74 @@ input[type=checkbox]{min-width:19px;min-height:19px;accent-color:var(--pos-seaso
   .display-season-banner{display:none!important}
   #receipt[hidden]{display:none!important}
 }
+
+
+/* Persen POS — fast cash tender, premium navy/blue register UI.
+   Separate from the customer display and optimized for touch input. */
+:root{
+ --pos-navy:#10284b;--pos-blue:#165ccd;--pos-accent:#3d7ae8;
+ --pos-mint:#dff8ef;--pos-muted:#65768f;
+}
+body{background:linear-gradient(160deg,#f3f7fd 0%,#e6f0ff 65%,#f8fbff 100%);min-height:100vh}
+header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #091d391b}
+.hero{background:linear-gradient(120deg,#112c59,#0d448c);color:#fff;padding:23px 27px;border-radius:22px;box-shadow:0 18px 40px #092f6530}
+.hero small,.hero h1,.hero p,.hero .hint{color:#fff!important}.hero small{opacity:.75}
+.hero h1{font-weight:900;letter-spacing:-.03em}
+.hero p{opacity:.9}.hero .tag{background:#fff0c3;color:#7b4c05;flex-shrink:0;font-size:12px}
+.panel{border:1px solid #e3eaf4;box-shadow:0 12px 34px #0d2c5e0a}
+.panel h2{font-weight:850;letter-spacing:-.02em}
+.product{border-radius:11px;padding:12px 9px;transition:background .12s}
+.product:hover{background:#f5f9ff}.product button{background:#e6f0ff;border-color:#accdfa}
+.primary{background:linear-gradient(135deg,#1564d6,#0d4cb9);box-shadow:0 5px 12px #1646a332}
+.primary:disabled{box-shadow:none}
+.cash-terminal{background:linear-gradient(155deg,#f6faff,#eef5ff);border:1px solid #d3e3fa;border-radius:19px;padding:18px;margin-top:18px}
+.terminal-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.terminal-heading h3{margin:3px 0 13px!important;font-size:20px!important;color:#0c315d}
+.eyebrow{font-size:10px;font-weight:900;letter-spacing:.15em;color:#3674bf}
+.terminal-icon{font-size:27px;background:#fff;border:1px solid #d9e7ff;width:50px;height:50px;display:grid;place-items:center;border-radius:15px}
+.amount-due{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:12px 15px;border-radius:13px;color:#395a81;font-size:14px}
+.amount-due strong{font-size:24px;color:#0a356b;letter-spacing:-.04em}
+.terminal-input-label{display:block;color:#173962;font-weight:760;font-size:13px;margin-top:15px}
+.cash-entry{position:relative}.cash-entry span{position:absolute;left:15px;top:13px;font-size:26px;font-weight:800;color:#7993b6}
+.cash-entry input{font-size:28px!important;line-height:1.2;font-weight:850;color:#102e5b;padding:12px 13px 12px 34px;min-height:64px;border:2px solid #8eb6f1;background:white}
+.cash-entry input:focus{outline:3px solid #72a8ff42;border-color:#3481f5}
+.cash-quick-actions{display:flex;gap:8px;margin:-3px 0 14px}
+.cash-quick-actions button{flex:1;background:#fff;min-height:40px}
+.cash-bills-label{font-weight:760;color:#214575;font-size:12px;margin-bottom:9px}
+.cash-bill-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cash-bill-grid button{background:white;color:#123d80;border:1px solid #b6cef0;border-radius:12px;font-size:18px;min-height:53px;box-shadow:0 3px 9px #091d3610}
+.cash-bill-grid button:active{background:#dbeaff;transform:translateY(1px)}
+.cash-bill-grid button:disabled{opacity:.4;box-shadow:none}
+.change-total{display:flex;justify-content:space-between;gap:8px;align-items:center;background:#10284b;color:#fff;border-radius:13px;margin-top:14px;padding:15px}
+.change-total small{display:block;color:#b1c6e5;font-size:12px}
+.change-total strong{display:block;color:#fff;font-size:29px;letter-spacing:-.035em;margin-top:3px}
+.change-indicator{font-size:10px;font-weight:850;background:#355075;color:#e6efff;border-radius:999px;padding:8px 10px;text-align:center;max-width:140px}
+.change-indicator.ready{background:#d8fbed;color:#135c40}.change-indicator.warning{background:#fff2d4;color:#835600}.change-indicator.blocked{background:#ffe0de;color:#952b2e}
+.cash-status{font-size:12px;font-weight:600;color:#395982;min-height:20px;margin:10px 1px}
+.change-breakdown{font-size:12px;color:#1b4976;background:white;border-radius:9px;padding:11px 13px;min-height:38px}
+.cash-confirm{min-height:53px;border-radius:12px;margin-top:14px;font-size:15px}
+.drawer-settings{margin-top:20px;padding-top:14px;border-top:1px solid #cdddf1}
+.drawer-settings summary{cursor:pointer;color:#1c4e86;font-weight:760;display:flex;justify-content:space-between;font-size:13px}
+.drawer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.drawer-denom{padding:8px 10px;background:#fff;border:1px solid #e0e8f4;border-radius:10px}
+.drawer-denom label{display:block;color:#36557a;font-size:12px;font-weight:750;margin-bottom:0}
+.drawer-denom input{margin:4px 0 0;min-height:41px;font-size:16px}
+.drawer-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:13px 0}
+.drawer-footer span{font-size:12px;color:#37547a}
+.drawer-footer button{white-space:nowrap}
+.drawer-settings>.hint{margin-bottom:0}
+.cash-terminal button:focus-visible,.cash-terminal input:focus-visible{outline:3px solid #3d8dff88;outline-offset:2px}
+@media(min-width:680px) and (max-width:1100px){
+ .cash-terminal{padding:20px}
+ .cash-bill-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+ .drawer-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:650px){
+ .hero{padding:18px 17px;border-radius:18px}
+ .cash-terminal{padding:14px;border-radius:15px}
+ .cash-bill-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cash-bill-grid button{min-height:55px}
+ .terminal-icon{width:43px;height:43px}
+ .drawer-footer{flex-wrap:wrap}
+}
+@media print{.cash-terminal{display:none!important}}
