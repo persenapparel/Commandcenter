@@ -38,6 +38,8 @@ jobs:
           node --check pos/print-station.js
       - name: Run 26 POS unit tests
         run: node pos/tests.cjs
+      - name: Validate unapplied SQL draft structure
+        run: node pos/sql-draft-check.cjs
       - name: Build separate static POS project
         run: |
           node pos/build-pages.mjs
