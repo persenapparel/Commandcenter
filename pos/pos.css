@@ -45,3 +45,9 @@
  .customer-questions fieldset{padding:10px}
 }
 @media print{.event-manager{display:none!important}}
+
+/* Service category on cashier line items. */
+.cart-row:has(.service-picker){display:grid;grid-template-columns:minmax(120px,1fr) 65px 105px minmax(135px,165px) 38px;gap:8px;align-items:center}
+.cart-row .service-picker{margin:0;padding:8px;max-width:100%}
+@media(max-width:1050px){.cart-row:has(.service-picker){grid-template-columns:minmax(0,1fr) 60px 90px 38px}.cart-row .service-picker{grid-column:1/-1;grid-row:auto}}
+@media(max-width:650px){.cart-row:has(.service-picker){grid-template-columns:minmax(0,1fr) 62px 85px 34px}.cart-row .service-picker{grid-column:1/-1;width:100%!important}}
