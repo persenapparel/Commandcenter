@@ -1,7 +1,7 @@
 /* Run locally: node pos/tests.cjs — no database writes. */
 'use strict';
 const assert=require('node:assert/strict');
-const C=require('./pos-core.js'), E=require('./pos-events.js'), R=require('./pos-receipt.js');
+const C=require('./pos-core.js'), E=require('./pos-events.js'), R=require('./pos-receipt.js'), Cash=require('./pos-cash.js');
 const tests=[];
 function test(name,fn){fn();tests.push(name)}
 test('Basic cash totals',()=>assert.deepEqual(C.totals([{qty:2,unit_cents:4000,taxable:true}],10,0),{subtotal_cents:8000,discount_cents:800,tax_cents:0,total_cents:7200}));
@@ -57,5 +57,56 @@ test('Receipt preserves account amounts separately from presentation',()=>{
  assert.equal(saved.total_cents,3500);
  assert.equal(visible.headline,'THANK YOU');
  assert.equal(saved.total_cents,3500);
+});
+test('Cash underpayment is blocked',()=>{
+  assert.deepEqual(Cash.calcChange(3750,2000),{due_cents:3750,paid_cents:2000,short_cents:1750,change_cents:0});
+  assert.equal(Cash.plan(3750,2000,{},true).status,'short');
+});
+test('Exact cash requires no change',()=>{
+ assert.equal(Cash.plan(3750,3750,{},false).status,'exact_unconfigured');
+ assert.equal(Cash.plan(3750,3750,{},true).status,'exact');
+});
+test('Correct change for fifty-dollar tender',()=>{
+ const r=Cash.plan(3750,5000,{1000:1,100:2,25:2},true);
+ assert.equal(r.change_cents,1250);
+ assert.equal(r.status,'ready');
+ assert.deepEqual(r.breakdown,{'1000':1,'100':2,'25':2});
+});
+test('Available total is not the same as exact change',()=>{
+ assert.equal(Cash.plan(3970,4000,{'25':1,'1':3},true).status,'insufficient');
+ assert.equal(Cash.plan(3970,4000,{'10':3},true).status,'ready');
+});
+test('Greedy is not sufficient: bounded change finder backtracks',()=>{
+ assert.deepEqual(Cash.makeChange(30,{'25':1,'10':3}),{'10':3});
+});
+test('Drawer without counted change cannot approve overpayment',()=>{
+ assert.equal(Cash.plan(3750,5000,{},false).status,'unconfigured');
+ assert.equal(Cash.plan(3750,5000,{},true).status,'insufficient');
+});
+test('Known received bill can provide change',()=>{
+ const r=Cash.plan(3000,5000,{},true,{'2000':1,'1000':3});
+ assert.equal(r.status,'ready');
+ assert.equal(r.change_cents,2000);
+ assert.deepEqual(r.breakdown,{'2000':1});
+});
+test('Mismatched bill amounts are rejected',()=>{
+ assert.throws(()=>Cash.plan(3500,5000,{1000:5},true,{'2000':1}),/do not match/);
+});
+test('No phantom cash is credited to drawer',()=>{
+ const updated=Cash.updateDrawer({'1000':2},{},{'1000':1});
+ assert.equal(updated['1000'],1);
+ assert.equal(updated['5000'],0);
+});
+test('Cash drawer totals and denomination validation',()=>{
+ assert.equal(Cash.drawerValue(Cash.cleanCounts({'2000':2,'100':3,'25':4})),4400);
+ assert.throws(()=>Cash.cleanCounts({'1000':-1}),/0–999/);
+ assert.throws(()=>Cash.cleanCounts({'12345':1}),/Unrecognized denomination/);
+});
+test('Change payout cannot exceed actual counted denominations',()=>{
+ assert.throws(()=>Cash.updateDrawer({'25':1},{},{'25':2}),/Not enough/);
+});
+test('Bill and coin inputs have bounded amounts',()=>{
+ assert.throws(()=>Cash.makeChange(50001,{}),/range/);
+ assert.throws(()=>Cash.calcChange(5000,-1),/Invalid/);
 });
 console.log('Persen POS: '+tests.length+' tests passed: '+tests.join('; '));
