@@ -36,6 +36,7 @@ jobs:
           node --check pos/pos-experience.js
           node --check pos/pos-cash.js
           node --check pos/register.js
+          node --check pos/checkout-flow.js
           node --check pos/display.js
           node --check pos/print-station.js
       - name: Run POS unit tests
@@ -47,6 +48,7 @@ jobs:
           node pos/build-pages.mjs
           test -f pos-dist/register.html
           test -f pos-dist/display.html
+          test -f pos-dist/checkout-flow.js
           test -f pos-dist/print-station.html
           test -f pos-dist/pos-cash.js
           test -f pos-dist/pos-experience.js
