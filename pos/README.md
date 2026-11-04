@@ -88,11 +88,21 @@ The POS GitHub Actions checks cover static builds and unit tests only. No real i
 
 - Cashier iPad (portrait or landscape), separate customer iPad, Dell USB NELKO station and manually counted cash box are documented in `EVENT-SETUP-AND-LAUNCH.md`.
 - Customer iPad now shows **cash** as the only recordable payment method. It can display Venmo **@persenapparel** and Apple Cash contact **(631) 644-0633** as *instructions only*, with clear warnings: no automatic payment, verification, or sale settlement. Apple Cash via Messages is not Apple Pay merchant checkout. Any Venmo business use must be through an eligible approved account with adult oversight where needed.
-- Customer receipt options: **printed (default)**, **email**, and **text**, independent of optional promotions. Email requires a valid email field, text requires a phone. The cashier sees the requested options without reporting unconfigured delivery as sent.
-- Draft SQL `pos_receipt_delivery_jobs` stores one job per sale/channel. Printed jobs queue only when selected. Email jobs are `awaiting_sender` until configured. Text jobs stay pending until a legitimate SMS provider is connected.
-- `pos-digital-receipt.js`: sanitized HTML receipt and compact one-time transactional SMS copy.
+- Customer receipt options: **Printed (default)**, **Email**, or **Both (print + email)**. SMS receipts are deliberately not offered. A required phone number is entered with a large on-screen 10-digit keypad (no iPad keyboard); a separate email step collects optional contact email or requires it when an emailed receipt is chosen.
+- Draft SQL `pos_receipt_delivery_jobs` stores a pending email job only for customers who requested email or both. Printed jobs queue only when selected. No text-receipt jobs can be created.
+- `pos-digital-receipt.js`: sanitized HTML email receipt. Legacy SMS copy code is not reachable from the checkout.
 - `supabase/functions/pos-receipt-email/index.ts`: un-deployed, server-secret-only Resend mailer draft with idempotency keys. Requires code/security review, verified sender domain, separate transactional Resend key, owner-approved schedule and end-to-end delivery tests; no messages have been sent.
 - `pos-experience.js`: Seasonal Studio accent colors, small thematic icons, and subtle seasonal Easter eggs with reduced-motion support; only published, active campaigns are used.
 - Customer iPad UI redesigned with touch-friendly receipt cards and payment-information tiles. POS CSS includes a more spacious portrait checkout and wide landscape layout.
 - Staged SQL cash register/settlement draft was reconciled to the current cashier RPC: it now validates received cash, a change-payout breakdown, and drawer version **on the server**. No production database migration was executed; SQL still requires actual database integration testing.
 - Automated CI runs an isolated static POS build, JS syntax checks and offline unit tests. This cannot verify real device pairing, electronic payments, Resend delivery, or NELKO paper printing.
+
+## Customer iPad step-by-step checkout (newest development version)
+
+- Customer display has **eight distinct screens**, rather than one lengthy form: **Phone → Receipt choice → Email → Payment information → Promotional opt-in → Private rating → Custom apparel interest → Final review**. Each optional question gets its own page with Back/Continue buttons, a progress bar and accessible labels.
+- The phone page has an on-screen 1–9/0 dialer with Clear and Backspace. Its readonly display prevents the iPad software keyboard from appearing for phone entry. Currently designed for 10-digit U.S. phone numbers; international entry needs a future extension.
+- Receipt choices are exactly **Printed**, **Email**, **Both**. There is **no SMS receipt option**. Email collection remains separate from marketing consent; a valid email is required only if the customer wants email or both. Phone remains required for the order.
+- Cash is the only method the server draft can record as paid. Venmo and Apple Cash choices still show information only; selecting them does not settle an order.
+- The three optional questions for promotions, experience rating and custom apparel are shown individually, can be skipped, and never turn consent on by default.
+- When the next checkout appears on the paired customer display, the wizard resets, avoiding the previous customer's contact information lingering on screen.
+- The SQL draft was updated to remove SMS receipt fields, parameters and jobs; this is **unapplied** and requires staged database security testing.
