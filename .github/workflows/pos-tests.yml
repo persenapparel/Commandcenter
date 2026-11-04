@@ -54,6 +54,8 @@ jobs:
           node --check pos/print-station.js
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Simulate Dell automatic receipt queue to browser print
+        run: node pos/print-station-smoke.cjs
       - name: Validate customer iPad wizard flow and no-SMS receipt policy
         run: node pos/wizard-dom-check.cjs
       - name: Validate unapplied SQL draft structure
