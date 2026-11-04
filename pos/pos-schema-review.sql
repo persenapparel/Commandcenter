@@ -46,6 +46,24 @@ create table if not exists public.pos_sales(
  change_breakdown jsonb not null default '{}'::jsonb,
  created_at timestamptz not null default now()
 );
+-- Count/recount history gives the owner an auditable opening float.
+create table if not exists public.pos_drawer_recounts(
+ id uuid primary key default gen_random_uuid(),
+ register_id uuid not null references public.pos_registers(id),
+ owner_id uuid not null references auth.users(id),
+ before_counts jsonb not null,
+ after_counts jsonb not null,
+ before_version integer not null,
+ after_version integer not null,
+ created_at timestamptz not null default now()
+);
+alter table public.pos_drawer_recounts enable row level security;
+revoke all on public.pos_drawer_recounts from anon,authenticated;
+grant select on public.pos_drawer_recounts to authenticated;
+create policy pos_drawer_recount_owner_read on public.pos_drawer_recounts
+ for select to authenticated
+ using(owner_id=(select auth.uid()) and public.is_persen_admin());
+
 -- Pending print jobs are created transactionally with sales.
 -- A print station marks jobs as submitted to the local browser, NOT confirmed on paper.
 -- Clients cannot directly insert, change sale associations, or change state.
@@ -321,6 +339,9 @@ begin
     'discount_cents',sale.discount_cents,
     'tax_cents',sale.tax_cents,
     'total_cents',sale.total_cents,
+    'tendered_cents',sale.tendered_cents,
+    'change_cents',sale.change_cents,
+    'change_breakdown',sale.change_breakdown,
     'payment_method',sale.payment_method,
     'created_at',sale.created_at
  );
@@ -411,6 +432,9 @@ begin
  if not found then raise exception 'Register unavailable'; end if;
  if r.drawer_version<>p_expected_version then raise exception 'Drawer was updated elsewhere; reload and recount'; end if;
  cleaned:=pos_internal.valid_counts(p_counts);
+ insert into public.pos_drawer_recounts
+ (register_id,owner_id,before_counts,after_counts,before_version,after_version)
+ values(r.id,(select auth.uid()),r.cash_drawer,cleaned,r.drawer_version,r.drawer_version+1);
  update public.pos_registers set cash_drawer=cleaned,drawer_configured=true,drawer_version=drawer_version+1
  where id=r.id returning * into r;
  return jsonb_build_object('cash_drawer',r.cash_drawer,'drawer_version',r.drawer_version);
