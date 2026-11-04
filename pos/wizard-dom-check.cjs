@@ -1,0 +1,24 @@
+/* Static customer-iPad wizard checks. Never connects to a live database. */
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const html=fs.readFileSync('pos/display.html','utf8');
+const js=fs.readFileSync('pos/display.js','utf8');
+const sql=fs.readFileSync('pos/pos-schema-review.sql','utf8');
+const build=fs.readFileSync('pos/build-pages.mjs','utf8');
+const wizard=require('./checkout-flow.js');
+const sections=[...html.matchAll(/<section class="wizard-step" data-step="([^"]+)"/g)].map(m=>m[1]);
+assert.deepEqual(sections,wizard.steps.map(s=>s.id),'Eight pages must match wizard order');
+assert.match(html,/id="phone-display"[^>]*name="phone"[^>]*readonly/,'Phone must use read-only display and on-screen keypad');
+assert.match(html,/id="phone-keypad"/);
+for(const key of '1234567890')assert.ok(html.includes('data-digit="'+key+'"'),'Missing number key '+key);
+assert.ok(html.includes('data-digit="back"')&&html.includes('data-digit="clear"'));
+for(const mode of ['print','email','both'])assert.ok(html.includes('name="receipt_mode" value="'+mode+'"'));
+assert.ok(!html.includes('receipt_sms')&&!js.includes('receipt_sms')&&!sql.includes('receipt_sms'));
+assert.match(html,/id="email-address"[^>]+name="email"/);
+for(const step of ['promos','rating','custom'])assert.ok(sections.includes(step),'Missing one-question page '+step);
+assert.ok(html.includes('id="wizard-back"')&&html.includes('id="wizard-next"'));
+assert.ok(js.includes('resetWizard()'));
+assert.ok(build.includes("'checkout-flow.js'"),'Cloudflare POS build must copy wizard helper');
+assert.ok(sql.includes('p_email_receipt boolean default false'),'Backend must support email preference');
+console.log('Persen POS customer wizard markup/integration: 12 checks passed (offline only).');
