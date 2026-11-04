@@ -229,7 +229,7 @@ end $$;
 -- Atomic claim stops two devices printing the same queued receipt simultaneously.
 -- This RPC returns only receipt data, never phone/email or survey details.
 create or replace function public.pos_claim_print_job(p_job uuid)
-returns jsonb language plpgsql security definer set search_path='' as $
+returns jsonb language plpgsql security definer set search_path='' as $$
 declare j public.pos_print_jobs; sale public.pos_sales;
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then
@@ -253,10 +253,10 @@ begin
     'payment_method',sale.payment_method,
     'created_at',sale.created_at
  );
-end $;
+end $$;
 
 create or replace function public.pos_finish_print_job(p_job uuid,p_error text default null)
-returns boolean language plpgsql security definer set search_path='' as $
+returns boolean language plpgsql security definer set search_path='' as $$
 declare n integer;
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then
@@ -270,11 +270,11 @@ begin
  where id=p_job and owner_id=(select auth.uid()) and state='printing';
  get diagnostics n=row_count;
  return n=1;
-end $;
+end $$;
 
 -- Recovery is a MANUAL action: automatic retries could print duplicates after a crash.
 create or replace function public.pos_retry_print_job(p_job uuid)
-returns boolean language plpgsql security definer set search_path='' as $
+returns boolean language plpgsql security definer set search_path='' as $$
 declare n integer;
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then
@@ -286,7 +286,7 @@ begin
    and state in ('failed','printing','submitted_to_browser');
  get diagnostics n=row_count;
  return n=1;
-end $;
+end $$;
 
 revoke all on function public.pos_claim_print_job(uuid),
 public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) from public;
