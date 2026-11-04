@@ -11,10 +11,33 @@ function validatedGoogleReview(raw){
   return u.protocol==="https:"&&(host==="g.page"||host==="google.com"||host.endsWith(".google.com")||host==="maps.app.goo.gl")?u.href:"";
  }catch{return""}
 }
-function emailHTML(sale,reviewLink){
+function verifiedLogoUrl(raw){
+ try{const url=new URL(String(raw||""));const h=url.hostname.toLowerCase(),p=url.pathname.toLowerCase();
+  return url.protocol==="https:"&&(h==="persenapparel.com"||h.endsWith(".persenapparel.com"))
+   &&[".png",".jpg",".jpeg",".webp"].some(ext=>p.endsWith(ext))?url.href:"";
+ }catch{return""}
+}
+function seasonalMailTheme(raw){
+ try{
+  const list=typeof raw==="string"?JSON.parse(raw):raw;
+  if(!Array.isArray(list))return null;
+  const now=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  const active=list.filter(x=>x?.published===true&&(!x.start||x.start<=now)&&(!x.end||x.end>=now))
+  .sort((a,b)=>String(b.start||"").localeCompare(String(a.start||"")))[0];
+  if(!active)return null;
+  const accent=/^#[0-9a-f]{6}$/i.test(String(active.accent||""))?active.accent:"#1458bd";
+  return {title:String(active.title||"Seasonal Collection").slice(0,65),
+   message:String(active.announcement||"Discover the latest collection at persenapparel.com").slice(0,130),accent};
+ }catch{return null}
+}
+function emailHTML(sale,reviewLink,options={}){
  const items=Array.isArray(sale.snapshot?.items)?sale.snapshot.items:[];
+ const accent=options.theme?.accent||"#1458bd";
+ const logo=verifiedLogoUrl(options.logoUrl);
+ const logoHTML=logo?'<img src="'+escapeHTML(logo)+'" alt="Persen Apparel logo" style="width:auto;max-width:160px;max-height:65px;object-fit:contain;margin-bottom:12px;display:block">':'';
+ const seasonal=options.theme?'<p style="color:'+accent+';background:#f1f6ff;padding:11px;border-radius:8px;border-left:3px solid '+accent+'"><strong>'+escapeHTML(options.theme.title)+'</strong><br>'+escapeHTML(options.theme.message)+'</p>':'';
  const table=items.slice(0,90).map(i=>'<tr><td style="padding:8px">'+Number(i.qty||1)+' × '+escapeHTML(i.name)+'</td><td style="text-align:right">'+escapeHTML(money(Number(i.qty||1)*Number(i.unit_cents||0)))+'</td></tr>').join('');
- return '<html><body style="background:#f2f7ff;font:15px Arial,sans-serif;padding:22px;color:#16345d"><div style="background:#fff;border-radius:14px;max-width:560px;padding:22px;margin:auto"><h2>PERSEN APPAREL</h2><h3>Thank you for your order!</h3><p>Receipt #'+escapeHTML(String(sale.id).slice(0,8).toUpperCase())+'</p><table style="width:100%">'+table+'</table><hr><p>Subtotal '+money(sale.subtotal_cents)+' / Discount '+money(sale.discount_cents)+' / Tax '+money(sale.tax_cents)+'</p><h2>Total paid '+money(sale.total_cents)+'</h2><p>Thank you for shopping with Persen Apparel on Long Island!</p>'+ (reviewLink?'<p><a href="'+escapeHTML(reviewLink)+'">Enjoyed your order? Leave an honest Google review!</a></p>':'') +'<p>Visit <a href="https://persenapparel.com">persenapparel.com</a> for custom apparel.</p></div></body></html>';
+ return '<html><body style="background:#f2f7ff;font:15px Arial,sans-serif;padding:22px;color:#16345d"><div style="background:#fff;border-radius:14px;max-width:560px;padding:22px;margin:auto">'+logoHTML+'<h2 style="color:'+accent+'">PERSEN APPAREL</h2>'+seasonal+'<h3>Thank you for your order!</h3><p>Receipt #'+escapeHTML(String(sale.id).slice(0,8).toUpperCase())+'</p><table style="width:100%">'+table+'</table><hr><p>Subtotal '+money(sale.subtotal_cents)+' / Discount '+money(sale.discount_cents)+' / Tax '+money(sale.tax_cents)+'</p><h2>Total paid '+money(sale.total_cents)+'</h2><p>Thank you for shopping with Persen Apparel on Long Island!</p>'+ (reviewLink?'<p><a href="'+escapeHTML(reviewLink)+'">Enjoyed your order? Leave an honest Google review!</a></p>':'') +'<p>Visit <a href="https://persenapparel.com">persenapparel.com</a> for custom apparel.</p></div></body></html>';
 }
 Deno.serve(async req=>{
  if(req.method!=="POST")return respond({error:"Method not allowed"},405);
@@ -34,6 +57,9 @@ Deno.serve(async req=>{
   const jobs=await query("/pos_receipt_delivery_jobs?select=id,sale_id,owner_id,status,channel,attempts&channel=eq.email&status=eq.awaiting_sender&order=created_at.asc&limit=5");
   const reviewRows=await query("/site_content?select=key,value&key=eq.v54_google_reviews&limit=1");
   const reviewLink=validatedGoogleReview(reviewRows[0]?.value);
+  const campaignRows=await query("/site_content?select=key,value&key=eq.seasonal_campaigns_v1&limit=1");
+  const theme=seasonalMailTheme(campaignRows[0]?.value);
+  const logoUrl=verifiedLogoUrl(env("POS_RECEIPT_LOGO_URL"));
   for(const job of jobs){
    if(job.attempts>=5)continue;
    const id=encodeURIComponent(job.id);
@@ -50,7 +76,7 @@ Deno.serve(async req=>{
     if(to.length>250||!/^\S+@\S+\.\S+$/.test(to))throw Error("Receipt email not supplied");
     const result=await fetch("https://api.resend.com/emails",{
       method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+api,"Idempotency-Key":"persen-pos-receipt-"+job.id},
-      body:JSON.stringify({from,to:[to],subject:"Persen Apparel receipt #"+String(sale.id).slice(0,8).toUpperCase(),html:emailHTML(sale,reviewLink)}),
+      body:JSON.stringify({from,to:[to],subject:"Persen Apparel receipt #"+String(sale.id).slice(0,8).toUpperCase(),html:emailHTML(sale,reviewLink,{theme,logoUrl})}),
       signal:AbortSignal.timeout(12000)
     });
     const response=await result.json().catch(()=>({}));
