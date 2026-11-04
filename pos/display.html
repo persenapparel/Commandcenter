@@ -136,7 +136,13 @@
       <button id="wizard-next" type="button" class="primary wizard-next">Continue <span aria-hidden="true">→</span></button>
       <button id="wizard-finish" type="button" class="primary wizard-next" hidden>Finish checkout <span aria-hidden="true">✓</span></button>
     </div>
-    <p id="wizard-secure-note" class="wizard-secure-note">Your phone and email are used for your order. Promotions are optional.</p>
+    <div class="customer-help-row">
+  <button id="wizard-help" type="button" class="customer-help-button" aria-pressed="false">
+    <span aria-hidden="true">?</span> Need help from your cashier?
+  </button>
+  <p id="wizard-help-state" class="customer-help-state" role="status" aria-live="polite">Your cashier can see which step you're on, but not what you type.</p>
+</div>
+<p id="wizard-secure-note" class="wizard-secure-note">Your phone and email are used for your order. Promotions are optional.</p>
   </form>
   <div id="waiting-payment" class="kiosk-finished" hidden><span class="finished-icon">✓</span><h2>You're all set!</h2><p>Thank you. The cashier will help you finish payment and your receipt.</p></div>
   <div id="thanks" class="kiosk-finished" hidden><span class="finished-icon">★</span><h2>Thank you for shopping local!</h2><p>We appreciate your support of Persen Apparel. Have a great day!</p></div>
