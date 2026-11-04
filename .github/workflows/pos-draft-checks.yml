@@ -34,6 +34,11 @@ jobs:
           if [ -f pos/structural-tests.cjs ]; then node pos/structural-tests.cjs; fi
       - name: Build isolated POS site
         run: node pos/build-pages.mjs
+      - name: Verify staging build cannot leak production database or draft SQL
+        run: |
+          test ! -e pos-dist/pos-schema-review.sql
+          if grep -q 'icxeuhkqxxhdkfdappio' pos-dist/config.js; then echo 'Production Supabase URL leaked into POS output' && exit 1; fi
+          if POS_SUPABASE_URL=https://icxeuhkqxxhdkfdappio.supabase.co POS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fake CF_PAGES=1 node pos/build-pages.mjs; then echo 'Production Supabase URL was wrongly accepted' && exit 1; fi
       - name: Verify isolated build
         run: |
           test -f pos-dist/register.html
