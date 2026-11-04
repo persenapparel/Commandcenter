@@ -1,5 +1,5 @@
 'use strict';
-const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
+const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
@@ -27,10 +27,20 @@ async function loadStock(){stock=await check(db.from('stock_items').select('id,s
 async function loadTemplates(){templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));by('templates').replaceChildren();for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;by('templates').append(opt)}const t=templates.find(x=>x.active)||templates[0];if(t){by('templates').value=t.id;showTemplate(t)}}
 function showTemplate(t){by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false}
 async function ensureRegister(){const regs=await check(db.from('pos_registers').select('*').eq('owner_id',user.id).eq('active',true).order('created_at').limit(1));register=regs[0]||await check(db.from('pos_registers').insert({owner_id:user.id,label:'Persen POS register'}).select('*').single());}
-async function status(){if(!register||busy)return;try{const list=await check(db.from('pos_checkouts').select('id,status,created_at,total_cents,payment_preference,receipt_print,receipt_email').eq('register_id',register.id).order('created_at',{ascending:false}).limit(1));const c=list[0];checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
+async function status(){if(!register||busy)return;try{const list=await check(db.from('pos_checkouts').select('id,status,created_at,total_cents,payment_preference,receipt_print,receipt_email,customer_step,help_requested,progress_updated_at').eq('register_id',register.id).order('created_at',{ascending:false}).limit(1));const c=list[0];checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
+ const progressing=!!checkout;
+ const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
+ const stage=checkout?.status==='contact_received'?{...progress,step_number:8,percentage:100,step_label:'Questions finished · ready for cashier'}:progress;
+ by('cashier-progress-count').textContent=progressing?'Step '+stage.step_number+' of 8':'Waiting for checkout';
+ by('cashier-current-step').textContent=progressing?stage.step_label:'Start a sale to see which step the customer is on.';
+ by('cashier-progress-fill').style.width=progressing?stage.percentage+'%':'0%';
+ by('cashier-progress-bar').setAttribute('aria-valuenow',String(progressing?stage.step_number:0));
+ const needHelp=progressing&&checkout?.status==='awaiting_customer'&&checkout.help_requested===true;
+ by('customer-help-alert').hidden=!needHelp;
  const method=checkout?.payment_preference||'cash';
  by('payment-preference-badge').textContent=method==='venmo_info'?'Venmo instructions':method==='apple_cash_info'?'Apple Cash instructions':'Cash checkout';
  by('external-payment-notice').hidden=!checkout||method==='cash';
+ if(checkout&&method!=='cash')document.querySelector('.cashier-payment-help').open=true;
  const receiptChannels=checkout?[checkout.receipt_print?'Print':null,checkout.receipt_email?'Email (delivery pending)':null].filter(Boolean):[];
  by('receipt-request-status').textContent=receiptChannels.length?'Requested receipt: '+receiptChannels.join(' · '):'No receipt selected yet.';
  by('status').textContent=c?({awaiting_customer:'Customer completing checkout screens',contact_received:'Customer choices saved · ready for cashier',completed:'Sale complete · receipt ready',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
@@ -228,6 +238,12 @@ by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checko
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
 by('start').onclick=begin;by('cancel').onclick=cancel;by('cash').onclick=cash;
+for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo username'],['copy-apple-cash','6316440633','Apple Cash contact']]){
+ by(buttonId).onclick=async()=>{try{
+  await navigator.clipboard.writeText(value);
+  notice(label+' copied. Verify the customer is sending to an approved account.');
+ }catch{notice('Unable to copy. The payment details are shown in the reference panel.');}};
+}
 by('pair').onclick=async()=>{if(!register)return;const link=new URL('display.html',location.href);link.searchParams.set('pair',register.display_secret);try{await navigator.clipboard.writeText(link.href);notice('Private iPad display link copied. Open it in Safari on the customer iPad.')}catch{notice('Unable to copy link; use a secure pairing workflow before launch.')}};
 by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t)};
 by('save-template').onclick=saveTemplate;by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');receipt();window.print()};
