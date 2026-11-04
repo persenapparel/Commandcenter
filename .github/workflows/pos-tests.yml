@@ -6,10 +6,12 @@ on:
       - feature/persen-pos-foundation
     paths:
       - 'pos/**'
+      - 'supabase/functions/pos-receipt-email/**'
       - '.github/workflows/pos-tests.yml'
   pull_request:
     paths:
       - 'pos/**'
+      - 'supabase/functions/pos-receipt-email/**'
       - '.github/workflows/pos-tests.yml'
   workflow_dispatch:
 
@@ -54,6 +56,8 @@ jobs:
           node --check pos/print-station.js
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Test Resend receipt worker with offline mock provider
+        run: node pos/receipt-worker-smoke.cjs
       - name: Simulate Dell automatic receipt queue to browser print
         run: node pos/print-station-smoke.cjs
       - name: Validate customer iPad wizard flow and no-SMS receipt policy
