@@ -359,3 +359,14 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 .kiosk-payment-identifier{padding:10px 13px;background:#f4f8ff;border-radius:9px;border:1px solid #cedef6;margin:9px 0;font-size:22px;font-weight:900;letter-spacing:.015em;color:#143b79;text-align:center;overflow-wrap:anywhere}
 @media(max-width:650px){.cashier-payment-options{grid-template-columns:1fr}.cashier-progress-heading{flex-wrap:wrap}.kiosk-payment-identifier{font-size:20px}}
 @media(prefers-reduced-motion:reduce){.cashier-progress-track span{transition:none}}
+
+/* Fast admin event/product management — isolated to POS */
+.product-manager{margin:12px 0 18px;padding:14px;border:1px solid #d6e4f5;border-radius:14px;background:#f8fbff}
+.product-manager summary{cursor:pointer;font-weight:800;color:#17477f}
+#new-product,#edit-event{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+#new-product label,#edit-event label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700}
+#new-product input,#new-product select,#new-product textarea,#edit-event input,#edit-event select{width:100%;min-width:0}
+#new-product button,#edit-event button{grid-column:1/-1}
+#edit-event[hidden]{display:none}
+.product-variant-row{display:flex;justify-content:space-between;gap:12px;padding:9px 3px;border-bottom:1px solid #dbe7f4;font-size:12px}
+@media(max-width:650px){#new-product,#edit-event{grid-template-columns:1fr}.product-variant-row{flex-direction:column;gap:3px}}
