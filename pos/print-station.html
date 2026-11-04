@@ -5,7 +5,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="../config.js"></script><script defer src="../backend.js"></script>
 <script defer src="pos-core.js"></script><script defer src="pos-receipt.js"></script><script defer src="print-station.js"></script></head>
-<body><header><strong>PERSEN <span>POS</span></strong><small>RECEIPT PRINT STATION · DEVELOPMENT</small></header>
+<body><header><img class="pos-brand-logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><strong>PERSEN <span>POS</span></strong><small>RECEIPT PRINT STATION · DEVELOPMENT</small></header>
 <main class="print-station">
 <section class="hero"><div><small>PERSEN COMMAND CENTER</small><h1>Receipt Print Station</h1><p>Keep this page open on the computer connected to the NELKO by USB.</p></div><div class="tag">Not live · Hardware testing required</div></section>
 <section id="login-panel" class="panel"><h2>Owner sign in</h2>
@@ -40,7 +40,7 @@
 </section><p id="station-message" class="station-message" role="status" aria-live="polite">Sign in to activate your print station.</p>
 </main>
 <article id="receipt" aria-label="Print receipt">
-<div class="print-brand">PERSEN APPAREL</div><div class="print-small">CUSTOM APPAREL · LONG ISLAND</div>
+<img class="print-logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div class="print-brand">PERSEN APPAREL</div><div class="print-small">CUSTOM APPAREL · LONG ISLAND</div>
 <div class="print-rule"></div><div id="receipt-number" class="print-small"></div>
 <div id="receipt-lines"></div><div class="print-rule"></div>
 <div class="print-pair"><span>Subtotal</span><span id="receipt-subtotal"></span></div>
@@ -49,7 +49,7 @@
 <div class="print-rule"></div><div class="print-pair print-amount"><strong>TOTAL PAID</strong><strong id="receipt-total"></strong></div>
 <div class="print-pair"><span>Cash received</span><span id="receipt-cash-tendered"></span></div><div class="print-pair"><span>Change returned</span><span id="receipt-cash-change"></span></div><div class="print-rule"></div>
 <p id="receipt-headline" class="print-bold"></p>
-<p id="receipt-seasonal"></p><p id="receipt-promotion"></p>
+<p class="print-season-heading" id="receipt-season-heading" hidden></p><p id="receipt-seasonal"></p><p id="receipt-promotion"></p>
 <div class="print-rule"></div><p class="print-bold">THANK YOU FOR YOUR ORDER!</p>
 <p id="receipt-review-message"></p><p id="receipt-review-link" class="print-small"></p>
 <p>persenapparel.com</p><p>@persenapparel</p><p id="receipt-footer" class="print-small"></p>
