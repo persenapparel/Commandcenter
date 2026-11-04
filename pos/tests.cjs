@@ -133,4 +133,28 @@ test('Digital receipt excludes untrusted review links',()=>{
  const sale={id:'12345678',items:[],subtotal_cents:2000,discount_cents:0,tax_cents:0,total_cents:2000};
  assert.ok(!Digital.email(sale,{review_url:'javascript:alert(1)'}).html.includes('javascript:'));
 });
+test('Winter theme adds a monochrome thermal receipt ribbon',()=>{
+ const label=R.presentation({season:{theme:'winter',title:'Winter Drop',published:true}});
+ assert.ok(label.season_style.label.includes('WINTER'));
+ assert.ok(label.season_style.icon.includes('*'));
+});
+test('Unpublished campaign never appears on thermal receipt',()=>{
+ assert.equal(R.presentation({season:{theme:'christmas',published:false}}).season_style.label,'');
+});
+test('Receipt campaign opt-out is respected',()=>{
+ assert.equal(R.presentation({season:{theme:'christmas',published:true},showSeason:false}).season_style.label,'');
+});
+test('Branded email receipt uses whitelisted Persen Apparel logo',()=>{
+ const sample={id:'aabbccdd',items:[{name:'Christmas Hoodie',qty:1,unit_cents:4000}],subtotal_cents:4000,discount_cents:0,tax_cents:0,total_cents:4000};
+ const url='https://pos.persenapparel.com/assets/persen-logo.png';
+ const result=Digital.email(sample,{logo_url:url,accent:'#a32736',seasonal:'Holiday Collection'});
+ assert.ok(result.html.includes('persen-logo.png'));
+ assert.ok(result.html.includes('#a32736'));
+ assert.ok(result.html.includes('Holiday Collection'));
+ assert.equal(Digital.verifiedBrandImage('https://fake-persenapparel.com/img.png'),'');
+});
+test('Invalid seasonal email color defaults to navy',()=>{
+ assert.equal(Digital.verifiedAccent('pink'),'#123466');
+ assert.equal(Digital.verifiedAccent('#a32736'),'#a32736');
+});
 console.log('Persen POS: '+tests.length+' tests passed: '+tests.join('; '));
