@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Persen POS — Receipt Print Station (Development)</title>
+<link rel="stylesheet" href="pos.css"><link rel="stylesheet" href="print-station.css">
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="../config.js"></script><script defer src="../backend.js"></script>
+<script defer src="pos-core.js"></script><script defer src="pos-receipt.js"></script><script defer src="print-station.js"></script></head>
+<body><header><strong>PERSEN <span>POS</span></strong><small>RECEIPT PRINT STATION · DEVELOPMENT</small></header>
+<main class="print-station">
+<section class="hero"><div><small>PERSEN COMMAND CENTER</small><h1>Receipt Print Station</h1><p>Keep this page open on the computer connected to the NELKO by USB.</p></div><div class="tag">Not live · Hardware testing required</div></section>
+<section id="login-panel" class="panel"><h2>Owner sign in</h2>
+<form id="print-login"><label>Email<input type="email" name="email" autocomplete="email" required></label>
+<label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+<button class="primary" type="submit">Sign in securely</button></form></section>
+<section id="station-panel" hidden>
+<div class="station-grid">
+<div class="panel">
+<h2>Automatic receipt printing</h2><p class="hint">After a confirmed cash sale, Persen POS queues a receipt. This station checks every second and submits it to the printer configured in Chrome.</p>
+<div class="station-status"><span class="station-dot" id="dot"></span><strong id="station-state">Not armed</strong></div>
+<button class="primary" id="arm" type="button">Start automatic printing</button>
+<button id="disarm" type="button" disabled>Pause printing</button>
+<p class="hint"><strong>Important:</strong> Browsers normally show a print dialog. Silent printing requires a separately configured, trusted Chrome kiosk-printing shortcut and correct default printer.</p>
+</div>
+<div class="panel">
+<h2>NELKO setup</h2>
+<label for="paper">Paper size loaded in the NELKO</label>
+<select id="paper">
+<option value="50.8x101.6">2 × 4 inch direct-thermal label (test first)</option>
+<option value="58x120">58 mm × 120 mm thermal receipt (unverified)</option>
+</select>
+<label for="copies">Copies per sale</label><select id="copies"><option value="1">1 receipt</option><option value="2">2 receipts</option></select>
+<p class="hint">Select the matching size in the NELKO Windows print driver too. The PL70E has a manual tear-off edge, not an automatic cutter.</p>
+<button id="test-print" type="button">Print test receipt</button>
+</div>
+<div class="panel">
+<h2>Recent jobs</h2><p class="hint">Sent to browser does not prove paper printed. If a print failed, check the printer before manually retrying.</p>
+<div id="job-list"></div>
+</div>
+</div>
+</section><p id="station-message" class="station-message" role="status" aria-live="polite">Sign in to activate your print station.</p>
+</main>
+<article id="receipt" aria-label="Print receipt">
+<div class="print-brand">PERSEN APPAREL</div><div class="print-small">CUSTOM APPAREL · LONG ISLAND</div>
+<div class="print-rule"></div><div id="receipt-number" class="print-small"></div>
+<div id="receipt-lines"></div><div class="print-rule"></div>
+<div class="print-pair"><span>Subtotal</span><span id="receipt-subtotal"></span></div>
+<div class="print-pair"><span>Discount</span><span id="receipt-discount"></span></div>
+<div class="print-pair"><span>Tax</span><span id="receipt-tax"></span></div>
+<div class="print-rule"></div><div class="print-pair print-amount"><strong>TOTAL PAID</strong><strong id="receipt-total"></strong></div>
+<div class="print-rule"></div>
+<p id="receipt-headline" class="print-bold"></p>
+<p id="receipt-seasonal"></p><p id="receipt-promotion"></p>
+<div class="print-rule"></div><p class="print-bold">THANK YOU FOR YOUR ORDER!</p>
+<p id="receipt-review-message"></p><p id="receipt-review-link" class="print-small"></p>
+<p>persenapparel.com</p><p>@persenapparel</p><p id="receipt-footer" class="print-small"></p>
+</article>
+</body></html>
