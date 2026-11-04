@@ -49,6 +49,12 @@ select 1/(case when quantity=4 then 1 else 0 end) as stock_deducted
 from public.stock_items where id='22222222-2222-4222-8222-222222222222';
 select 1/(case when count(*)=1 then 1 else 0 end) as print_queued
 from public.pos_print_jobs where sale_id=:'sale'::uuid and state='queued';
+select id as job from public.pos_print_jobs where sale_id=:'sale'::uuid \gset
+select 1/(case when (public.pos_claim_print_job(:'job'::uuid)->>'sale_id')::uuid=:'sale'::uuid then 1 else 0 end) as printer_claimed;
+select 1/(case when public.pos_claim_print_job(:'job'::uuid) is null then 1 else 0 end) as cannot_double_claim;
+select 1/(case when public.pos_finish_print_job(:'job'::uuid,null) then 1 else 0 end) as handed_to_browser;
+select 1/(case when state='submitted_to_browser' then 1 else 0 end) as browser_submitted_not_physical
+from public.pos_print_jobs where id=:'job'::uuid;
 select 1/(case when count(*)=1 then 1 else 0 end) as email_queued
 from public.pos_receipt_delivery_jobs where sale_id=:'sale'::uuid and channel='email';
 select 1/(case when drawer_version=2 then 1 else 0 end) as cash_float_reconciled
@@ -60,6 +66,20 @@ select 1/(case when public.pos_complete_cash(
  '{"1000":1,"500":1}'::jsonb,1)=:'sale'::uuid then 1 else 0 end) as retry_idempotent;
 select 1/(case when count(*)=1 then 1 else 0 end) as no_duplicate_sales
  from public.pos_sales where checkout_id=:'checkout'::uuid;
+
+-- Closing an event preserves its previous sales and blocks new sales assigned to it.
+update public.pos_events set status='closed' where id='44444444-4444-4444-8444-444444444444';
+do $
+declare rejected boolean:=false;
+begin
+ begin
+  perform public.pos_begin_checkout(
+   '33333333-3333-4333-8333-333333333333',
+   '[{"stock_id":"22222222-2222-4222-8222-222222222222","qty":1,"unit_cents":2500}]'::jsonb,
+   0,0,'44444444-4444-4444-8444-444444444444');
+ exception when others then rejected:=true; end;
+ if not rejected then raise exception 'Closed event unexpectedly accepted a new sale'; end if;
+end $;
 
 -- A second sale must not complete with too little cash or impossible change.
 select public.pos_begin_checkout(
