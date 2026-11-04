@@ -5,4 +5,16 @@ if(lastStatus!==status){lastStatus=status;}
 }
 async function refresh(){if(waiting||!db||!token)return;waiting=true;try{const s=await checked(db.rpc('pos_customer_view',{p_secret:token}));render(s)}catch(e){show('Connection interrupted. Retrying automatically.')}finally{waiting=false}}
 $('contact').onsubmit=async e=>{e.preventDefault();if(!checkoutId)return;const f=new FormData(e.target);try{const phone=C.phone(f.get('phone'));const email=String(f.get('email')||'').trim();await checked(db.rpc('pos_submit_customer',{p_secret:token,p_checkout:checkoutId,p_phone:phone,p_email:email||null,p_marketing_opt_in:f.get('marketing')==='yes',p_rating:f.get('rating')?Number(f.get('rating')):null,p_interest:f.get('interest')||'not_answered'}));show('Contact saved. Please pay your cashier.');$('contact').hidden=true;await refresh()}catch(err){show(err.message)}};
-async function start(){if(!window.PA?.ready){show('Unable to connect to the register');return}if(!token||!/^[0-9a-f-]{36}$/i.test(token)){show('Open the secure pairing link from the cashier');return}db=PA.db;history.replaceState(null,'',location.pathname);await refresh();setInterval(refresh,1800);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});}start();
+async function start(){if(!window.PA?.ready){show('Unable to connect to the register');return}if(!token||!/^[0-9a-f-]{36}$/i.test(token)){show('Open the secure pairing link from the cashier');return}db=PA.db;history.replaceState(null,'',location.pathname);
+try{
+ const result=await checked(db.from('site_content').select('value').eq('key','seasonal_campaigns_v1').maybeSingle());
+ const campaign=C.season(result?.value);
+ if(campaign){
+ const banner=$('seasonal-banner');
+ $('seasonal-banner-title').textContent=String(campaign.title||'Seasonal Collection').slice(0,100);
+ $('seasonal-banner-description').textContent=String(campaign.announcement||campaign.subtitle||'Explore our seasonal collection at persenapparel.com').slice(0,200);
+ const hex=C.safeHex(campaign.accent);
+ banner.style.borderColor=hex;banner.hidden=false;
+ }
+}catch{/* Optional seasonal banner only; checkout remains usable. */}
+await refresh();setInterval(refresh,1800);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});}start();
