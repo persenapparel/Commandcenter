@@ -1,5 +1,5 @@
 'use strict';
-const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
+const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map();let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
@@ -7,8 +7,8 @@ function current(){return C.totals(cart,Number(by('discount').value),C.taxMilli(
 function draw(){
  by('catalog').replaceChildren();const q=by('search').value.toLowerCase();
  stock.filter(x=>[x.product_name,x.sku,x.color,x.size].join(' ').toLowerCase().includes(q)).forEach(x=>{
- const item=cart.find(c=>c.stock_id===x.id);const remaining=x.quantity-(item?.qty||0);
- const r=row(x.product_name||x.sku,'Add',()=>{if(checkout)return notice('Finish or cancel the open checkout first');if(remaining<=0)return notice('No stock available');if(item)item.qty++;else cart.push({stock_id:x.id,name:x.product_name||x.sku,color:x.color,size:x.size,qty:1,unit_cents:0,service:'Apparel',taxable:true});draw();},[x.sku,x.color,x.size,'Available: '+remaining].join(' · '));
+ const item=cart.find(c=>c.stock_id===x.id);const remaining=x.quantity-(item?.qty||0);const meta=variantMeta.get(x.id);
+ const r=row(x.product_name||x.sku,'Add',()=>{if(checkout)return notice('Finish or cancel the open checkout first');if(remaining<=0)return notice('No stock available');if(item)item.qty++;else cart.push({stock_id:x.id,name:x.product_name||x.sku,color:x.color,size:x.size,qty:1,unit_cents:meta?.price_cents??0,service:'Apparel',taxable:meta?.taxable??true});draw();},[x.sku,x.color,x.size,'Available: '+remaining].join(' · '));
  const btn=r.querySelector('button');btn.disabled=remaining<=0;by('catalog').append(r);
  });
  by('cart').replaceChildren();
@@ -23,7 +23,16 @@ function draw(){
  by('start').disabled=!!checkout||!cart.length;by('cancel').disabled=!checkout;
  by('discount').disabled=!!checkout;by('tax').disabled=!!checkout;renderCash();
 }
-async function loadStock(){stock=await check(db.from('stock_items').select('id,sku,product_name,color,size,quantity,reorder_at').order('sku').limit(1000));draw()}
+async function loadStock(){
+ stock=await check(db.from('stock_items').select('id,sku,product_name,color,size,quantity,reorder_at').order('sku').limit(1000));
+ // A dedicated owner-only price table avoids silently inventing price columns on stock_items.
+ variantMeta=new Map();
+ try{
+  const rows=await check(db.from('pos_variant_details').select('stock_id,price_cents,taxable,category,description,product_type').limit(1000));
+  for(const row of rows)variantMeta.set(row.stock_id,row);
+ }catch(e){notice('POS product prices unavailable until the reviewed database draft is installed. Enter prices manually for test carts.')}
+ draw();renderProductList();
+}
 async function loadTemplates(){templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));by('templates').replaceChildren();for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;by('templates').append(opt)}const t=templates.find(x=>x.active)||templates[0];if(t){by('templates').value=t.id;showTemplate(t)}}
 function showTemplate(t){by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false}
 async function ensureRegister(){const regs=await check(db.from('pos_registers').select('*').eq('owner_id',user.id).eq('active',true).order('created_at').limit(1));register=regs[0]||await check(db.from('pos_registers').insert({owner_id:user.id,label:'Persen POS register'}).select('*').single());}
@@ -69,7 +78,7 @@ function fillEventSelectors(){
  }
  if([...sale.options].some(x=>x.value===prev))sale.value=prev;
  if([...report.options].some(x=>x.value===prevReport))report.value=prevReport;
- drawReport();
+ drawReport();fillEventEditor();
 }
 async function loadEvents(){
  events=await check(db.from('pos_events').select('id,name,event_date,venue,status,created_at').order('event_date',{ascending:false}).limit(300));
@@ -111,14 +120,69 @@ async function createEvent(e){
  try{
   if(!user)throw Error('Sign in first');
   const f=new FormData(e.currentTarget),name=String(f.get('name')||'').trim(),date=String(f.get('event_date')||''),venue=String(f.get('venue')||'').trim();
-  if(!name||name.length>100||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))throw Error('Enter an event name and valid date');
+  if(!name||name.length>100||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Enter an event name and valid date');
   const result=await check(db.from('pos_events').insert({owner_id:user.id,name,event_date:date,venue,status:'open'}).select('id').single());
   await loadEvents();
   by('event-select').value=result.id;by('report-event').value=result.id;drawReport();e.currentTarget.reset();notice('Event created. New checkouts will count toward '+name+'.');
  }catch(err){notice('Unable to create event: '+err.message)}finally{btn.disabled=false}
 }
+
+// Admin product setup: each color/size has its own SKU, stock and explicit price.
+// This form is only usable after pos_variant_details passes the staged migration review.
+function renderProductList(){
+ const host=by('product-variants');if(!host)return;host.replaceChildren();
+ for(const x of stock.slice(0,100)){
+  const m=variantMeta.get(x.id),div=document.createElement('div');div.className='product-variant-row';
+  const name=document.createElement('span');name.textContent=[x.product_name,x.color,x.size,x.sku].filter(Boolean).join(' · ');
+  const qty=document.createElement('strong');qty.textContent=x.quantity+' available · '+(m?C.money(m.price_cents):'Price not set');
+  div.append(name,qty);host.append(div);
+ }
+}
+async function createVariant(e){
+ e.preventDefault();const btn=e.currentTarget.querySelector('button[type=submit]');btn.disabled=true;
+ let createdId=null;
+ try{
+  if(checkout)throw Error('Finish the current checkout first');
+  const f=new FormData(e.currentTarget);
+  const name=String(f.get('name')||'').trim(),sku=String(f.get('sku')||'').trim();
+  const color=String(f.get('color')||'').trim(),size=String(f.get('size')||'').trim();
+  const quantity=Number(f.get('quantity')),reorder=Number(f.get('reorder'));
+  const price=C.cents(f.get('price'));
+  if(!name||name.length>120||sku.length<2||sku.length>100)throw Error('Product name and unique SKU required');
+  if(!Number.isInteger(quantity)||quantity<0||quantity>1000000||!Number.isInteger(reorder)||reorder<0)throw Error('Enter valid stock and reorder quantities');
+  const details={category:String(f.get('category')||'Apparel').slice(0,90),product_type:String(f.get('type')||'other'),description:String(f.get('description')||'').slice(0,500),price_cents:price,taxable:f.has('taxable')};
+  const row=await check(db.from('stock_items').insert({sku,product_name:name,color,size,quantity,reorder_at:reorder,supplier:String(f.get('supplier')||'').slice(0,120)}).select('id').single());
+  createdId=row.id;
+  try{await check(db.from('pos_variant_details').insert({stock_id:createdId,...details}));}
+  catch(err){
+   // Best-effort rollback, never silently leave an unpriced product.
+   try{await check(db.from('stock_items').delete().eq('id',createdId));createdId=null}catch{}
+   throw Error('Product pricing save failed: '+err.message+(createdId?' — check inventory for an unpriced SKU':''));
+  }
+  e.currentTarget.reset();await loadStock();notice('Product variant saved: '+name+' / '+sku+'. Add other colors and sizes as separate SKUs.');
+ }catch(err){notice('Unable to add product: '+err.message)}finally{btn.disabled=false}
+}
+async function updateEvent(e){
+ e.preventDefault();const form=e.currentTarget,btn=form.querySelector('button[type=submit]');btn.disabled=true;
+ try{
+  const id=by('report-event').value;if(!id)throw Error('Select an event to edit');
+  const f=new FormData(form),name=String(f.get('name')||'').trim(),event_date=String(f.get('event_date')||''),venue=String(f.get('venue')||'').trim(),status=String(f.get('status'));
+  if(!name||name.length>100||!/^\d{4}-\d{2}-\d{2}$/.test(event_date)||!['open','closed'].includes(status))throw Error('Check event details');
+  await check(db.from('pos_events').update({name,event_date,venue,status}).eq('id',id).eq('owner_id',user.id));
+  await loadEvents();by('report-event').value=id;drawReport();notice('Event updated. Past sales remain attached.');
+ }catch(err){notice('Unable to update event: '+err.message)}finally{btn.disabled=false}
+}
+function fillEventEditor(){
+ const id=by('report-event').value,e=events.find(x=>x.id===id),form=by('edit-event');
+ form.hidden=!e;if(!e)return;
+ form.elements.name.value=e.name;form.elements.event_date.value=e.event_date;
+ form.elements.venue.value=e.venue||'';form.elements.status.value=e.status;
+}
+
 by('new-event').addEventListener('submit',createEvent);
-by('report-event').addEventListener('change',drawReport);
+by('new-product').addEventListener('submit',createVariant);
+by('edit-event').addEventListener('submit',updateEvent);
+by('report-event').addEventListener('change',()=>{drawReport();fillEventEditor()});
 
 
 /* Fast cash terminal — local preview; server validates actual change at settlement. */
