@@ -18,5 +18,5 @@ for(const f of ['register.html','display.html','index.html','print-station.html'
  await writeFile(join(dest,f),s);
 }
 await writeFile(join(dest,'_headers'),'/register.html\n  X-Robots-Tag: noindex, nofollow\n/display.html\n  X-Robots-Tag: noindex, nofollow\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
-await writeFile(join(dest,'_redirects'),'/ /register.html 302\n');
+// Root route now serves index.html (device dashboard); no redirect to cashier.
 console.log('Prepared isolated POS Pages output in '+dest);
