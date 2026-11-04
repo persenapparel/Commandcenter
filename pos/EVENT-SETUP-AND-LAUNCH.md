@@ -22,7 +22,7 @@
 ## Fast checkout design
 
 1. Cashier selects product, size/color, quantity; confirms discount, optional custom services and event association.
-2. Customer iPad sees the total and enters phone (required) and optionally email. Receipt choice defaults to **printed**, with optional **email** and **text** preferences. The receipt choices are distinct from optional promotional opt-in.
+2. Customer iPad has an **eight-screen guided checkout**: required 10-digit phone via its own on-screen number dialer; Printed / Email / Both receipt selection; separate email entry (required only for email receipt); payment information; three optional questions on separate screens; final review. There are **no SMS receipt options**. Email and phone collection are separate from marketing consent.
 3. Customer may choose **Cash**, **Venmo information**, or **Apple Cash information**.
    - Cash: customer gives the cashier money; the cashier taps bills or the amount received. The POS calculates change and disables completion if the counted drawer cannot provide exact change. Once verified, the server must record the sale, deduct stock, update float and enqueue a paper receipt atomically.
    - Venmo: customer screen can show **@persenapparel** as information only. No funds are verified by the POS. Do not use a teen account as an unauthorized business merchant account; confirm an eligible, approved business payment setup with a parent/guardian and provider first.
@@ -34,7 +34,7 @@
 
 - **Printed:** Current draft print station and server queue, not deployed or physically tested.
 - **Email:** Customer choice, draft per-sale delivery job table, one-time email HTML template and un-deployed server-only Resend mailer in `supabase/functions/pos-receipt-email/index.ts`. Secret keys must be set on Supabase, never in website JavaScript. Worker needs code/security review, authorized cron invocation, a verified sending domain and an end-to-end test before email sending is enabled.
-- **Text:** Customer choice, sanitized SMS receipt copy and pending server job record. There is **no SMS provider configured**. SMS delivery must not be described as active or sent until a legitimate provider, sender identity, opt-out/compliance setup and test exist. Receipt messages are transactional and independent from marketing consent.
+- **Text:** Not offered. Phone numbers remain required for order contact, but no SMS receipt job is created. The optional marketing question remains separate from receipts and needs compliant integration before any promotions are sent.
 - **Reprint:** Cashier can manually print saved sale; the operator should check paper first to avoid duplicates.
 - **Marketing:** Must never be turned on simply because someone requested a receipt. Only explicit customer preference may authorize promotions.
 
