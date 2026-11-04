@@ -19,7 +19,20 @@ permissions:
 jobs:
   pos-static-and-unit-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pos_test
+          POSTGRES_PASSWORD: pos_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pos_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
     steps:
       - name: Get source
         uses: actions/checkout@v4
@@ -45,6 +58,18 @@ jobs:
         run: node pos/wizard-dom-check.cjs
       - name: Validate unapplied SQL draft structure
         run: node pos/sql-draft-check.cjs
+      - name: Test POS schema and cash checkout in isolated PostgreSQL 17
+        env:
+          PGPASSWORD: pos_test_password
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGDATABASE: pos_test
+        run: |
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          psql -v ON_ERROR_STOP=1 -f pos/sql-integration-bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f pos/pos-schema-review.sql
+          psql -v ON_ERROR_STOP=1 -f pos/sql-integration-test.sql
       - name: Build separate static POS project
         run: |
           node pos/build-pages.mjs
