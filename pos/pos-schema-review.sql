@@ -41,29 +41,11 @@ create table if not exists public.pos_sales(
  tax_cents integer not null,
  total_cents integer not null,
  payment_method text not null check(payment_method='cash'),
- tendered_cents integer not null default 0 check(tendered_cents>=0),
- change_cents integer not null default 0 check(change_cents>=0),
+ tendered_cents integer not null default 0,
+ change_cents integer not null default 0,
  change_breakdown jsonb not null default '{}'::jsonb,
  created_at timestamptz not null default now()
 );
--- Count/recount history gives the owner an auditable opening float.
-create table if not exists public.pos_drawer_recounts(
- id uuid primary key default gen_random_uuid(),
- register_id uuid not null references public.pos_registers(id),
- owner_id uuid not null references auth.users(id),
- before_counts jsonb not null,
- after_counts jsonb not null,
- before_version integer not null,
- after_version integer not null,
- created_at timestamptz not null default now()
-);
-alter table public.pos_drawer_recounts enable row level security;
-revoke all on public.pos_drawer_recounts from anon,authenticated;
-grant select on public.pos_drawer_recounts to authenticated;
-create policy pos_drawer_recount_owner_read on public.pos_drawer_recounts
- for select to authenticated
- using(owner_id=(select auth.uid()) and public.is_persen_admin());
-
 -- Pending print jobs are created transactionally with sales.
 -- A print station marks jobs as submitted to the local browser, NOT confirmed on paper.
 -- Clients cannot directly insert, change sale associations, or change state.
@@ -222,24 +204,31 @@ begin
  update public.pos_checkouts set status='cancelled',updated_at=now() where id=c.id;
  return true;
 end $$;
-
--- Internal helpers for validating counted cash and finding exact change.
--- Schema is not exposed in Supabase Data API. These functions are NOT a public API.
+-- Counted drawer and exact change: draft, not applied to production.
 create schema if not exists pos_internal;
 revoke all on schema pos_internal from public,anon,authenticated;
+create table if not exists public.pos_drawer_recounts(
+ id uuid primary key default gen_random_uuid(),
+ register_id uuid not null references public.pos_registers(id),
+ owner_id uuid not null references auth.users(id),
+ before_counts jsonb not null, after_counts jsonb not null,
+ before_version integer not null, after_version integer not null,
+ created_at timestamptz not null default now()
+);
+alter table public.pos_drawer_recounts enable row level security;
+revoke all on public.pos_drawer_recounts from anon,authenticated;
+grant select on public.pos_drawer_recounts to authenticated;
+create policy pos_drawer_recount_owner_read on public.pos_drawer_recounts
+for select to authenticated using(owner_id=(select auth.uid()) and public.is_persen_admin());
 
 create or replace function pos_internal.valid_counts(p_counts jsonb)
 returns jsonb language plpgsql immutable security invoker set search_path='' as $
-declare d integer;
-  vals integer[]:=array[10000,5000,2000,1000,500,100,25,10,5,1];
-  k text; v text; result jsonb:='{}'::jsonb;
+declare k text; v text; d integer; result jsonb:='{}'::jsonb;
 begin
- if p_counts is null or jsonb_typeof(p_counts)<>'object' then
-  raise exception 'Invalid cash drawer counts';
- end if;
+ if p_counts is null or jsonb_typeof(p_counts)<>'object' then raise exception 'Invalid cash drawer'; end if;
  for k,v in select key,value from jsonb_each_text(p_counts) loop
   if k<>all(array['10000','5000','2000','1000','500','100','25','10','5','1'])
-     or v !~ '^(0|[1-9][0-9]{0,2})
+    or v !~ '^(0|[1-9][0-9]{0,2})
 returns uuid language plpgsql security definer set search_path='' as $$
 declare c public.pos_checkouts; r public.pos_registers; line jsonb; sid uuid; updated integer;
  v_register uuid; denomination integer; qty integer; amount_received bigint:=0; change_due integer;
@@ -247,54 +236,39 @@ declare c public.pos_checkouts; r public.pos_registers; line jsonb; sid uuid; up
  denominations integer[]:=array[10000,5000,2000,1000,500,100,25,10,5,1];
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then raise exception 'Unauthorized'; end if;
- -- Lock the register first, then the checkout: same ordering as checkout creation.
- select register_id into v_register from public.pos_checkouts
- where id=p_checkout and owner_id=(select auth.uid());
+ select register_id into v_register from public.pos_checkouts where id=p_checkout and owner_id=(select auth.uid());
  if v_register is null then raise exception 'Checkout unavailable'; end if;
- select * into r from public.pos_registers
- where id=v_register and owner_id=(select auth.uid()) and active for update;
- if not found then raise exception 'Register not found'; end if;
+ select * into r from public.pos_registers where id=v_register and owner_id=(select auth.uid()) and active for update;
+ if not found then raise exception 'Register unavailable'; end if;
  select * into c from public.pos_checkouts where id=p_checkout and owner_id=(select auth.uid()) for update;
  if not found or c.status<>'contact_received' then raise exception 'Customer contact required or checkout already closed'; end if;
  if length(regexp_replace(coalesce(c.phone,''),'[^0-9]','','g'))<10 then raise exception 'Customer phone required'; end if;
 
- if p_tender_cents is null or p_tender_cents<c.total_cents or p_tender_cents>1000000 then
-  raise exception 'Cash amount insufficient or invalid';
- end if;
+ if p_tender_cents is null or p_tender_cents<c.total_cents or p_tender_cents>1000000 then raise exception 'Insufficient or invalid cash'; end if;
  change_due:=p_tender_cents-c.total_cents;
- if change_due>50000 then raise exception 'Change amount exceeds allowed range'; end if;
+ if change_due>50000 then raise exception 'Change exceeds supported amount'; end if;
  received:=pos_internal.valid_counts(coalesce(p_received_breakdown,'{}'::jsonb));
- drawer:=pos_internal.valid_counts(coalesce(r.cash_drawer,'{}'::jsonb));
- available:=drawer;
+ drawer:=pos_internal.valid_counts(coalesce(r.cash_drawer,'{}'::jsonb));available:=drawer;
  foreach denomination in array denominations loop
   qty:=(received->>denomination::text)::integer;
   amount_received:=amount_received+denomination::bigint*qty::bigint;
-  available:=jsonb_set(available,array[denomination::text],
-     to_jsonb((available->>denomination::text)::integer+qty));
+  available:=jsonb_set(available,array[denomination::text],to_jsonb((available->>denomination::text)::integer+qty));
  end loop;
- if amount_received<>0 and amount_received<>p_tender_cents then
-  raise exception 'Received bills must equal the amount tendered';
- end if;
- if not r.drawer_configured and change_due>0 then
-  raise exception 'Count your cash drawer before accepting overpayment';
- end if;
+ if amount_received<>0 and amount_received<>p_tender_cents then raise exception 'Received denominations do not match tender'; end if;
+ if not r.drawer_configured and change_due>0 then raise exception 'Count the drawer before giving change'; end if;
  if r.drawer_configured then
   change_plan:=pos_internal.make_change(change_due,available);
-  if change_plan is null then raise exception 'Insufficient exact change in cash drawer'; end if;
+  if change_plan is null then raise exception 'Insufficient exact change in drawer'; end if;
   updated_counts:=available;
   foreach denomination in array denominations loop
-    updated_counts:=jsonb_set(updated_counts,array[denomination::text],
-      to_jsonb((updated_counts->>denomination::text)::integer
-        - coalesce((change_plan->>denomination::text)::integer,0)));
+   updated_counts:=jsonb_set(updated_counts,array[denomination::text],
+     to_jsonb((updated_counts->>denomination::text)::integer-coalesce((change_plan->>denomination::text)::integer,0)));
   end loop;
-  update public.pos_registers set cash_drawer=updated_counts,drawer_version=drawer_version+1
-  where id=r.id;
+  update public.pos_registers set cash_drawer=updated_counts,drawer_version=drawer_version+1 where id=r.id;
  else
   change_plan:='{}'::jsonb;
  end if;
- -- If the cashier types a custom amount rather than tapping bills, received
- -- denominations stay untracked and cannot falsely increase future change availability.
-  -- Lock and decrement each row atomically. Any insufficient stock rolls back the entire transaction.
+ -- Lock and decrement each row atomically. Any insufficient stock rolls back the entire transaction.
  for line in select value from jsonb_array_elements(c.items) order by (value->>'stock_id') nulls last loop
   if line->>'stock_id' is not null and line->>'stock_id'<>'null' then
     update public.stock_items set quantity=quantity-(line->>'qty')::integer,updated_at=now()
@@ -305,8 +279,7 @@ begin
  end loop;
  insert into public.pos_sales(checkout_id,owner_id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method,tendered_cents,change_cents,change_breakdown)
  values(c.id,(select auth.uid()),c.event_id,jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,'rating',c.rating,'custom_interest',c.custom_interest),
- c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,'cash',p_tender_cents,change_due,change_plan)
- returning id into sid;
+ c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,'cash',p_tender_cents,change_due,change_plan) returning id into sid;
  -- Printing is queued even when the physical printer is offline.
  insert into public.pos_print_jobs(sale_id,owner_id,register_id)
  values(sid,(select auth.uid()),c.register_id);
@@ -392,8 +365,8 @@ grant execute on function public.pos_customer_view(uuid),public.pos_submit_custo
 -- Do not activate these RPCs for untrusted public traffic until security review and abuse controls.
  then raise exception 'Invalid denomination or count'; end if;
  end loop;
- foreach d in array vals loop
-   result:=result||jsonb_build_object(d::text,coalesce((p_counts->>d::text)::integer,0));
+ foreach d in array array[10000,5000,2000,1000,500,100,25,10,5,1] loop
+  result:=result||jsonb_build_object(d::text,coalesce((p_counts->>d::text)::integer,0));
  end loop;
  return result;
 end $;
@@ -405,35 +378,28 @@ declare denoms integer[]:=array[10000,5000,2000,1000,500,100,25,10,5,1];
 begin
  if p_target=0 then return '{}'::jsonb; end if;
  if p_target<0 or p_target>50000 or p_index>10 then return null; end if;
- d:=denoms[p_index];
- n:=least(coalesce((p_drawer->>d::text)::integer,0),p_target/d);
+ d:=denoms[p_index];n:=least(coalesce((p_drawer->>d::text)::integer,0),p_target/d);
  for used in reverse n..0 loop
-   tail:=pos_internal.make_change(p_target-(used*d),p_drawer,p_index+1);
-   if tail is not null then
-     if used>0 then return tail||jsonb_build_object(d::text,used);end if;
-     return tail;
-   end if;
+  tail:=pos_internal.make_change(p_target-used*d,p_drawer,p_index+1);
+  if tail is not null then
+   if used>0 then return tail||jsonb_build_object(d::text,used);end if;
+   return tail;
+  end if;
  end loop;
  return null;
 end $;
+revoke all on function pos_internal.valid_counts(jsonb),pos_internal.make_change(integer,jsonb,integer) from public;
 
--- A deliberate count/recount; never inferred from a typed total.
--- Version check prevents a phone editing stale counts after another device checks out.
-create or replace function public.pos_set_cash_drawer(
- p_register uuid,p_counts jsonb,p_expected_version integer
-) returns jsonb language plpgsql security definer set search_path='' as $
+create or replace function public.pos_set_cash_drawer(p_register uuid,p_counts jsonb,p_expected_version integer)
+returns jsonb language plpgsql security definer set search_path='' as $
 declare r public.pos_registers; cleaned jsonb;
 begin
- if (select auth.uid()) is null or not public.is_persen_admin() then
-  raise exception 'Unauthorized';
- end if;
- select * into r from public.pos_registers
- where id=p_register and owner_id=(select auth.uid()) and active for update;
+ if (select auth.uid()) is null or not public.is_persen_admin() then raise exception 'Unauthorized'; end if;
+ select * into r from public.pos_registers where id=p_register and owner_id=(select auth.uid()) and active for update;
  if not found then raise exception 'Register unavailable'; end if;
- if r.drawer_version<>p_expected_version then raise exception 'Drawer was updated elsewhere; reload and recount'; end if;
+ if r.drawer_version<>p_expected_version then raise exception 'Drawer updated elsewhere; reload first'; end if;
  cleaned:=pos_internal.valid_counts(p_counts);
- insert into public.pos_drawer_recounts
- (register_id,owner_id,before_counts,after_counts,before_version,after_version)
+ insert into public.pos_drawer_recounts(register_id,owner_id,before_counts,after_counts,before_version,after_version)
  values(r.id,(select auth.uid()),r.cash_drawer,cleaned,r.drawer_version,r.drawer_version+1);
  update public.pos_registers set cash_drawer=cleaned,drawer_configured=true,drawer_version=drawer_version+1
  where id=r.id returning * into r;
@@ -441,7 +407,6 @@ begin
 end $;
 revoke all on function public.pos_set_cash_drawer(uuid,jsonb,integer) from public;
 grant execute on function public.pos_set_cash_drawer(uuid,jsonb,integer) to authenticated;
-revoke all on function pos_internal.valid_counts(jsonb),pos_internal.make_change(integer,jsonb,integer) from public;
 
 create or replace function public.pos_complete_cash(p_checkout uuid,p_tender_cents integer,p_received_breakdown jsonb default '{}'::jsonb)
 returns uuid language plpgsql security definer set search_path='' as $$
@@ -538,8 +503,8 @@ public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) from pub
 grant execute on function public.pos_claim_print_job(uuid),
 public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) to authenticated;
 
-revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) from public;
-grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid) to authenticated;
+revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid,integer,jsonb) from public;
+grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid,integer,jsonb) to authenticated;
 grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text) to anon,authenticated;
 -- For production: put anonymous display RPCs behind an Edge Function with rate limits, short-lived tokens, and rotation.
 -- Do not activate these RPCs for untrusted public traffic until security review and abuse controls.
