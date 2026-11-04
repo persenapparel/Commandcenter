@@ -1,5 +1,5 @@
 'use strict';
-const C=window.PersenPOSCore,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;
+const C=window.PersenPOSCore,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[];const EV=window.PersenPOSEvents;
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
@@ -8,7 +8,7 @@ function draw(){
  by('catalog').replaceChildren();const q=by('search').value.toLowerCase();
  stock.filter(x=>[x.product_name,x.sku,x.color,x.size].join(' ').toLowerCase().includes(q)).forEach(x=>{
  const item=cart.find(c=>c.stock_id===x.id);const remaining=x.quantity-(item?.qty||0);
- const r=row(x.product_name||x.sku,'Add',()=>{if(checkout)return notice('Finish or cancel the open checkout first');if(remaining<=0)return notice('No stock available');if(item)item.qty++;else cart.push({stock_id:x.id,name:x.product_name||x.sku,color:x.color,size:x.size,qty:1,unit_cents:0,taxable:true});draw();},[x.sku,x.color,x.size,'Available: '+remaining].join(' · '));
+ const r=row(x.product_name||x.sku,'Add',()=>{if(checkout)return notice('Finish or cancel the open checkout first');if(remaining<=0)return notice('No stock available');if(item)item.qty++;else cart.push({stock_id:x.id,name:x.product_name||x.sku,color:x.color,size:x.size,qty:1,unit_cents:0,service:'Apparel',taxable:true});draw();},[x.sku,x.color,x.size,'Available: '+remaining].join(' · '));
  const btn=r.querySelector('button');btn.disabled=remaining<=0;by('catalog').append(r);
  });
  by('cart').replaceChildren();
@@ -16,7 +16,8 @@ function draw(){
  const r=document.createElement('div');r.className='cart-row';const title=document.createElement('div');title.textContent=x.name+' '+[x.color,x.size].filter(Boolean).join(' / ');
  const qty=document.createElement('input');qty.type='number';qty.min=1;qty.max=999;qty.value=x.qty;qty.style.width='65px';qty.setAttribute('aria-label','Quantity for '+x.name);qty.disabled=!!checkout;qty.onchange=()=>{x.qty=Math.max(1,Math.min(999,Number(qty.value)||1));draw()};
  const price=document.createElement('input');price.type='number';price.min=0;price.max=100000;price.step='.01';price.value=(x.unit_cents/100).toFixed(2);price.style.width='100px';price.setAttribute('aria-label','Unit price for '+x.name);price.disabled=!!checkout;price.onchange=()=>{try{x.unit_cents=C.cents(price.value);draw()}catch(e){notice(e.message)}};
- const remove=document.createElement('button');remove.textContent='×';remove.disabled=!!checkout;remove.onclick=()=>{cart.splice(i,1);draw()};r.append(title,qty,price,remove);by('cart').append(r);
+ const service=document.createElement('select');service.className='service-picker';service.setAttribute('aria-label','Service category for '+x.name);service.disabled=!!checkout;for(const v of EV.services){const option=document.createElement('option');option.value=v;option.textContent=v;service.append(option);}service.value=x.service||'Other';service.onchange=()=>{x.service=service.value;};
+ const remove=document.createElement('button');remove.textContent='×';remove.disabled=!!checkout;remove.onclick=()=>{cart.splice(i,1);draw()};r.append(title,qty,price,service,remove);by('cart').append(r);
  }
  try{by('total').textContent=C.money(current().total_cents)}catch(e){notice(e.message)}
  by('start').disabled=!!checkout||!cart.length;by('cancel').disabled=!checkout;
@@ -30,14 +31,80 @@ async function status(){if(!register||busy)return;try{const list=await check(db.
  by('status').textContent=c?({awaiting_customer:'Waiting for customer phone number',contact_received:'Customer ready · waiting for cashier cash confirmation',completed:'Sale complete · receipt ready',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
  by('cash').disabled=!checkout||checkout.status!=='contact_received';draw();
  }catch(e){notice('Connection lost: '+e.message)}}
-async function begin(){if(busy||checkout)return;busy=true;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,taxable:x.taxable}));const bps=Math.round(C.percent(by('discount').value)*100),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax}));checkout={id,status:'awaiting_customer'};notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
+async function begin(){if(busy||checkout)return;busy=true;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=Math.round(C.percent(by('discount').value)*100),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
 async function cancel(){if(!checkout||busy)return;busy=true;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
-async function cash(){if(!checkout||checkout.status!=='contact_received'||busy)return;const ok=confirm('Confirm you physically received the cash? This records a sale and deducts inventory.');if(!ok)return;busy=true;try{const id=await check(db.rpc('pos_complete_cash',{p_checkout:checkout.id}));const saved=await check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,created_at').eq('id',id).single());lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};receipt();checkout=null;cart=[];await loadStock();notice('Cash sale recorded. Receipt ready to print.')}catch(e){notice(e.message)}finally{busy=false;await status()}}
+async function cash(){if(!checkout||checkout.status!=='contact_received'||busy)return;const ok=confirm('Confirm you physically received the cash? This records a sale and deducts inventory.');if(!ok)return;busy=true;try{const id=await check(db.rpc('pos_complete_cash',{p_checkout:checkout.id}));const saved=await check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,created_at').eq('id',id).single());lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};receipt();checkout=null;cart=[];await Promise.all([loadStock(),loadSales()]);notice('Cash sale recorded. Receipt ready to print.')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-headline').textContent=by('headline').value;by('receipt-promo').textContent=by('promotion').value;by('receipt-footer').textContent=by('footer').value;}
 async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
-async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates()]);try{const contents=await check(db.from('site_content').select('value').eq('key','seasonal_campaigns_v1').maybeSingle());season=C.season(contents?.value);if(season){document.documentElement.style.setProperty('--pos-season',C.safeHex(season.accent));notice('Seasonal Studio connected: '+season.title)}}catch{}by('pairing').textContent='Customer display link ready (treat as a private device credential).';await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
+async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales()]);try{const contents=await check(db.from('site_content').select('value').eq('key','seasonal_campaigns_v1').maybeSingle());season=C.season(contents?.value);if(season){document.documentElement.style.setProperty('--pos-season',C.safeHex(season.accent));notice('Seasonal Studio connected: '+season.title)}}catch{}by('pairing').textContent='Customer display link ready (treat as a private device credential).';await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
+
+/* Event manager: owner/admin-only RLS queries and historical immutable sale snapshots. */
+const eventOption=(id,label)=>{const o=document.createElement('option');o.value=id;o.textContent=label;return o};
+function fillEventSelectors(){
+ const sale=by('event-select'),report=by('report-event');
+ const prev=sale.value,prevReport=report.value;
+ sale.replaceChildren(eventOption('','Walk-in / no event'));
+ report.replaceChildren(eventOption('','Walk-in / no event'));
+ for(const e of events){
+  const label=e.name+' · '+e.event_date+(e.status==='closed'?' (closed)':'');
+  report.append(eventOption(e.id,label));
+  if(e.status==='open')sale.append(eventOption(e.id,label));
+ }
+ if([...sale.options].some(x=>x.value===prev))sale.value=prev;
+ if([...report.options].some(x=>x.value===prevReport))report.value=prevReport;
+ drawReport();
+}
+async function loadEvents(){
+ events=await check(db.from('pos_events').select('id,name,event_date,venue,status,created_at').order('event_date',{ascending:false}).limit(300));
+ fillEventSelectors();
+}
+async function loadSales(){
+ sales=await check(db.from('pos_sales').select('id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,created_at').order('created_at',{ascending:false}).limit(2000));
+ drawReport();
+}
+function drawReport(){
+ const host=by('report-stats'),list=by('service-summary');
+ if(!host||!list)return;
+ const eventId=by('report-event').value;
+ const filtered=sales.filter(x=>String(x.event_id||'')===eventId);
+ const summary=EV.report(filtered,eventId);
+ host.replaceChildren();list.replaceChildren();
+ const fmt=n=>window.PersenPOSCore.money(n);
+ const stat=(title,value)=>{const d=document.createElement('div');d.className='event-stat';const val=document.createElement('strong');val.textContent=String(value);const label=document.createElement('small');label.textContent=title;d.append(val,label);host.append(d)};
+ stat('Completed sales',summary.transactions);
+ stat('Items sold',summary.units);
+ stat('Collected',fmt(summary.collected_cents));
+ stat('Gross merchandise',fmt(summary.gross_cents));
+ stat('Discounts',fmt(summary.discount_cents));
+ stat('Sales tax',fmt(summary.tax_cents));
+ stat('Average rating',summary.rating_average===null?'—':summary.rating_average.toFixed(1)+'/5');
+ stat('Promo opt-ins',summary.promo_opt_ins);
+ stat('Custom apparel leads',summary.custom_leads);
+ const table=document.createElement('table');table.className='service-table';
+ const head=document.createElement('thead');const tr=document.createElement('tr');
+ for(const k of ['Service category','Units','Gross sales']){const th=document.createElement('th');th.textContent=k;tr.append(th)}head.append(tr);table.append(head);
+ const body=document.createElement('tbody');
+ for(const k of EV.services){const v=summary.services[k],tr=document.createElement('tr');for(const value of [k,String(v.units),fmt(v.gross_cents)]){const td=document.createElement('td');td.textContent=value;tr.append(td)}body.append(tr)}
+ table.append(body);list.append(table);
+ const note=document.createElement('p');note.className='hint';note.textContent=filtered.length===2000?'Showing recent sales only. Export/report pagination needed for larger history.':'Sale records remain linked to their original events.';list.append(note);
+}
+async function createEvent(e){
+ e.preventDefault();
+ const btn=e.currentTarget.querySelector('[type=submit]');btn.disabled=true;
+ try{
+  if(!user)throw Error('Sign in first');
+  const f=new FormData(e.currentTarget),name=String(f.get('name')||'').trim(),date=String(f.get('event_date')||''),venue=String(f.get('venue')||'').trim();
+  if(!name||name.length>100||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))throw Error('Enter an event name and valid date');
+  const result=await check(db.from('pos_events').insert({owner_id:user.id,name,event_date:date,venue,status:'open'}).select('id').single());
+  await loadEvents();
+  by('event-select').value=result.id;by('report-event').value=result.id;drawReport();e.currentTarget.reset();notice('Event created. New checkouts will count toward '+name+'.');
+ }catch(err){notice('Unable to create event: '+err.message)}finally{btn.disabled=false}
+}
+by('new-event').addEventListener('submit',createEvent);
+by('report-event').addEventListener('change',drawReport);
+
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
-by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
+by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
 by('start').onclick=begin;by('cancel').onclick=cancel;by('cash').onclick=cash;
