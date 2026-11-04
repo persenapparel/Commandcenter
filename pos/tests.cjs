@@ -1,7 +1,7 @@
 /* Run locally: node pos/tests.cjs — no database writes. */
 'use strict';
 const assert=require('node:assert/strict');
-const C=require('./pos-core.js'), E=require('./pos-events.js'), R=require('./pos-receipt.js'), Cash=require('./pos-cash.js'), Seasonal=require('./pos-experience.js'), Digital=require('./pos-digital-receipt.js');
+const C=require('./pos-core.js'), E=require('./pos-events.js'), R=require('./pos-receipt.js'), Cash=require('./pos-cash.js'), Seasonal=require('./pos-experience.js'), Digital=require('./pos-digital-receipt.js'), Wizard=require('./checkout-flow.js');
 const tests=[];
 function test(name,fn){fn();tests.push(name)}
 test('Basic cash totals',()=>assert.deepEqual(C.totals([{qty:2,unit_cents:4000,taxable:true}],10,0),{subtotal_cents:8000,discount_cents:800,tax_cents:0,total_cents:7200}));
@@ -156,5 +156,56 @@ test('Branded email receipt uses whitelisted Persen Apparel logo',()=>{
 test('Invalid seasonal email color defaults to navy',()=>{
  assert.equal(Digital.verifiedAccent('pink'),'#123466');
  assert.equal(Digital.verifiedAccent('#a32736'),'#a32736');
+});
+test('Checkout wizard contains eight separate pages',()=>{
+ assert.deepEqual(Wizard.steps.map(x=>x.id),['phone','receipt','email','payment','promos','rating','custom','review']);
+});
+test('Ten-digit phone entry uses on-screen digits only',()=>{
+ let input='';for(const digit of '6316440633')input=Wizard.dial(input,digit);
+ assert.equal(input,'6316440633');
+ assert.equal(Wizard.formatPhone(input),'(631) 644-0633');
+ assert.ok(Wizard.validPhone(input));
+});
+test('Phone keypad supports backspace and clear',()=>{
+ assert.equal(Wizard.dial('631','back'),'63');
+ assert.equal(Wizard.dial('631','clear'),'');
+ assert.equal(Wizard.dial('631','*'),'631');
+});
+test('Phone number input cannot exceed ten digits',()=>{
+ assert.equal(Wizard.dial('6316440633','5'),'6316440633');
+ assert.ok(!Wizard.validPhone('631644063'));
+ assert.ok(!Wizard.validPhone('63164406335'));
+});
+test('Printed receipt is the default',()=>{
+ assert.deepEqual(Wizard.receipt(),{mode:'print',print:true,email:false,sms:false});
+});
+test('Email receipt does not request SMS or paper',()=>{
+ assert.deepEqual(Wizard.receipt('email'),{mode:'email',print:false,email:true,sms:false});
+});
+test('Both receipt mode requests print and email only',()=>{
+ assert.deepEqual(Wizard.receipt('both'),{mode:'both',print:true,email:true,sms:false});
+ assert.equal(Wizard.receiptModes.length,3);
+});
+test('Email is required for an emailed receipt',()=>{
+ assert.ok(Wizard.checkStep('email',{receipt:'both',email:''}));
+ assert.ok(Wizard.checkStep('email',{receipt:'email',email:'invalid'}));
+ assert.equal(Wizard.checkStep('email',{receipt:'email',email:'person@example.com'}),'');
+});
+test('Email is optional with a printed receipt',()=>{
+ assert.equal(Wizard.checkStep('email',{receipt:'print',email:''}),'');
+ assert.ok(Wizard.checkStep('email',{receipt:'print',email:'invalid'}));
+});
+test('Checkout does not proceed with incomplete phone number',()=>{
+ assert.ok(Wizard.checkStep('phone',{phone:'631'}));
+ assert.equal(Wizard.checkStep('phone',{phone:'6316440633'}),'');
+});
+test('Optional feedback questions never block the customer',()=>{
+ for(const id of ['promos','rating','custom'])assert.equal(Wizard.checkStep(id,{}),'');
+ assert.equal(Wizard.summary({phone:'6316440633',receipt:'both',payment:'cash'}).promo,false);
+});
+test('Payment methods are validated and are not auto-verified',()=>{
+ assert.equal(Wizard.checkStep('payment',{payment:'cash'}),'');
+ assert.equal(Wizard.checkStep('payment',{payment:'venmo_info'}),'');
+ assert.ok(Wizard.checkStep('payment',{payment:'paid'}));
 });
 console.log('Persen POS: '+tests.length+' tests passed: '+tests.join('; '));
