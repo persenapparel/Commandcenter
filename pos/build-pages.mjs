@@ -4,9 +4,12 @@
    No production deployment happens by running this script locally. */
 import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {join} from 'node:path';
-const url=process.env.POS_SUPABASE_URL;
-const key=process.env.POS_SUPABASE_PUBLISHABLE_KEY;
+// CI can build a nonfunctional artifact with placeholders; real deployments require explicit staging settings.
+const ciDryRun=process.env.CI==='true' && !process.env.CF_PAGES && !process.env.POS_SUPABASE_URL && !process.env.POS_SUPABASE_PUBLISHABLE_KEY;
+const url=ciDryRun?'https://pos-ci-placeholder.supabase.co':process.env.POS_SUPABASE_URL;
+const key=ciDryRun?'sb_publishable_CI_PLACEHOLDER_NOT_FOR_DEPLOYMENT':process.env.POS_SUPABASE_PUBLISHABLE_KEY;
 if(!url||!key)throw Error('POS staging requires POS_SUPABASE_URL and POS_SUPABASE_PUBLISHABLE_KEY');
+if(ciDryRun)console.warn('CI DRY RUN ONLY: generated POS artifact is intentionally not connected to a database');
 const parsed=new URL(url);
 if(parsed.protocol!=='https:'||!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(url))throw Error('Invalid POS Supabase URL');
 if(parsed.hostname==='icxeuhkqxxhdkfdappio.supabase.co')throw Error('Refusing to build POS against production Supabase');
