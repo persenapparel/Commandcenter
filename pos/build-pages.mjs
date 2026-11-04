@@ -6,6 +6,8 @@ import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {join} from 'node:path';
 const dest='pos-dist';
 await mkdir(dest,{recursive:true});
+await mkdir(join(dest,'assets'),{recursive:true});
+await copyFile(join('assets','persen-logo.png'),join(dest,'assets','persen-logo.png'));
 for(const f of ['pos.css','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','pos-cash.js','register.js','display.js','pos-schema-review.sql','print-station.js','print-station.css']){
  await copyFile(join('pos',f),join(dest,f));
 }
