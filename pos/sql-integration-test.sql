@@ -72,16 +72,16 @@ select public.pos_submit_customer(:'secret'::uuid,:'second_checkout'::uuid,
  '(631) 555-0188',null,false,null,'no','cash',true,false);
 set role authenticated;
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
-do $$
-declare id uuid; failures integer:=0;
+do $
+declare target_checkout uuid; failures integer:=0;
 begin
- select id into id from public.pos_checkouts
- where status='contact_received' and register_id='33333333-3333-4333-8333-333333333333' limit 1;
+ select c.id into target_checkout from public.pos_checkouts c
+ where c.status='contact_received' and c.register_id='33333333-3333-4333-8333-333333333333' limit 1;
  begin
-  perform public.pos_complete_cash(id,1000,'{"1000":1}'::jsonb,'{}'::jsonb,2);
+  perform public.pos_complete_cash(target_checkout,1000,'{"1000":1}'::jsonb,'{}'::jsonb,2);
  exception when others then failures:=failures+1; end;
  begin
-  perform public.pos_complete_cash(id,10000,'{"10000":1}'::jsonb,'{}'::jsonb,2);
+  perform public.pos_complete_cash(target_checkout,10000,'{"10000":1}'::jsonb,'{}'::jsonb,2);
  exception when others then failures:=failures+1; end;
  if failures<>2 then raise exception 'Expected two cash rejections, got %',failures; end if;
 end $$;
