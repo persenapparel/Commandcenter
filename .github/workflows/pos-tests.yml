@@ -41,6 +41,8 @@ jobs:
           node --check pos/print-station.js
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Validate customer iPad wizard flow and no-SMS receipt policy
+        run: node pos/wizard-dom-check.cjs
       - name: Validate unapplied SQL draft structure
         run: node pos/sql-draft-check.cjs
       - name: Build separate static POS project
