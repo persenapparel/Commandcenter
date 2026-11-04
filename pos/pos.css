@@ -324,3 +324,9 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
  .wizard-navigation button{min-height:43px}
 }
 @media(prefers-reduced-motion:reduce){.wizard-step{animation:none}#progress-fill,.wizard-choice,.wizard-stars label span{transition:none}}
+
+
+/* One-tap opt-out of optional feedback for busy event lines. */
+.wizard-navigation{flex-wrap:wrap}
+.wizard-skip-optional{order:3;flex:1 1 100%;background:transparent!important;border:0!important;box-shadow:none!important;color:#5c759a!important;font-size:12px!important;text-decoration:underline;min-height:30px!important;padding:4px 8px!important;margin-top:-3px}
+.wizard-skip-optional:hover{color:#1a539a!important;background:transparent!important}
