@@ -9,7 +9,10 @@ function draw(){
  stock.filter(x=>[x.product_name,x.sku,x.color,x.size].join(' ').toLowerCase().includes(q)).forEach(x=>{
  const item=cart.find(c=>c.stock_id===x.id);const remaining=x.quantity-(item?.qty||0);const meta=variantMeta.get(x.id);
  const r=row(x.product_name||x.sku,'Add',()=>{if(checkout)return notice('Finish or cancel the open checkout first');if(remaining<=0)return notice('No stock available');if(item)item.qty++;else cart.push({stock_id:x.id,name:x.product_name||x.sku,color:x.color,size:x.size,qty:1,unit_cents:meta?.price_cents??0,service:'Apparel',taxable:meta?.taxable??true});draw();},[x.sku,x.color,x.size,'Available: '+remaining].join(' · '));
- const btn=r.querySelector('button');btn.disabled=remaining<=0;by('catalog').append(r);
+ const btn=r.querySelector('button');
+ btn.disabled=remaining<=0||!meta||!Number.isSafeInteger(meta.price_cents);
+ btn.title=!meta?'Configure a selling price in Product Manager first':remaining<=0?'Out of stock':'Add to cart';
+ by('catalog').append(r);
  });
  by('cart').replaceChildren();
  for(const [i,x] of cart.entries()){
@@ -20,8 +23,14 @@ function draw(){
  const remove=document.createElement('button');remove.textContent='×';remove.disabled=!!checkout;remove.onclick=()=>{cart.splice(i,1);draw()};r.append(title,qty,price,service,remove);by('cart').append(r);
  }
  try{by('total').textContent=C.money(current().total_cents)}catch(e){notice(e.message)}
- by('start').disabled=!!checkout||!cart.length;by('cancel').disabled=!checkout;
- by('discount').disabled=!!checkout;by('tax').disabled=!!checkout;renderCash();
+ syncCheckoutUI();renderCash();
+}
+// Lightweight status refresh: never rebuild the cart while the cashier types.
+function syncCheckoutUI(){
+ by('start').disabled=!!checkout||!cart.length;
+ by('cancel').disabled=!checkout;
+ by('discount').disabled=!!checkout;
+ by('tax').disabled=!!checkout;
 }
 async function loadStock(){
  stock=await check(db.from('stock_items').select('id,sku,product_name,color,size,quantity,reorder_at').order('sku').limit(1000));
@@ -53,7 +62,7 @@ async function status(){if(!register||busy)return;try{const list=await check(db.
  const receiptChannels=checkout?[checkout.receipt_print?'Print':null,checkout.receipt_email?'Email (delivery pending)':null].filter(Boolean):[];
  by('receipt-request-status').textContent=receiptChannels.length?'Requested receipt: '+receiptChannels.join(' · '):'No receipt selected yet.';
  by('status').textContent=c?({awaiting_customer:'Customer completing checkout screens',contact_received:'Customer choices saved · ready for cashier',completed:'Sale complete · receipt ready',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
- draw();
+ syncCheckoutUI();renderCash();
  }catch(e){notice('Connection lost: '+e.message)}}
 async function begin(){if(busy||checkout)return;busy=true;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=Math.round(C.percent(by('discount').value)*100),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
 async function cancel(){if(!checkout||busy)return;busy=true;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;resetTender();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
@@ -131,11 +140,41 @@ async function createEvent(e){
 // This form is only usable after pos_variant_details passes the staged migration review.
 function renderProductList(){
  const host=by('product-variants');if(!host)return;host.replaceChildren();
- for(const x of stock.slice(0,100)){
-  const m=variantMeta.get(x.id),div=document.createElement('div');div.className='product-variant-row';
-  const name=document.createElement('span');name.textContent=[x.product_name,x.color,x.size,x.sku].filter(Boolean).join(' · ');
-  const qty=document.createElement('strong');qty.textContent=x.quantity+' available · '+(m?C.money(m.price_cents):'Price not set');
-  div.append(name,qty);host.append(div);
+ const listed=[...stock].sort((a,b)=>Number(variantMeta.has(a.id))-Number(variantMeta.has(b.id))).slice(0,150);
+ for(const x of listed){
+  const m=variantMeta.get(x.id);
+  const div=document.createElement('div');div.className='product-variant-row';
+  const info=document.createElement('div');info.className='variant-info';
+  const title=document.createElement('strong');title.textContent=x.product_name||x.sku;
+  const details=document.createElement('small');details.textContent=[x.color,x.size,x.sku,x.quantity+' in stock'].filter(Boolean).join(' · ');
+  info.append(title,details);
+  const form=document.createElement('div');form.className='variant-quick-price';
+  const price=document.createElement('input');price.type='number';price.step='0.01';price.min='0';price.max='100000';price.inputMode='decimal';
+  price.placeholder='Price $';price.value=m?String((m.price_cents/100).toFixed(2)):'';
+  price.setAttribute('aria-label','Selling price for '+(x.product_name||x.sku));
+  const taxable=document.createElement('label');taxable.className='variant-tax-check';
+  const flag=document.createElement('input');flag.type='checkbox';flag.checked=m?.taxable??true;
+  taxable.append(flag,document.createTextNode('Taxable'));
+  const save=document.createElement('button');save.type='button';save.textContent=m?'Update price':'Set price';
+  save.onclick=async()=>{
+   if(checkout)return notice('Finish the current checkout before changing prices.');
+   save.disabled=true;
+   try{
+    if(!price.value.trim())throw Error('Enter a selling price.');
+    const cents=C.cents(price.value);
+    const metadata={stock_id:x.id,price_cents:cents,taxable:flag.checked,
+      category:m?.category||'Apparel',product_type:m?.product_type||'other',description:m?.description||''};
+    await check(db.from('pos_variant_details').upsert(metadata,{onConflict:'stock_id'}));
+    variantMeta.set(x.id,metadata);
+    draw();renderProductList();
+    notice('Saved selling price for '+(x.sku||x.product_name)+'.');
+   }catch(e){notice('Could not save price: '+e.message)}
+   finally{save.disabled=false}
+  };
+  form.append(price,taxable,save);div.append(info,form);host.append(div);
+ }
+ if(stock.length>150){
+   const more=document.createElement('p');more.className='hint';more.textContent='Showing 150 product variants, with unpriced items first. Use inventory search for the remaining items.';host.append(more);
  }
 }
 async function createVariant(e){
