@@ -77,3 +77,9 @@ JavaScript syntax verified for `pos-core.js`, `register.js`, `display.js` and th
 
 ### Remaining blockers
 Review and integration-test the SQL carefully with staged Supabase auth/RLS, high-value cash, stale drawer version conflicts and simultaneous cashiers. Confirm price-list support and taxes before taking real money. Verify iPad portrait/landscape touch layouts on actual devices. Install printer driver and test automatic printing with the NELKO; automated browser print requests are not evidence of printed paper.
+
+## November 4 follow-up audit — IMPORTANT DEPLOYMENT BLOCKER
+
+The live Supabase project's public schema was inspected using a read-only information_schema query. **Only stock_items exists; no pos_* tables are deployed.** The fast cash cashier currently calls `pos_set_cash_drawer` and a three-argument `pos_complete_cash` that are **not yet present in the baseline SQL draft**. The earlier experimental SQL edits were found malformed and reverted; the baseline SQL was restored and its print-function dollar quoting corrected. Do **not** apply the baseline SQL expecting the cash terminal to work. A clean, staged and reviewed migration must add the drawer columns, audit history, tender/change sale fields, and matching transactional cash RPCs before live testing.
+
+The POS GitHub Actions checks cover static builds and unit tests only. No real iPad, NELKO printer, checkout database writes or payment processing was performed. Keep the project private/development-only until staging integration tests and security review pass.
