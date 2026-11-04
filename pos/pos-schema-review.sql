@@ -17,6 +17,10 @@ create table if not exists public.pos_checkouts(
  register_id uuid not null references public.pos_registers(id),
  owner_id uuid not null references auth.users(id),
  status text not null default 'awaiting_customer' check(status in ('awaiting_customer','contact_received','completed','cancelled')),
+ customer_step text not null default 'phone'
+   check(customer_step in ('phone','receipt','email','payment','promos','rating','custom','review')),
+ help_requested boolean not null default false,
+ progress_updated_at timestamptz not null default now(),
  items jsonb not null,
  discount_bps integer not null default 0 check(discount_bps between 0 and 10000),
  tax_milli integer not null default 0 check(tax_milli between 0 and 20000),
@@ -222,6 +226,35 @@ begin
  if c.created_at<now()-interval '12 hours' then return jsonb_build_object('status','idle','register',r.label); end if;
  return jsonb_build_object('status',c.status,'register',r.label,'checkout_id',c.id,'items',c.items,'subtotal_cents',c.subtotal_cents,'discount_cents',c.discount_cents,'tax_cents',c.tax_cents,'total_cents',c.total_cents,'updated_at',c.updated_at);
 end $$;
+-- Only the step name and help flag are transmitted before final submission.
+-- No phone digits, email drafts, feedback answers or payment identifiers are stored as progress.
+-- This public draft RPC MUST be placed behind short-lived tokens, rate limiting and abuse checks before deployment.
+create or replace function public.pos_set_customer_progress(
+ p_secret uuid,p_checkout uuid,p_step text,p_need_help boolean default false
+)
+returns boolean language plpgsql security definer set search_path='' as $
+declare r public.pos_registers; c public.pos_checkouts;
+begin
+ if p_step is null or p_step not in
+   ('phone','receipt','email','payment','promos','rating','custom','review')
+ then raise exception 'Invalid checkout step'; end if;
+ select * into r from public.pos_registers
+ where display_secret=p_secret and active;
+ if not found then raise exception 'Register unavailable'; end if;
+ select * into c from public.pos_checkouts
+ where id=p_checkout and register_id=r.id for update;
+ if not found or c.status<>'awaiting_customer'
+    or c.created_at<now()-interval '30 minutes'
+ then raise exception 'Checkout unavailable'; end if;
+ update public.pos_checkouts
+ set customer_step=p_step,
+     help_requested=coalesce(p_need_help,false),
+     progress_updated_at=now(),
+     updated_at=now()
+ where id=c.id;
+ return true;
+end $;
+
 create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false,p_rating integer default null,p_interest text default 'not_answered',p_payment_preference text default 'cash',p_print_receipt boolean default true,p_email_receipt boolean default false)
 returns boolean language plpgsql security definer set search_path='' as $$
 declare r public.pos_registers; c public.pos_checkouts; digits text;
@@ -239,7 +272,7 @@ begin
   then raise exception 'Invalid payment method'; end if;
  if p_email_receipt=true and nullif(trim(coalesce(p_email,'')),'') is null
   then raise exception 'Email required when requesting an email receipt';end if;
- update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),payment_preference=coalesce(p_payment_preference,'cash'),receipt_print=coalesce(p_print_receipt,true),receipt_email=coalesce(p_email_receipt,false),rating=p_rating::smallint,custom_interest=coalesce(p_interest,'not_answered'),consent_updated_at=case when p_marketing_opt_in=true then now() else null end,status='contact_received',updated_at=now() where id=c.id;
+ update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),payment_preference=coalesce(p_payment_preference,'cash'),receipt_print=coalesce(p_print_receipt,true),receipt_email=coalesce(p_email_receipt,false),help_requested=false,customer_step='review',progress_updated_at=now(),rating=p_rating::smallint,custom_interest=coalesce(p_interest,'not_answered'),consent_updated_at=case when p_marketing_opt_in=true then now() else null end,status='contact_received',updated_at=now() where id=c.id;
  return true;
 end $$;
 create or replace function public.pos_cancel_checkout(p_checkout uuid)
@@ -451,6 +484,9 @@ revoke all on function public.pos_claim_print_job(uuid),
 public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) from public;
 grant execute on function public.pos_claim_print_job(uuid),
 public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) to authenticated;
+
+revoke all on function public.pos_set_customer_progress(uuid,uuid,text,boolean) from public;
+grant execute on function public.pos_set_customer_progress(uuid,uuid,text,boolean) to anon,authenticated;
 
 revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid,integer,jsonb,jsonb,integer) from public;
 grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid,integer,jsonb,jsonb,integer) to authenticated;
