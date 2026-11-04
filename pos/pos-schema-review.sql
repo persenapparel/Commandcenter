@@ -31,7 +31,6 @@ create table if not exists public.pos_checkouts(
   check(payment_preference in ('cash','venmo_info','apple_cash_info')),
  receipt_print boolean not null default true,
  receipt_email boolean not null default false,
- receipt_sms boolean not null default false,
  created_at timestamptz not null default now(),
  updated_at timestamptz not null default now()
 );
@@ -94,12 +93,12 @@ for select to authenticated
 using(owner_id=(select auth.uid()) and public.is_persen_admin());
 
 -- Receipt delivery choices remain separate from marketing consent.
--- No emails or texts are sent until an authorized sender is configured.
+-- Email receipts remain queued until an authorized transactional sender is configured. SMS receipts are not supported.
 create table if not exists public.pos_receipt_delivery_jobs(
  id uuid primary key default gen_random_uuid(),
  sale_id uuid not null references public.pos_sales(id),
  owner_id uuid not null references auth.users(id),
- channel text not null check(channel in ('email','sms')),
+ channel text not null check(channel='email'),
  status text not null default 'awaiting_sender'
    check(status in ('awaiting_sender','queued','sending','sent','failed')),
  attempts smallint not null default 0 check(attempts between 0 and 5),
@@ -223,7 +222,7 @@ begin
  if c.created_at<now()-interval '12 hours' then return jsonb_build_object('status','idle','register',r.label); end if;
  return jsonb_build_object('status',c.status,'register',r.label,'checkout_id',c.id,'items',c.items,'subtotal_cents',c.subtotal_cents,'discount_cents',c.discount_cents,'tax_cents',c.tax_cents,'total_cents',c.total_cents,'updated_at',c.updated_at);
 end $$;
-create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false,p_rating integer default null,p_interest text default 'not_answered',p_payment_preference text default 'cash',p_print_receipt boolean default true,p_email_receipt boolean default false,p_sms_receipt boolean default false)
+create or replace function public.pos_submit_customer(p_secret uuid,p_checkout uuid,p_phone text,p_email text default null,p_marketing_opt_in boolean default false,p_rating integer default null,p_interest text default 'not_answered',p_payment_preference text default 'cash',p_print_receipt boolean default true,p_email_receipt boolean default false)
 returns boolean language plpgsql security definer set search_path='' as $$
 declare r public.pos_registers; c public.pos_checkouts; digits text;
 begin
@@ -240,7 +239,7 @@ begin
   then raise exception 'Invalid payment method'; end if;
  if p_email_receipt=true and nullif(trim(coalesce(p_email,'')),'') is null
   then raise exception 'Email required when requesting an email receipt';end if;
- update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),payment_preference=coalesce(p_payment_preference,'cash'),receipt_print=coalesce(p_print_receipt,true),receipt_email=coalesce(p_email_receipt,false),receipt_sms=coalesce(p_sms_receipt,false),rating=p_rating::smallint,custom_interest=coalesce(p_interest,'not_answered'),consent_updated_at=case when p_marketing_opt_in=true then now() else null end,status='contact_received',updated_at=now() where id=c.id;
+ update public.pos_checkouts set phone=left(trim(p_phone),24),email=nullif(left(trim(p_email),250),''),marketing_opt_in=coalesce(p_marketing_opt_in,false),payment_preference=coalesce(p_payment_preference,'cash'),receipt_print=coalesce(p_print_receipt,true),receipt_email=coalesce(p_email_receipt,false),rating=p_rating::smallint,custom_interest=coalesce(p_interest,'not_answered'),consent_updated_at=case when p_marketing_opt_in=true then now() else null end,status='contact_received',updated_at=now() where id=c.id;
  return true;
 end $$;
 create or replace function public.pos_cancel_checkout(p_checkout uuid)
@@ -367,7 +366,7 @@ begin
    'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,
    'rating',c.rating,'custom_interest',c.custom_interest,
    'receipt_print',c.receipt_print,'receipt_email',c.receipt_email,
-   'receipt_sms',c.receipt_sms,'payment_preference',c.payment_preference),
+   'payment_preference',c.payment_preference),
   c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,
   'cash',p_tender_cents,change_due,payout
  ) returning id into sid;
@@ -378,10 +377,6 @@ begin
  if c.receipt_email and nullif(trim(coalesce(c.email,'')),'') is not null then
   insert into public.pos_receipt_delivery_jobs(sale_id,owner_id,channel)
   values(sid,(select auth.uid()),'email');
- end if;
- if c.receipt_sms and nullif(trim(coalesce(c.phone,'')),'') is not null then
-  insert into public.pos_receipt_delivery_jobs(sale_id,owner_id,channel)
-  values(sid,(select auth.uid()),'sms');
  end if;
  update public.pos_checkouts set status='completed',updated_at=now() where id=c.id;
  return sid;
@@ -457,8 +452,8 @@ public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) from pub
 grant execute on function public.pos_claim_print_job(uuid),
 public.pos_finish_print_job(uuid,text),public.pos_retry_print_job(uuid) to authenticated;
 
-revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean,boolean),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid,integer,jsonb,jsonb,integer) from public;
+revoke all on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid,integer,jsonb,jsonb,integer) from public;
 grant execute on function public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid),public.pos_cancel_checkout(uuid),public.pos_complete_cash(uuid,integer,jsonb,jsonb,integer) to authenticated;
-grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean,boolean) to anon,authenticated;
+grant execute on function public.pos_customer_view(uuid),public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean) to anon,authenticated;
 -- For production: put anonymous display RPCs behind an Edge Function with rate limits, short-lived tokens, and rotation.
 -- Do not activate these RPCs for untrusted public traffic until security review and abuse controls.
