@@ -1,0 +1,47 @@
+name: POS draft checks
+on:
+  push:
+    branches: [feature/persen-pos-foundation]
+    paths:
+      - 'pos/**'
+      - 'supabase/functions/pos-receipt-email/**'
+      - '.github/workflows/pos-draft-checks.yml'
+  pull_request:
+    paths:
+      - 'pos/**'
+      - 'supabase/functions/pos-receipt-email/**'
+      - '.github/workflows/pos-draft-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          for f in pos/*.js pos/*.cjs pos/*.mjs; do node --check "$f"; done
+      - name: Run POS unit tests
+        run: node pos/tests.cjs
+      - name: Test Resend receipt worker with offline mock provider
+        run: node pos/receipt-worker-smoke.cjs
+      - name: Run POS structural checks
+        run: |
+          if [ -f pos/structural-tests.cjs ]; then node pos/structural-tests.cjs; fi
+      - name: Build isolated POS site
+        run: node pos/build-pages.mjs
+      - name: Verify staging build cannot leak production database or draft SQL
+        run: |
+          test ! -e pos-dist/pos-schema-review.sql
+          if grep -q 'icxeuhkqxxhdkfdappio' pos-dist/config.js; then echo 'Production Supabase URL leaked into POS output' && exit 1; fi
+          if POS_SUPABASE_URL=https://icxeuhkqxxhdkfdappio.supabase.co POS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fake CF_PAGES=1 node pos/build-pages.mjs; then echo 'Production Supabase URL was wrongly accepted' && exit 1; fi
+      - name: Verify isolated build
+        run: |
+          test -f pos-dist/register.html
+          test -f pos-dist/display.html
+          test -f pos-dist/print-station.html
+          test -f pos-dist/assets/persen-logo.png

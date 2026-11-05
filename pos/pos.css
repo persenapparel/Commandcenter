@@ -1,0 +1,385 @@
+:root{font-family:Inter,Manrope,system-ui,sans-serif;color:#112543;background:#eef3fa}*{box-sizing:border-box}body{margin:0}header{height:72px;background:#0b2144;color:white;display:flex;align-items:center;gap:13px;padding:0 max(20px,calc((100vw - 1400px)/2))}header img{width:39px;height:39px;object-fit:contain}header strong{letter-spacing:.07em}header strong span{color:#8dbaff}header small{margin-left:auto;color:#bed0eb}main{max-width:1400px;margin:auto;padding:28px 20px 60px}.hero{display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:22px}.hero small{color:#5373a2;font-weight:800;letter-spacing:.13em}.hero h1{font-size:clamp(25px,3vw,42px);margin:8px 0}.hero p{color:#66788e}.tag{background:#fff2d8;color:#865500;padding:12px 18px;border-radius:99px;font-weight:700}.layout{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:18px}.panel{background:white;border:1px solid #dae3ef;border-radius:20px;padding:22px;box-shadow:0 12px 35px #0b214409}.panel h2{margin:0 0 18px;font-size:20px}.panel h3{margin:24px 0 10px;font-size:15px}input,textarea,select{width:100%;font:inherit;padding:12px;border:1px solid #cbd7e5;border-radius:10px;margin:6px 0 12px}button{cursor:pointer;border:1px solid #b5c9e5;background:#f3f7fd;color:#0b356d;font-weight:750;padding:11px 13px;border-radius:10px}button:hover:not(:disabled){background:#e4efff}button:disabled{opacity:.55;cursor:not-allowed}.primary{background:#1457c7;color:white;border:0;width:100%}.primary:hover:not(:disabled){background:#0c429e}.catalog{max-height:390px;overflow:auto}.product{padding:12px 0;border-bottom:1px solid #edf1f7;display:flex;justify-content:space-between;gap:10px;align-items:center}.product small,.hint{display:block;color:#708199;font-size:12px}.product button{white-space:nowrap}.cart{min-height:135px}.cart-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #edf1f7;gap:8px}.cart-row small{display:block;color:#77879b}.cart-row button{padding:6px 10px}.discount{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:14px 0}.discount label{width:100%;font-weight:700}.discount button{font-size:12px}.total{display:flex;justify-content:space-between;font-size:24px;font-weight:800;padding:15px 0;border-top:1px solid #e0e6f0}#status{background:#f3f7fd;padding:10px;border-radius:8px;color:#47618a}.tablet{background:#f7f9fc;border:8px solid #192b45;border-radius:25px;padding:22px 15px;text-align:center}.tablet-brand{font-weight:900;letter-spacing:.08em}.tablet strong{display:block;font-size:33px;margin:14px}.tablet label{text-align:left;display:block;font-size:12px;font-weight:700}.tablet .consent{display:flex;align-items:flex-start;gap:7px}.consent input{width:auto;margin:0}.payments{display:flex;flex-direction:column;gap:6px;margin-top:10px}.receipt-editor{display:grid;grid-template-columns:1fr auto;gap:30px;margin-top:18px;align-items:start}.receipt-editor>div{max-width:550px}.receipt-editor label{display:block;font-weight:700;font-size:13px}.paper{width:58mm;min-height:105mm;background:white;color:#111;padding:4mm 3mm;border:1px solid #ccc;box-shadow:0 10px 20px #0001;text-align:center;font:11px/1.45 monospace;overflow-wrap:anywhere}.paper-brand{font-size:15px;font-weight:900}.paper hr{border:0;border-top:1px dashed #777;margin:12px 0}.paper p{font-size:11px}.paper small{font-size:9px}.receipt-total{display:flex;justify-content:space-between;font-weight:900}.receipt-line{display:flex;justify-content:space-between;text-align:left;margin-top:8px}@media(max-width:1050px){.layout{grid-template-columns:1fr 1fr}.layout>.panel:last-child{grid-column:1/-1}.receipt-editor{grid-template-columns:1fr auto}}@media(max-width:650px){.layout,.receipt-editor{grid-template-columns:1fr}.layout>.panel:last-child{grid-column:auto}.hero{display:block}.tag{display:inline-block}.paper{margin:auto}}@page{size:58mm auto;margin:0}@media print{body *{visibility:hidden!important}#receipt,#receipt *{visibility:visible!important}#receipt{position:absolute;top:0;left:0;border:0;box-shadow:none;width:58mm;min-height:0;padding:3mm}}
+/* Cashier is touch-friendly on phones and laptops; iPad display uses the same style system. */
+[hidden]{display:none!important}
+.event-manager{margin-bottom:18px}
+.event-manager summary{cursor:pointer;font-weight:850;font-size:18px;list-style-position:inside;padding-bottom:8px}
+.event-manager summary small{font-weight:400;color:#61758b;margin-left:10px;font-size:12px}
+.event-columns{display:grid;grid-template-columns:1fr 1.3fr;gap:24px}
+.event-columns h3{margin:12px 0 8px}
+.event-columns label{font-weight:650;font-size:13px;display:block}
+.event-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:13px 0}
+.event-stat{background:#eff5ff;border-radius:12px;padding:12px;min-height:72px}
+.event-stat strong{font-size:19px;display:block;color:#113c76}
+.event-stat small{color:#61758b;font-size:11px}
+.service-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.service-table th,.service-table td{padding:9px 5px;border-bottom:1px solid #dfe8f3;text-align:left}
+.service-table td:last-child,.service-table th:last-child{text-align:right}
+.customer-questions{padding-top:18px;border-top:1px solid #dce6f5;margin:16px 0;text-align:left}
+.customer-questions h2{font-size:21px}
+.customer-questions fieldset{border:1px solid #d3dfed;border-radius:13px;margin:12px 0;padding:14px}
+.customer-questions legend{font-size:14px;font-weight:750;padding:0 5px}
+.customer-questions label{display:flex!important;align-items:center;gap:10px;margin:9px 0;font-size:14px!important;font-weight:500!important;line-height:1.4}
+.customer-questions input[type=radio]{width:19px!important;height:19px;flex:none;margin:0!important;accent-color:#1457c7}
+.customer-questions small{color:#687b90}
+.rating-choices{display:flex;flex-wrap:wrap;gap:9px;justify-content:space-between}
+.rating-choices label{background:#edf4ff;border-radius:9px;padding:9px}
+#new-event button{width:100%}
+@media(max-width:950px){.event-columns{grid-template-columns:1fr}}
+@media(max-width:650px){
+ header{height:auto;min-height:58px;flex-wrap:wrap;padding:13px 16px;gap:5px 11px}
+ header small{font-size:10px;margin-left:0;width:100%}
+ main{padding:15px 12px 90px}
+ .hero{margin-bottom:14px}.hero h1{font-size:25px}.hero p{font-size:13px}
+ .panel{padding:16px;border-radius:15px;margin-bottom:12px}
+ .event-manager summary small{display:block;margin:4px 0 0}
+ .event-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .event-columns{gap:10px}
+ .cart-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 90px 36px;gap:5px}
+ .cart-row input{width:100%!important;min-width:0;font-size:16px}
+ .cart-row>div{font-size:13px;overflow-wrap:anywhere}
+ .cart-row button{min-height:44px;padding:6px 8px}
+ input,textarea,select{font-size:16px!important;min-height:46px}
+ button{min-height:44px}
+ .total strong{font-size:24px}
+ .rating-choices label{flex:1;justify-content:center}
+ .customer-questions fieldset{padding:10px}
+}
+@media print{.event-manager{display:none!important}}
+
+/* Service category on cashier line items. */
+.cart-row:has(.service-picker){display:grid;grid-template-columns:minmax(120px,1fr) 65px 105px minmax(135px,165px) 38px;gap:8px;align-items:center}
+.cart-row .service-picker{margin:0;padding:8px;max-width:100%}
+@media(max-width:1050px){.cart-row:has(.service-picker){grid-template-columns:minmax(0,1fr) 60px 90px 38px}.cart-row .service-picker{grid-column:1/-1;grid-row:auto}}
+@media(max-width:650px){.cart-row:has(.service-picker){grid-template-columns:minmax(0,1fr) 62px 85px 34px}.cart-row .service-picker{grid-column:1/-1;width:100%!important}}
+
+
+/* Seasonal Studio accents only affect the POS UI, not printed ink color. */
+:root{--pos-season:#215dd8}
+.display-season-banner{margin:18px 0;padding:15px 16px;border:2px solid var(--pos-season);border-radius:14px;background:#f5f8ff;text-align:left}
+.display-season-banner strong{display:block;color:#142e55;font-size:17px}
+.display-season-banner p{margin-bottom:0;color:#445a7e;font-size:14px}
+#seasonal-status{background:#eff5ff;border-left:3px solid var(--pos-season);padding:8px 10px;border-radius:6px}
+#receipt a{color:inherit;text-decoration:none;overflow-wrap:anywhere}
+#receipt .receipt-breakdown>div{display:flex;justify-content:space-between;gap:6px;text-align:left;margin:5px 0}
+#receipt p{margin:10px 0}
+#receipt-review-message{font-weight:800}
+#receipt-season-message{font-weight:700}
+#receipt-thanks{font-weight:900;font-size:12px}
+input[type=checkbox]{min-width:19px;min-height:19px;accent-color:var(--pos-season)}
+@media (min-width:651px) and (max-width:1023px) and (orientation:portrait){
+  /* Most portrait iPads (~768-834 CSS px): use a readable one-column workflow. */
+  main{padding:18px}
+  .layout{grid-template-columns:1fr!important;gap:15px}
+  .layout>.panel:last-child{grid-column:auto!important}
+  .panel{padding:19px}
+  .event-columns{grid-template-columns:1fr 1fr;gap:20px}
+  .catalog{max-height:360px}
+  .cart-row:has(.service-picker){grid-template-columns:minmax(0,1fr) 80px 115px 145px 45px!important}
+  .cart-row .service-picker{grid-column:auto!important}
+  button{min-height:46px}
+}
+@media (min-width:1024px) and (orientation:landscape){
+  /* Landscape tablet: inventory, checkout and register status side-by-side. */
+  .layout{grid-template-columns:1.12fr 1fr 1fr}
+  .catalog{max-height:480px}
+}
+@media (max-width:650px){
+  /* Phone cashier: product selection and cart are comfortable touch targets. */
+  #workspace>.layout{grid-template-columns:1fr}
+  .receipt-breakdown{font-size:11px}
+}
+@media print{
+  html,body{margin:0;padding:0;width:58mm!important;background:white!important}
+  #receipt{font-size:10px!important;color:black!important}
+  #receipt-review-url{font-size:8px;overflow-wrap:anywhere;display:block}
+  .display-season-banner{display:none!important}
+  #receipt[hidden]{display:none!important}
+}
+
+
+/* Persen POS — fast cash tender, premium navy/blue register UI.
+   Separate from the customer display and optimized for touch input. */
+:root{
+ --pos-navy:#10284b;--pos-blue:#165ccd;--pos-accent:#3d7ae8;
+ --pos-mint:#dff8ef;--pos-muted:#65768f;
+}
+body{background:linear-gradient(160deg,#f3f7fd 0%,#e6f0ff 65%,#f8fbff 100%);min-height:100vh}
+header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #091d391b}
+.hero{background:linear-gradient(120deg,#112c59,#0d448c);color:#fff;padding:23px 27px;border-radius:22px;box-shadow:0 18px 40px #092f6530}
+.hero small,.hero h1,.hero p,.hero .hint{color:#fff!important}.hero small{opacity:.75}
+.hero h1{font-weight:900;letter-spacing:-.03em}
+.hero p{opacity:.9}.hero .tag{background:#fff0c3;color:#7b4c05;flex-shrink:0;font-size:12px}
+.panel{border:1px solid #e3eaf4;box-shadow:0 12px 34px #0d2c5e0a}
+.panel h2{font-weight:850;letter-spacing:-.02em}
+.product{border-radius:11px;padding:12px 9px;transition:background .12s}
+.product:hover{background:#f5f9ff}.product button{background:#e6f0ff;border-color:#accdfa}
+.primary{background:linear-gradient(135deg,#1564d6,#0d4cb9);box-shadow:0 5px 12px #1646a332}
+.primary:disabled{box-shadow:none}
+.cash-terminal{background:linear-gradient(155deg,#f6faff,#eef5ff);border:1px solid #d3e3fa;border-radius:19px;padding:18px;margin-top:18px}
+.terminal-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.terminal-heading h3{margin:3px 0 13px!important;font-size:20px!important;color:#0c315d}
+.eyebrow{font-size:10px;font-weight:900;letter-spacing:.15em;color:#3674bf}
+.terminal-icon{font-size:27px;background:#fff;border:1px solid #d9e7ff;width:50px;height:50px;display:grid;place-items:center;border-radius:15px}
+.amount-due{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:12px 15px;border-radius:13px;color:#395a81;font-size:14px}
+.amount-due strong{font-size:24px;color:#0a356b;letter-spacing:-.04em}
+.terminal-input-label{display:block;color:#173962;font-weight:760;font-size:13px;margin-top:15px}
+.cash-entry{position:relative}.cash-entry span{position:absolute;left:15px;top:13px;font-size:26px;font-weight:800;color:#7993b6}
+.cash-entry input{font-size:28px!important;line-height:1.2;font-weight:850;color:#102e5b;padding:12px 13px 12px 34px;min-height:64px;border:2px solid #8eb6f1;background:white}
+.cash-entry input:focus{outline:3px solid #72a8ff42;border-color:#3481f5}
+.cash-quick-actions{display:flex;gap:8px;margin:-3px 0 14px}
+.cash-quick-actions button{flex:1;background:#fff;min-height:40px}
+.cash-bills-label{font-weight:760;color:#214575;font-size:12px;margin-bottom:9px}
+.cash-bill-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cash-bill-grid button{background:white;color:#123d80;border:1px solid #b6cef0;border-radius:12px;font-size:18px;min-height:53px;box-shadow:0 3px 9px #091d3610}
+.cash-bill-grid button:active{background:#dbeaff;transform:translateY(1px)}
+.cash-bill-grid button:disabled{opacity:.4;box-shadow:none}
+.change-total{display:flex;justify-content:space-between;gap:8px;align-items:center;background:#10284b;color:#fff;border-radius:13px;margin-top:14px;padding:15px}
+.change-total small{display:block;color:#b1c6e5;font-size:12px}
+.change-total strong{display:block;color:#fff;font-size:29px;letter-spacing:-.035em;margin-top:3px}
+.change-indicator{font-size:10px;font-weight:850;background:#355075;color:#e6efff;border-radius:999px;padding:8px 10px;text-align:center;max-width:140px}
+.change-indicator.ready{background:#d8fbed;color:#135c40}.change-indicator.warning{background:#fff2d4;color:#835600}.change-indicator.blocked{background:#ffe0de;color:#952b2e}
+.cash-status{font-size:12px;font-weight:600;color:#395982;min-height:20px;margin:10px 1px}
+.change-breakdown{font-size:12px;color:#1b4976;background:white;border-radius:9px;padding:11px 13px;min-height:38px}
+.cash-confirm{min-height:53px;border-radius:12px;margin-top:14px;font-size:15px}
+.drawer-settings{margin-top:20px;padding-top:14px;border-top:1px solid #cdddf1}
+.drawer-settings summary{cursor:pointer;color:#1c4e86;font-weight:760;display:flex;justify-content:space-between;font-size:13px}
+.drawer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.drawer-denom{padding:8px 10px;background:#fff;border:1px solid #e0e8f4;border-radius:10px}
+.drawer-denom label{display:block;color:#36557a;font-size:12px;font-weight:750;margin-bottom:0}
+.drawer-denom input{margin:4px 0 0;min-height:41px;font-size:16px}
+.drawer-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:13px 0}
+.drawer-footer span{font-size:12px;color:#37547a}
+.drawer-footer button{white-space:nowrap}
+.drawer-settings>.hint{margin-bottom:0}
+.cash-terminal button:focus-visible,.cash-terminal input:focus-visible{outline:3px solid #3d8dff88;outline-offset:2px}
+@media(min-width:680px) and (max-width:1100px){
+ .cash-terminal{padding:20px}
+ .cash-bill-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+ .drawer-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:650px){
+ .hero{padding:18px 17px;border-radius:18px}
+ .cash-terminal{padding:14px;border-radius:15px}
+ .cash-bill-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cash-bill-grid button{min-height:55px}
+ .terminal-icon{width:43px;height:43px}
+ .drawer-footer{flex-wrap:wrap}
+}
+@media print{.cash-terminal{display:none!important}}
+
+
+/* Persen POS studio polish: minimal seasonal flourishes, accessible iPad touch choices */
+:root{--pos-season-soft:#f3f7fe}
+.experience-overline{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
+.experience-overline span[data-season-icon]{display:grid;place-items:center;width:31px;height:31px;background:#ffffff27;border:1px solid #ffffff35;border-radius:10px;font-size:19px}
+.experience-overline [data-season-easter-egg]{font-size:17px;opacity:.92}
+.setup-pills{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 16px}
+.setup-pills span{font-size:11px;color:#dae9ff;background:#ffffff24;border:1px solid #ffffff30;padding:6px 10px;border-radius:20px}
+.checkout-signal{display:inline-block;vertical-align:middle;margin-left:5px;font-size:10px;font-weight:750;letter-spacing:.01em;color:#184a80;background:#e9f3ff;padding:6px 9px;border-radius:20px}
+#external-payment-notice{padding:10px 11px;background:#fff4df;border-left:3px solid #c3893b;border-radius:8px;color:#80580e!important}
+.customer-device{max-width:760px;margin:auto;padding:22px 17px 65px}
+.customer-device>.panel{border-radius:25px;border:1px solid #dce7f6;box-shadow:0 18px 55px #173e7120;padding:29px;background:linear-gradient(178deg,#fff 75%,var(--pos-season-soft) 100%)}
+.customer-device .experience-overline{justify-content:center;color:var(--pos-season);font-size:12px}
+.customer-device .experience-overline [data-season-icon]{background:var(--pos-season-soft);border-color:#e4eaf3}
+.customer-device h1{font-size:clamp(28px,4vw,40px);letter-spacing:-.035em;margin:12px 0 5px;color:#122e57}
+.display-intro{color:#6b7f9c;font-size:13px;margin:0 0 17px}
+.customer-device .total{margin:12px 0;background:#0f2a53;color:#fff;border-radius:15px;padding:17px 22px}
+.customer-device .total strong{color:#fff;font-size:30px}
+.customer-device form{text-align:left}
+.customer-device form>label{display:block;color:#1b3965;font-size:13px;font-weight:760}
+.customer-device form>label input{margin-top:7px;min-height:48px;background:#fff;font-size:16px}
+.customer-receipt-options,.customer-pay-method{margin:18px 0;padding-top:13px;border-top:1px solid #dbe6f4}
+.customer-receipt-options h2,.customer-pay-method h2{font-size:19px;color:#123560;letter-spacing:-.02em;margin:0 0 13px}
+.receipt-choice-grid,.method-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.receipt-choice,.method-tile{position:relative;cursor:pointer;border:1px solid #d3e1f2;border-radius:15px;background:#fff;min-height:105px;padding:13px 11px;display:flex!important;gap:9px!important;text-align:left;align-items:flex-start!important;transition:box-shadow .15s,border-color .15s}
+.receipt-choice:has(input:checked),.method-tile:has(input:checked){border-color:var(--pos-season);background:var(--pos-season-soft);box-shadow:0 0 0 2px #4b83d41e}
+.receipt-choice input,.method-tile input{flex:0 0 auto;width:18px!important;height:18px;margin:2px 0 0!important;accent-color:var(--pos-season)}
+.receipt-choice strong,.method-tile strong{display:block;font-size:13px;color:#12345e;line-height:1.35}
+.receipt-choice small,.method-tile small{display:block;font-size:11px;color:#6d7e94;line-height:1.35;margin-top:5px}
+.payment-instructions{border:1px solid #cee0f4;border-left:4px solid var(--pos-season);padding:14px 16px;margin:12px 0 8px;border-radius:11px;background:#fff}
+.payment-instructions strong{color:#183b67;font-size:14px}
+.payment-instructions p{margin:6px 0 0;color:#516986;font-size:13px;line-height:1.55}
+.payment-instructions[data-method="venmo_info"],.payment-instructions[data-method="apple_cash_info"]{background:#fff8eb;border-left-color:#c48734}
+.customer-questions{margin-top:18px}
+.customer-device .primary{min-height:52px;font-size:15px;border-radius:12px}
+.customer-device .hint{font-size:11px;line-height:1.5}
+.customer-device .display-season-banner{background:var(--pos-season-soft);border-color:var(--pos-season)}
+.customer-device .display-season-banner p{font-size:13px}
+@media(max-width:650px){.customer-device{padding:10px 10px 45px}.customer-device>.panel{padding:18px 15px;border-radius:18px}.receipt-choice-grid,.method-grid{grid-template-columns:1fr}.receipt-choice,.method-tile{min-height:60px;align-items:center!important}.customer-device .total{padding:14px}}
+@media(min-width:850px) and (orientation:landscape){.customer-device{max-width:880px}.customer-device>.panel{padding:31px 37px}.customer-device .total{margin-left:auto;margin-right:auto;max-width:600px}}
+@media(prefers-reduced-motion:reduce){.receipt-choice,.method-tile,.product,.cash-bill-grid button{transition:none!important}}
+[data-season="christmas"] .customer-device .experience-overline span[data-season-easter-egg]{transform:rotate(-8deg)}
+[data-season="halloween"] .customer-device .experience-overline span[data-season-easter-egg]{transform:rotate(9deg)}
+
+
+/* Official brand logo and monochrome-friendly seasonal receipt heading. */
+.pos-brand-logo{width:42px;height:42px;object-fit:contain;flex-shrink:0;background:#fff;border-radius:8px;padding:3px}
+.pos-brand-logo[hidden]{display:none!important}
+.paper-logo{display:block;width:auto;max-width:40mm;max-height:18mm;margin:0 auto 6px;object-fit:contain;filter:grayscale(1) contrast(2.5)}
+.paper-logo[hidden]{display:none!important}
+.receipt-season-heading{display:block;text-align:center;border-top:1px dashed #111;border-bottom:1px dashed #111;font-size:10px;font-weight:900;line-height:1.4;padding:5px 0;letter-spacing:.02em;overflow-wrap:anywhere}
+.receipt-season-heading[hidden]{display:none!important}
+@media print{.paper-logo{max-height:16mm;filter:grayscale(1) contrast(3)}.receipt-season-heading{color:#000}}
+
+
+/* Customer checkout v2: simple, quiet step-by-step pages on a dedicated iPad. */
+.kiosk-body{background:radial-gradient(ellipse at 55% -15%,#dceaff 0%,#eef4fd 45%,#f9fbff 100%);}
+.kiosk-header{position:relative}
+.customer-device.customer-wizard{max-width:690px;margin:0 auto;padding:18px 14px 54px}
+.customer-wizard>.kiosk-shell{margin-top:0!important;padding:22px 27px 26px;border-radius:25px;min-height:540px;box-shadow:0 20px 65px #10386b1c;overflow:visible}
+.customer-wizard .experience-overline{font-size:11px;letter-spacing:.11em}
+.customer-wizard .display-season-banner{margin:14px 0;padding:10px 13px}
+.kiosk-order-summary{text-align:left;margin:16px 0 18px;background:#f5f8ff;border:1px solid #e2ecf9;border-radius:17px;overflow:hidden}
+.order-summary-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 17px}
+.kiosk-order-summary .eyebrow{font-size:10px;color:#5680b5}
+#state{margin:5px 0 0;font-size:12px;line-height:1.45;color:#536b8d}
+.order-total-box{flex:none;text-align:right}
+.order-total-box span{display:block;font-size:10px;font-weight:720;color:#617e9d;text-transform:uppercase}
+.order-total-box strong{display:block;font-size:24px;color:#123c7b;line-height:1.25;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.order-details{border-top:1px solid #e5edf8}
+.order-details summary{font-size:12px;padding:10px 17px;color:#3463a5;font-weight:800;cursor:pointer;list-style:inside}
+.order-details summary span{float:right}
+.order-details #items{min-height:0;padding:0 17px 9px}
+.order-details #items .cart-row{font-size:12px}
+.customer-wizard #contact{text-align:left}
+.wizard-progress{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800;color:#5475a3;letter-spacing:.03em;margin-bottom:7px}
+.progress-track{height:6px;background:#e4edf8;overflow:hidden;border-radius:100px}
+#progress-fill{display:block;height:100%;width:12.5%;background:linear-gradient(90deg,var(--pos-season),#629beb);border-radius:100px;transition:width .15s ease}
+.wizard-step{text-align:center;padding:16px 0 10px;min-height:330px;animation:kiosk-step-enter .16s ease-out}
+.wizard-step[hidden]{display:none!important}
+.wizard-step .step-icon{width:51px;height:51px;border-radius:16px;background:var(--pos-season-soft,#e9f2ff);color:var(--pos-season,#275bbd);border:1px solid #e0e9f4;margin:0 auto 12px;font-size:24px;display:grid;place-items:center;font-weight:900}
+.customer-wizard .wizard-step h1{font-size:clamp(22px,3.3vw,29px);line-height:1.18;margin:4px 0 9px;font-weight:900;color:#103261;letter-spacing:-.035em;outline:none}
+.wizard-step .step-subtitle{margin:0 auto 18px;font-size:13px;line-height:1.55;color:#657b98;max-width:490px}
+.wizard-step .step-helper{font-size:11px;color:#7d8fa8;line-height:1.5;margin:11px auto 0;max-width:420px}
+.kiosk-phone-display{font-size:clamp(23px,3.8vw,31px)!important;font-weight:850!important;text-align:center;letter-spacing:.04em;color:#123c7c!important;max-width:355px;height:64px;min-height:64px;background:#f5f9ff!important;border:2px solid #bcd5f5!important;border-radius:15px!important;font-variant-numeric:tabular-nums;caret-color:transparent;margin:3px auto 12px!important;padding:12px!important}
+.kiosk-phone-display::placeholder{font-weight:400;font-size:17px;letter-spacing:.015em;color:#a0b4cf}
+.phone-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;max-width:334px;margin:0 auto}
+.phone-keypad button{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:0;height:54px;min-height:54px;background:#fff;border-radius:13px;border:1px solid #d9e5f5;font-size:23px;font-weight:800;color:#174476;box-shadow:0 2px 5px #123c6a0e;padding:3px}
+.phone-keypad button small{display:block;min-height:10px;color:#8ba0bc;font-size:8px;letter-spacing:.1em;font-weight:800}
+.phone-keypad button:active{background:#dceaff;transform:scale(.985)}
+.phone-keypad .key-action{font-size:14px;color:#5177a5;background:#f5f8fe}
+.wizard-choice-stack{max-width:510px;margin:0 auto;display:grid;gap:9px}
+.wizard-choice{position:relative;display:flex!important;align-items:center!important;gap:15px!important;min-height:80px;text-align:left;cursor:pointer;border:1.5px solid #dce6f4;border-radius:15px;background:#fff;padding:12px 14px;margin:0!important;transition:background .14s,border-color .14s,box-shadow .14s}
+.wizard-choice input[type=radio]{width:20px!important;height:20px;flex:0 0 auto;margin:0!important;accent-color:var(--pos-season)}
+.wizard-choice:has(input:checked){background:var(--pos-season-soft,#edf4ff);border-color:var(--pos-season,#2e69c7);box-shadow:0 0 0 2px #3173b812}
+.wizard-choice .choice-icon{display:grid;place-items:center;flex:0 0 41px;width:41px;height:41px;border-radius:12px;background:#eef4fe;color:#265cb2;font-size:19px;font-weight:900}
+.wizard-choice .choice-copy{min-width:0;flex:1}
+.wizard-choice .choice-copy strong{display:block;font-size:14px;font-weight:850;color:#183864;line-height:1.3}
+.wizard-choice .choice-copy small{display:block;margin:4px 0 0;font-size:11px;color:#75859b;line-height:1.4}
+.wizard-choice .choice-tick{opacity:0;background:#1a70d2;border-radius:50%;width:19px;height:19px;color:white;text-align:center;line-height:19px;font-size:12px;font-weight:900}
+.wizard-choice:has(input:checked) .choice-tick{opacity:1}
+.wizard-field-label{display:block;max-width:510px;margin:12px auto 4px;text-align:left;font-size:12px;font-weight:850;color:#335986}
+.kiosk-email{width:100%;max-width:510px;font-size:18px!important;font-weight:700!important;min-height:62px;padding:15px!important;border:1.5px solid #c6d9ef!important;text-align:center;border-radius:14px!important;letter-spacing:.01em}
+.kiosk-email:focus{outline:3px solid #83b6ef50;border-color:#4e8de0!important}
+.wizard-step .payment-instructions{text-align:left;max-width:510px;margin:13px auto 0}
+.wizard-stars{display:flex;gap:9px;justify-content:center;margin:20px auto 15px;max-width:510px}
+.wizard-stars label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:1;cursor:pointer;padding:15px 6px;border-radius:14px;border:1px solid #dbe5f2;background:white}
+.wizard-stars input{position:absolute;opacity:0;width:1px!important;height:1px!important}
+.wizard-stars label span{font-size:34px;color:#bdc8d7;transition:color .1s,transform .1s}
+.wizard-stars label small{font-size:11px;font-weight:900;color:#6f87a3}
+.wizard-stars label:has(input:checked){border-color:#d3a23c;background:#fff8e7;box-shadow:0 0 0 2px #dbbb6b30}
+.wizard-stars label:has(input:checked) span{color:#d9a229;transform:scale(1.12)}
+.wizard-stars label:focus-within{outline:3px solid #8ab8f2}
+.wizard-review-summary{max-width:510px;margin:12px auto 0;text-align:left;background:#f8faff;border:1px solid #e4edf7;border-radius:15px;padding:8px 15px}
+.wizard-review-row{display:flex;justify-content:space-between;align-items:baseline;gap:13px;padding:11px 0;border-bottom:1px solid #e5edf8}
+.wizard-review-row:last-child{border-bottom:0}
+.wizard-review-row span{color:#6d809b;font-size:12px}
+.wizard-review-row strong{text-align:right;overflow-wrap:anywhere;color:#173964;font-weight:800;font-size:12px}
+.wizard-navigation{display:flex;align-items:center;gap:10px;margin-top:13px}
+.wizard-navigation button{min-height:55px;border-radius:14px;font-size:14px;font-weight:850}
+.wizard-navigation .wizard-back{flex:0 0 120px;background:#edf3fc;border-color:#d7e3f2}
+.wizard-navigation .wizard-next{flex:1;margin:0;box-shadow:0 6px 18px #124a9c29}
+.wizard-secure-note{margin:12px 0 0;color:#8391a7;font-size:10px;text-align:center}
+.step-error{background:#fff3ec;border:1px solid #f2c7a6;color:#9b3c22;border-radius:10px;padding:9px 11px;margin:13px 0 0;font-size:12px;font-weight:700;line-height:1.45}
+.kiosk-finished{text-align:center;padding:56px 15px 62px}
+.finished-icon{display:grid;place-items:center;margin:0 auto 18px;background:#e0f7ed;width:75px;height:75px;border-radius:22px;font-weight:900;font-size:32px;color:#16754f}
+.kiosk-finished h2{font-size:28px;color:#133b71;margin:0 0 10px}
+.kiosk-finished p{max-width:410px;margin:0 auto;line-height:1.55;color:#72869e;font-size:14px}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;border:0!important}
+@keyframes kiosk-step-enter{from{opacity:.6;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:650px){
+ .customer-device.customer-wizard{padding:9px 9px 35px}
+ .customer-wizard>.kiosk-shell{padding:15px;border-radius:18px;min-height:0}
+ .customer-wizard .wizard-step h1{font-size:24px}
+ .wizard-step{min-height:0;padding-top:12px}
+ .phone-keypad button{height:59px;min-height:59px}
+ .wizard-choice{min-height:75px;padding:9px}
+ .wizard-choice .choice-icon{width:35px;flex-basis:35px}
+ .wizard-navigation .wizard-back{flex-basis:96px}
+ .wizard-stars label span{font-size:27px}
+ .order-summary-head{padding:10px 12px}
+ .order-total-box strong{font-size:22px}
+}
+@media(min-width:700px) and (orientation:landscape) and (max-height:700px){
+ .customer-device.customer-wizard{max-width:850px}
+ .customer-wizard>.kiosk-shell{padding:14px 26px}
+ .kiosk-order-summary{margin:9px 0 13px}
+ .order-summary-head{padding:8px 13px}
+ .wizard-step{min-height:0;padding:7px 0}
+ .wizard-step .step-icon{width:37px;height:37px;font-size:20px;margin-bottom:7px}
+ .wizard-step .step-subtitle{margin-bottom:10px}
+ .phone-keypad{max-width:430px;gap:7px}
+ .phone-keypad button{height:43px;min-height:43px}
+ .kiosk-phone-display{height:52px;min-height:52px;margin:0 auto 8px!important}
+ .wizard-navigation button{min-height:43px}
+}
+@media(prefers-reduced-motion:reduce){.wizard-step{animation:none}#progress-fill,.wizard-choice,.wizard-stars label span{transition:none}}
+
+
+/* One-tap opt-out of optional feedback for busy event lines. */
+.wizard-navigation{flex-wrap:wrap}
+.wizard-skip-optional{order:3;flex:1 1 100%;background:transparent!important;border:0!important;box-shadow:none!important;color:#5c759a!important;font-size:12px!important;text-decoration:underline;min-height:30px!important;padding:4px 8px!important;margin-top:-3px}
+.wizard-skip-optional:hover{color:#1a539a!important;background:transparent!important}
+
+
+/* Cashier assistance: a small clear live-progress card, without exposing typed customer data. */
+.cashier-customer-progress{margin:12px 0 14px;padding:15px;border:1px solid #d5e5fa;border-radius:16px;background:linear-gradient(130deg,#f4f9ff,#edf5ff)}
+.cashier-progress-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.cashier-progress-heading strong{font-size:12px;color:#164a8b}
+.cashier-progress-track{height:8px;background:#dbe8fb;overflow:hidden;border-radius:100px;margin:12px 0 11px}
+.cashier-progress-track span{display:block;height:100%;width:0%;border-radius:100px;background:var(--pos-season,#2b72da);transition:width .2s}
+#cashier-current-step{font-size:15px;color:#1d4e85;font-weight:850;margin:0 0 7px}
+.cashier-customer-progress .hint{line-height:1.45;margin:7px 0 0}
+.customer-help-alert{display:flex;gap:4px;flex-direction:column;margin-top:10px;background:#fff2d9;color:#885116;border-radius:11px;border:1px solid #ebcb8e;padding:11px 13px}
+.customer-help-alert strong{font-size:13px}
+.customer-help-alert span{font-size:11px}
+.cashier-payment-help,.dell-printer-guide{border:1px solid #d9e6f6;border-radius:12px;margin:12px 0;padding:11px 13px;background:#f8fbff}
+.cashier-payment-help summary,.dell-printer-guide summary{color:#164b88;font-size:13px;font-weight:850;cursor:pointer}
+.cashier-payment-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.cashier-payment-option{background:white;padding:12px;border:1px solid #e0eaf8;border-radius:11px;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.cashier-payment-option span{font-size:11px;color:#657a96;line-height:1.45}
+.cashier-payment-option strong{font-size:17px;color:#123f7a;overflow-wrap:anywhere}
+.cashier-payment-option button{font-size:11px;min-height:39px;white-space:nowrap}
+.dell-printer-guide ol{margin:12px 0 8px;padding-left:22px;font-size:12px;color:#3e5c80;line-height:1.6}
+.dell-printer-guide li{margin:7px 0}
+.customer-help-row{margin:14px 0 6px;display:flex;align-items:center;flex-direction:column;gap:4px}
+.customer-help-button{background:#f3f7ff!important;border:1px solid #c8dafa!important;color:#21568c!important;border-radius:999px!important;font-size:12px!important;min-height:44px!important;padding:9px 16px!important}
+.customer-help-button.requested{background:#fff0d5!important;border-color:#e8b967!important;color:#80541a!important}
+.customer-help-state{margin:3px auto 0;max-width:400px;text-align:center;font-size:11px;line-height:1.5;color:#7187a2}
+.kiosk-payment-identifier{padding:10px 13px;background:#f4f8ff;border-radius:9px;border:1px solid #cedef6;margin:9px 0;font-size:22px;font-weight:900;letter-spacing:.015em;color:#143b79;text-align:center;overflow-wrap:anywhere}
+@media(max-width:650px){.cashier-payment-options{grid-template-columns:1fr}.cashier-progress-heading{flex-wrap:wrap}.kiosk-payment-identifier{font-size:20px}}
+@media(prefers-reduced-motion:reduce){.cashier-progress-track span{transition:none}}
+
+/* Fast admin event/product management — isolated to POS */
+.product-manager{margin:12px 0 18px;padding:14px;border:1px solid #d6e4f5;border-radius:14px;background:#f8fbff}
+.product-manager summary{cursor:pointer;font-weight:800;color:#17477f}
+#new-product,#edit-event{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+#new-product label,#edit-event label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700}
+#new-product input,#new-product select,#new-product textarea,#edit-event input,#edit-event select{width:100%;min-width:0}
+#new-product button,#edit-event button{grid-column:1/-1}
+#edit-event[hidden]{display:none}
+.product-variant-row{display:flex;justify-content:space-between;gap:12px;padding:9px 3px;border-bottom:1px solid #dbe7f4;font-size:12px}
+@media(max-width:650px){#new-product,#edit-event{grid-template-columns:1fr}.product-variant-row{flex-direction:column;gap:3px}}
+
+
+/* Quick price editing for existing inventory without remaking a product. */
+.product-variant-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 14px;border:1px solid #e0eafa;border-radius:13px;background:#fff;margin:8px 0}
+.variant-info{min-width:150px;flex:1 1 180px}
+.variant-info strong{display:block;font-size:13px;color:#12345f;line-height:1.35}
+.variant-info small{display:block;color:#637b99;font-size:11px;line-height:1.5}
+.variant-quick-price{flex:1 1 220px;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.variant-quick-price input[type=number]{width:105px;min-height:40px;margin:0;font-size:14px}
+.variant-tax-check{display:inline-flex;align-items:center;gap:5px;color:#375d86;font-size:11px;font-weight:750;margin:0;white-space:nowrap}
+.variant-tax-check input{width:auto!important;accent-color:#246bd0;margin:0!important}
+.variant-quick-price button{min-height:41px;background:#eaf3ff;border-color:#bad4f9;color:#1555a2;font-size:12px}
+@media(max-width:650px){.variant-quick-price{justify-content:flex-start}.variant-quick-price input[type=number]{width:105px}}
