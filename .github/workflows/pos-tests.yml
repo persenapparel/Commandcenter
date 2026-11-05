@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   pos-static-and-unit-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     services:
       postgres:
