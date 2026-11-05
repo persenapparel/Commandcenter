@@ -89,6 +89,11 @@ jobs:
           test -f pos-dist/pos-cash.js
           test -f pos-dist/pos-experience.js
           test -f pos-dist/pos-digital-receipt.js
+      - name: Test real browser layouts on phones iPads and laptops
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node pos/responsive-viewport-smoke.cjs
       - name: Verify no payment backend is executed by tests
         run: |
           echo "Static build and offline unit tests only; do not run live payments or production DB changes"
