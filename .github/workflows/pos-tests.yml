@@ -75,6 +75,7 @@ jobs:
           command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
           psql -v ON_ERROR_STOP=1 -f pos/sql-integration-bootstrap.sql
           psql -v ON_ERROR_STOP=1 -f pos/pos-schema-review.sql
+          psql -v ON_ERROR_STOP=1 -f pos/STAGING-DISPLAY-PAIRING.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql-integration-test.sql
       - name: Build separate static POS project
         run: |
