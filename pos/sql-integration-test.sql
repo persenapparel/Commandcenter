@@ -5,14 +5,8 @@
 -- Assert secure DEFAULTS before temporarily enabling customer RPCs for this isolated CI fixture.
 select 1/(case when NOT has_function_privilege('anon','public.pos_begin_checkout(uuid,jsonb,integer,integer,uuid)','EXECUTE') then 1 else 0 end) as anon_cannot_begin_sale;
 select 1/(case when NOT has_function_privilege('anon','public.pos_complete_cash(uuid,integer,jsonb,jsonb,integer)','EXECUTE') then 1 else 0 end) as anon_cannot_settle_cash;
-select 1/(case when NOT has_function_privilege('anon','public.pos_customer_view(uuid)','EXECUTE') then 1 else 0 end) as customer_rpc_locked_by_default;
--- DISPOSABLE PostgreSQL CI ONLY: mock customer interactions; these grants are NOT part of the schema or staging deploy.
-grant execute on function
- public.pos_customer_view(uuid),
- public.pos_set_customer_progress(uuid,uuid,text,boolean),
- public.pos_submit_customer(uuid,uuid,text,text,boolean,integer,text,text,boolean,boolean)
-to anon;
-
+select 1/(case when has_function_privilege('anon','public.pos_customer_view(uuid)','EXECUTE') then 1 else 0 end) as token_customer_rpc_enabled;
+select 1/(case when NOT has_function_privilege('anon','public.pos_issue_display_pairing(uuid)','EXECUTE') then 1 else 0 end) as anonymous_cannot_issue_pairing;
 
 set role authenticated;
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
@@ -23,8 +17,11 @@ insert into public.pos_variant_details(stock_id,price_cents,taxable,category,pro
 insert into public.pos_events(id,owner_id,name,event_date,status)
  values('44444444-4444-4444-8444-444444444444','11111111-1111-4111-8111-111111111111','Test fair',current_date,'open');
 
-select display_secret as secret from public.pos_registers
+-- A newly created register secret must not work until owner issues a temporary pair.
+select display_secret as old_secret from public.pos_registers
 where id='33333333-3333-4333-8333-333333333333' \gset
+select 1/(case when public.pos_customer_view(:'old_secret'::uuid)->>'status'='unpaired' then 1 else 0 end) as permanent_link_disabled;
+select public.pos_issue_display_pairing('33333333-3333-4333-8333-333333333333'::uuid) as secret \gset
 
 select public.pos_begin_checkout(
 '33333333-3333-4333-8333-333333333333',
@@ -121,4 +118,13 @@ select 1/(case when quantity=4 then 1 else 0 end) as failed_checkouts_do_not_ded
  from public.stock_items where id='22222222-2222-4222-8222-222222222222';
 select 1/(case when count(*)=1 then 1 else 0 end) as no_extra_sales from public.pos_sales;
 select 1/(case when not has_table_privilege('anon','public.pos_sales','SELECT') then 1 else 0 end) as anon_cannot_read_sales;
+-- Expiry must close even a formerly valid device link.
+set role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+update public.pos_registers set display_expires_at=now()-interval '1 second'
+where id='33333333-3333-4333-8333-333333333333';
+set role anon;
+select set_config('request.jwt.claim.sub','',false);
+select 1/(case when public.pos_customer_view(:'secret'::uuid)->>'status'='unpaired' then 1 else 0 end) as expired_pairing_rejected;
+
 \echo 'POS staged PostgreSQL checkout integration PASS (never connected to production)'
