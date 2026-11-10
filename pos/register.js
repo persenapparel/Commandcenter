@@ -35,7 +35,7 @@ function renderQuickCatalog(){
  const q=by('search').value.trim().toLowerCase();
  const groups=new Map();for(const x of stock){
   const cfg=inventoryCatalog.get(String(x.product_name||'').trim().toLowerCase());
-  if(cfg&&(cfg.inventory_type!=='sales'||cfg.is_active===false))continue;
+  if(inventoryCatalog.size&&(!cfg||cfg.inventory_type!=='sales'||cfg.is_active===false))continue;
   const m=variantMeta.get(x.id),category=m?.category||'Apparel';
   const key=(x.product_name||x.sku).trim()+'|'+category;
   if(!groups.has(key))groups.set(key,{name:x.product_name||x.sku,category,variants:[],type:m?.product_type||'other'});
@@ -73,13 +73,13 @@ function renderQuickCatalog(){
  }
  if(!matching.length){const empty=document.createElement('div');empty.className='quick-empty';empty.textContent=stock.length?'No matching sales products. Search for more or change the event.':'No sales products yet. Add them under Sales Products first.';host.append(empty)}
  if(pinned.length&&!q&&chosenCategory==='All'){const hint=document.createElement('p');hint.className='quick-event-hint';hint.textContent='Showing '+pinned.length+' event quick tiles. Search above to see more Sales Products.';host.append(hint)}
- const readyCount=stock.filter(x=>x.quantity>0&&variantMeta.has(x.id)&&(!inventoryCatalog.has(String(x.product_name||'').trim().toLowerCase())||inventoryCatalog.get(String(x.product_name||'').trim().toLowerCase()).inventory_type==='sales')).length;
+ const readyCount=stock.filter(x=>x.quantity>0&&variantMeta.has(x.id)&&(!inventoryCatalog.size||inventoryCatalog.get(String(x.product_name||'').trim().toLowerCase())?.inventory_type==='sales')).length;
  by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
  by('open-register').disabled=readyCount===0;
 }
 function setRegisterOpen(open){
  if(!open&&checkout)return notice('Finish or cancel the open checkout before closing the register.');
- if(open&&!stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))return notice('First add at least one priced, in-stock item in Laptop Back Office.');
+ if(open&&!stock.some(x=>x.quantity>0&&variantMeta.has(x.id)&&(!inventoryCatalog.size||inventoryCatalog.get(String(x.product_name||'').trim().toLowerCase())?.inventory_type==='sales')))return notice('First add at least one priced Sales Product.');
  document.body.classList.toggle('pos-register-closed',!open);
  sessionStorage.setItem('pos-register-open',open?'1':'0');
  if(open)notice('Register open. Tap a product, pick the size/color and send checkout to the customer iPad.');
@@ -134,8 +134,8 @@ async function loadStock(){
  }catch(e){notice('POS variant prices unavailable: '+e.message)}
  for(const item of stock){
   const cfg=inventoryCatalog.get(String(item.product_name||'').trim().toLowerCase());
-  if(cfg?.inventory_type==='sales'&&cfg.is_active!==false&&Number.isSafeInteger(cfg.price_cents)&&cfg.price_cents>0&&!variantMeta.has(item.id))
-    variantMeta.set(item.id,{price_cents:cfg.price_cents,taxable:true,category:'Apparel',product_type:'other'});
+  if(cfg?.inventory_type==='sales'&&cfg.is_active!==false&&Number.isSafeInteger(cfg.price_cents)&&cfg.price_cents>0)
+    variantMeta.set(item.id,{...variantMeta.get(item.id),price_cents:cfg.price_cents,taxable:variantMeta.get(item.id)?.taxable!==false,category:variantMeta.get(item.id)?.category||'Apparel',product_type:variantMeta.get(item.id)?.product_type||'other'});
  }
  draw();renderProductList();
 }
