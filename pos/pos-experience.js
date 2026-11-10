@@ -27,7 +27,7 @@ function presetFor(input){
  return Object.keys(presets).filter(x=>x!=='default').find(x=>theme.includes(x))||'default';
 }
 function palette(campaign){
- const k=presetFor(campaign),base=presets[k];
+ const k=campaign?.published===true?presetFor(campaign):'default',base=presets[k];
  const name=campaign?.published===true?String(campaign.title||base.name).trim().slice(0,80):'Persen Apparel';
  return {key:k,name,icon:base.icon,secondary:base.secondary,
   accent:campaign?.published===true?safeHex(campaign.accent,base.accent):presets.default.accent,
@@ -45,8 +45,8 @@ function apply(doc,campaign){
  const selected=choice==='auto'?campaign:choice==='simple'?null:{published:true,theme:choice};
  const p=palette(selected);
  const root=doc.documentElement;
- root.style.setProperty('--pos-season',p.accent);
- root.style.setProperty('--pos-season-soft',p.background);
+ root.style.setProperty('--pos-season',simple?'#111111':p.accent);
+ root.style.setProperty('--pos-season-soft',simple?'#ffffff':p.background);
  root.dataset.season=simple?'simple':p.key;
  root.dataset.posAppearance=simple?'simple':'festive';
  const badges=doc.querySelectorAll('[data-season-icon]');
@@ -60,6 +60,6 @@ function apply(doc,campaign){
  return p;
 }
 function mountControls(doc){if(doc.getElementById('pos-appearance-control'))return;const control=doc.createElement('label');control.id='pos-appearance-control';control.className='pos-appearance-control';const title=doc.createElement('span');title.textContent='Appearance';const select=doc.createElement('select');select.setAttribute('aria-label','POS appearance');for(const [value,label] of [['auto','Automatic holiday'],['simple','Simple black'],...Object.entries(presets).filter(([k])=>k!=='default').map(([k,v])=>[k,v.name])]){const option=doc.createElement('option');option.value=value;option.textContent=label;select.append(option)}select.value=mode();select.addEventListener('change',()=>setMode(select.value));control.append(title,select);doc.body.append(control);apply(doc,window.__persenPosCampaign||null)}
-if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>mountControls(document),{once:true});else mountControls(document)}
+if(typeof document!=='undefined'){const init=()=>{if(!document.body)return;const customer=!!document.body.classList.contains('kiosk-body');if(customer)apply(document,window.__persenPosCampaign||null);else mountControls(document)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init()}
 return {presets,presetFor,palette,apply,mode,setMode,mountControls};
 });
