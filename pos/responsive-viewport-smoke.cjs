@@ -27,7 +27,7 @@ const viewports = [
   {name:'ipad-landscape',width:1024,height:768,isMobile:true,hasTouch:true},
   {name:'laptop',width:1366,height:768,isMobile:false,hasTouch:false}
 ];
-const routes = ['/','/register.html','/display.html','/print-station.html'];
+const routes = ['/','/admin.html','/register.html','/display.html','/print-station.html'];
 (async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const address = server.address();
@@ -62,5 +62,5 @@ const routes = ['/','/register.html','/display.html','/print-station.html'];
     }
   }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
   if(failures.length){console.error('Responsive viewport failures:',JSON.stringify(failures,null,2));process.exitCode=1;}
-  else console.log('PASSED: POS dashboard, cashier, customer and print station at phone, iPad portrait/landscape and laptop widths');
+  else console.log('PASSED: POS dashboard, laptop back office, cashier, customer and print station at phone, iPad portrait/landscape and laptop widths');
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
