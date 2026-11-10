@@ -46,7 +46,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Cashier quantity, discount, tax, close/reopen',async()=>{
   const row=cashier.locator('#cart .cart-row').first(),quantity=row.locator('input[type=number]').first();
-  assert.equal(await row.getByRole('spinbutton',{name:/Unit price/}).getAttribute('readonly'),'');
+  assert.equal(await row.locator('input[aria-label^="Unit price for "]').getAttribute('readonly'),'');
   await quantity.fill('4');await quantity.dispatchEvent('change');assert.equal(await quantity.inputValue(),'1');
   await quantity.fill('2');await quantity.dispatchEvent('change');
   await cashier.locator('button[data-discount="10"]').click();assert.equal(await cashier.locator('#discount').inputValue(),'10');

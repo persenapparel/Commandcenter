@@ -127,6 +127,29 @@ set role anon;
 select set_config('request.jwt.claim.sub','',false);
 select 1/(case when public.pos_customer_view(:'secret'::uuid)->>'status'='unpaired' then 1 else 0 end) as expired_pairing_rejected;
 
+-- Simulate stock changing after the customer has already finished checkout.
+reset role;
+begin;
+update public.stock_items set quantity=0 where id='22222222-2222-4222-8222-222222222222';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
+do $$
+declare target_checkout uuid;
+begin
+ select c.id into strict target_checkout from public.pos_checkouts c
+ where c.status='contact_received' and c.register_id='33333333-3333-4333-8333-333333333333';
+ begin
+  perform public.pos_complete_cash(target_checkout,2500,'{}','{}',2);
+  raise exception 'Sold stock that was no longer available';
+ exception when raise_exception then
+  if sqlerrm<>'Stock changed; cancel and rebuild checkout' then raise; end if;
+ end;
+end $$;
+select 1/(case when drawer_version=2 then 1 else 0 end) as failed_stock_deduction_rolled_back_drawer
+ from public.pos_registers where id='33333333-3333-4333-8333-333333333333';
+select 1/(case when count(*)=1 then 1 else 0 end) as stock_change_did_not_create_sale from public.pos_sales;
+rollback;
+
 reset role;
 begin;
 insert into public.stock_items(id,sku,product_name,color,size,quantity) values
