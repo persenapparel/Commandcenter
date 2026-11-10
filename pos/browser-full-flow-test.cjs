@@ -1,0 +1,123 @@
+/* Cross-device interactive browser test. LOCAL MOCK DATA ONLY. */
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),http=require('node:http'),path=require('node:path'),{chromium}=require('playwright');
+const root=path.resolve('pos-dist'),types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.png':'image/png'};
+const server=http.createServer((req,res)=>{const u=new URL(req.url,'http://localhost');const file=path.resolve(root,'.'+(u.pathname==='/'?'/index.html':u.pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return}fs.readFile(file,(e,buf)=>e?res.writeHead(404).end():res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'}).end(buf))});
+const failures=[],opened=[];
+const step=async(name,fn)=>{try{await fn();console.log('PASS',name)}catch(e){console.error('FAIL',name,e.stack||e);failures.push(name+': '+e.message)}};
+const txt=async(p,s,t,timeout=11000)=>p.waitForFunction(({s,t})=>String(document.querySelector(s)?.textContent||'').includes(t),{s,t},{timeout});
+const visible=async(p,s,timeout=11000)=>p.waitForFunction(s=>{const e=document.querySelector(s);return e&&!e.hidden&&getComputedStyle(e).display!=='none'},s,{timeout});
+const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
+(async()=>{
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const url='http://127.0.0.1:'+server.address().port+'/';
+ const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({viewport:{width:1280,height:800}});
+ await ctx.addInitScript({path:'pos/test-fake-supabase.js'});
+ await ctx.addInitScript({content:"Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async s=>localStorage.setItem('__clip',s),readText:async()=>localStorage.getItem('__clip')}});Object.defineProperty(window,'print',{configurable:true,value:()=>localStorage.setItem('__prints',String(Number(localStorage.getItem('__prints')||0)+1))});window.confirm=()=>true;"});
+ await ctx.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.fulfill({status:200,contentType:'application/javascript',body:''}));
+ let admin,cashier,customer,printer;
+ try{
+ await step('Device dashboard routes',async()=>{const p=await ctx.newPage();opened.push(p);assert.equal((await p.goto(url)).status(),200);for(const file of ['admin.html','register.html','display.html','print-station.html'])assert.equal(await p.locator('a[href="'+file+'"]').count(),1)});
+ await step('Laptop owner authentication and inventory loaded',async()=>{admin=await ctx.newPage();opened.push(admin);await admin.goto(url+'admin.html');await visible(admin,'#workspace');await txt(admin,'#stat-variants','2');assert.equal(await admin.locator('.inventory-card').count(),2)});
+ await step('Laptop bulk product sizes save',async()=>{
+  const f=admin.locator('#create-products');await f.locator('[name=name]').fill('Winter Crewneck');await f.locator('[name=color]').fill('Forest Green');await f.locator('[name=price]').fill('29.99');await f.locator('[name=S]').fill('3');await f.locator('[name=M]').fill('2');
+  await admin.locator('#save-products').click();await txt(admin,'#notice','Saved 2 size variants');await txt(admin,'#stat-variants','4');assert.equal((await state(admin)).tables.stock_items.length,4)
+ });
+ await step('Laptop inventory price and quantity editor',async()=>{
+  await admin.locator('#inventory-search').fill('Winter Crewneck');
+  const card=admin.locator('.inventory-card').filter({hasText:'Forest Green · S'}).first();assert.equal(await card.count(),1);
+  await card.locator('input[name=quantity]').fill('9');await card.locator('input[name=price]').fill('33.50');
+  await card.getByRole('button',{name:'Save changes'}).click();await txt(admin,'#notice','price and stock updated');await admin.locator('#refresh').click();await txt(admin,'#notice','Inventory refreshed');await admin.locator('#inventory-search').fill('');
+  const s=await state(admin);assert.ok(s.tables.stock_items.some(x=>x.product_name==='Winter Crewneck'&&x.size==='S'&&x.quantity===9));assert.ok(s.tables.pos_variant_details.some(x=>x.price_cents===3350));
+ });
+ await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
+ await step('Cashier starts closed, opens, and selects event',async()=>{
+  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();
+  await visible(cashier,'#catalog .quick-product');assert.ok(await cashier.locator('.quick-product').count()>=2);
+  assert.equal(await cashier.locator('.product-manager:visible').count(),0);await cashier.locator('#event-select').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
+ });
+ await step('Cashier big tiles → size/color picker → cart',async()=>{
+  await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await visible(cashier,'#variant-dialog');
+  await cashier.getByRole('button',{name:/M · Red/i}).click();await txt(cashier,'#cart','Christmas Hoodie');
+  await cashier.locator('#search').fill('');await cashier.locator('.quick-product').filter({hasText:'Winter Crewneck'}).click();
+  await cashier.getByRole('button',{name:/S · Forest Green/i}).click();assert.equal(await cashier.locator('#cart .cart-row').count(),2);
+ });
+ await step('Cashier quantity, discount, tax, close/reopen',async()=>{
+  const row=cashier.locator('#cart .cart-row').first();await row.locator('input[type=number]').first().fill('2');await row.locator('input[type=number]').first().dispatchEvent('change');
+  await cashier.locator('button[data-discount="10"]').click();assert.equal(await cashier.locator('#discount').inputValue(),'10');
+  await cashier.locator('#tax').fill('0');await cashier.locator('#tax').dispatchEvent('input');assert.equal(await cashier.locator('#start').isDisabled(),false);
+  await cashier.locator('#close-register').click();await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();assert.equal(await cashier.locator('#cart .cart-row').count(),2)
+ });
+ await step('Cashier pairing link and idle customer screen',async()=>{
+  await cashier.locator('#pair-quick').click();await txt(cashier,'#notice','Pairing link copied');
+  const link=await cashier.evaluate(()=>navigator.clipboard.readText());assert.match(link,/display\.html\?pair=[0-9a-f-]{36}/);
+  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await txt(customer,'#state','next order')
+ });
+ await step('Print station test print, paper selection, arm',async()=>{
+  printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');await visible(printer,'#station-panel');
+  await printer.locator('#paper').selectOption('58x120');await printer.locator('#test-print').click();await txt(printer,'#station-message','Test sent to Chrome');
+  assert.ok(Number(await printer.evaluate(()=>localStorage.getItem('__prints')))>0);
+  await printer.locator('#arm').click();await txt(printer,'#station-state','Listening for paid sales');
+ });
+ await step('Send checkout and laptop live monitor',async()=>{
+  await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');
+  await visible(customer,'#contact');await txt(admin,'#live-list','Customer is checking out',11000);
+  const s=await state(admin);assert.equal(s.tables.pos_checkouts.at(-1).event_id,s.tables.pos_events[0].id)
+ });
+ await step('Customer keypad, validation, back, email and payment options',async()=>{
+  await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
+  for(const digit of '6315550199')await customer.locator('[data-digit="'+digit+'"]').click();
+  await customer.locator('#wizard-next').click();await txt(customer,'#step-receipt-title','receipt');await customer.locator('#wizard-back').click();await customer.locator('#wizard-next').click();
+  await customer.locator('input[name=receipt_mode][value=both]').check();await customer.locator('#wizard-next').click();
+  await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
+  await customer.locator('#email-address').fill('test-pos@example.com');await customer.locator('#wizard-next').click();
+  await customer.locator('input[name=payment_preference][value=venmo_info]').check();await txt(customer,'#payment-instructions','@persenapparel');
+  await customer.locator('input[name=payment_preference][value=apple_cash_info]').check();await txt(customer,'#payment-instructions','631');
+  await customer.locator('input[name=payment_preference][value=cash]').check();await customer.locator('#wizard-next').click();await txt(customer,'#step-promos-title','offers');
+ });
+ await step('Live help request reaches cashier and laptop',async()=>{
+  await customer.locator('#wizard-help').click();await visible(cashier,'#customer-help-alert',12000);await txt(admin,'#live-list','Customer requested help',12000);
+  await customer.locator('#wizard-help').click()
+ });
+ await step('Optional questionnaire and final checkout screen',async()=>{
+  await customer.locator('input[name=marketing][value=no]').check();await customer.locator('input[name=marketing][value=yes]').check();
+  await customer.locator('#wizard-next').click();await customer.locator('input[name=rating][value=5]').check();await customer.locator('#wizard-next').click();
+  await customer.locator('input[name=interest][value=maybe]').check();await customer.locator('#wizard-next').click();
+  await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await txt(customer,'#state','choices were saved');
+  const s=await state(customer);assert.equal(s.tables.pos_checkouts.at(-1).status,'contact_received');assert.equal(s.tables.pos_checkouts.at(-1).receipt_email,true)
+ });
+ await step('Cash drawer, exact, clear, denomination and paid sale',async()=>{
+  await cashier.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('ready for cashier'),null,{timeout:9000});
+  await cashier.locator('#cash-exact').click();await cashier.locator('#cash-clear').click();
+  await cashier.locator('#drawer-config').evaluate(x=>x.open=true);await cashier.locator('#drawer-grid [data-denom="2000"]').fill('3');
+  await cashier.locator('#save-drawer').click();await txt(cashier,'#notice','Cash drawer saved');
+  await cashier.locator('#cash-bills button').filter({hasText:'+$20'}).first().click();await cashier.locator('#cash-clear').click();
+  await cashier.locator('#cash-exact').click();await cashier.waitForFunction(()=>document.querySelector('#cash')?.disabled===false,null,{timeout:6000});
+  await cashier.locator('#cash').click();await txt(cashier,'#notice','Cash sale recorded');
+  assert.equal((await state(cashier)).tables.pos_sales.length,1)
+ });
+ await step('Print queue receives sale only after payment',async()=>{
+  await printer.waitForFunction(()=>__POS_TEST_DB.get().tables.pos_print_jobs[0]?.state==='submitted_to_browser',null,{timeout:11000});
+  assert.equal((await state(printer)).tables.pos_print_jobs.length,1);assert.ok(Number(await printer.evaluate(()=>localStorage.getItem('__prints')))>=2)
+ });
+ await step('Print station pause and manual retry',async()=>{
+  await printer.locator('#disarm').click();await txt(printer,'#station-state','Paused');const prior=Number(await printer.evaluate(()=>localStorage.getItem('__prints')));
+  await printer.locator('#job-list button').first().click();await txt(printer,'#station-message','queued again');
+  assert.equal(Number(await printer.evaluate(()=>localStorage.getItem('__prints'))),prior);await printer.locator('#arm').click();
+  await printer.waitForFunction(n=>Number(localStorage.getItem('__prints'))>n,prior,{timeout:9000})
+ });
+ await step('Inventory reflects sale and customer completion',async()=>{
+  await customer.waitForFunction(()=>document.querySelector('#thanks')?.hidden===false,null,{timeout:9000});
+  await cashier.locator('#refresh-products').click();await txt(cashier,'#notice','refreshed');
+  await admin.locator('#refresh').click();
+  assert.ok((await state(admin)).tables.stock_items.find(x=>x.sku==='XMAS-RED-M').quantity<3)
+ });
+ await step('Cancel checkout leaves sales and receipts unchanged',async()=>{
+  await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await cashier.getByRole('button',{name:/L · Red/i}).click();
+  await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');await cashier.locator('#cancel').click();await txt(cashier,'#notice','Checkout cancelled');
+  assert.equal((await state(cashier)).tables.pos_sales.length,1);assert.equal((await state(cashier)).tables.pos_print_jobs.length,1)
+ });
+ }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}
+ if(failures.length){console.error('POS functional failures:',JSON.stringify(failures,null,2));process.exitCode=1}
+ else console.log('PASS: Laptop, cashier, customer iPad, printer and shared mocked checkout exercised interactively. Not physical hardware/live-email validation.');
+})().catch(e=>{console.error(e);try{server.close()}catch{}process.exitCode=1});
