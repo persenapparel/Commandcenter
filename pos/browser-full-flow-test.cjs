@@ -6,7 +6,7 @@ const server=http.createServer((req,res)=>{const u=new URL(req.url,'http://local
 const failures=[],opened=[];
 const step=async(name,fn)=>{try{await fn();console.log('PASS',name)}catch(e){console.error('FAIL',name,e.stack||e);failures.push(name+': '+e.message);throw e}};
 const txt=async(p,s,t,timeout=11000)=>p.waitForFunction(({s,t})=>String(document.querySelector(s)?.textContent||'').includes(t),{s,t},{timeout});
-const visible=async(p,s,timeout=11000)=>p.waitForFunction(s=>{const e=document.querySelector(s);return e&&!e.hidden&&getComputedStyle(e).display!=='none'},s,{timeout});
+const visible=async(p,s,timeout=11000)=>p.waitForFunction(s=>{const e=document.querySelector(s);return e&&!e.hidden&&e.getClientRects().length>0&&getComputedStyle(e).visibility!=='hidden'},s,{timeout});
 const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
