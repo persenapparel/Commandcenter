@@ -142,3 +142,16 @@
 @keyframes persen-light-twinkle{from{opacity:.78;filter:drop-shadow(0 0 3px #ffe3a6)}to{opacity:1;filter:drop-shadow(0 0 10px #ffe3a6)}}
 @media(max-width:700px){.seasonal-studio .seasonal-preview[data-theme="christmas"]{padding-top:65px}}
 @media(prefers-reduced-motion:reduce){.seasonal-studio .seasonal-preview[data-theme="christmas"]::after{animation:none}}
+
+/* Studio photo previews must show the entire garment, never crop the design. */
+.v42-photo{background:#f4f7fb}
+.v42-photo img{width:100%;height:260px;max-width:100%;object-fit:contain;object-position:center;padding:10px}
+.v54-studio-thumb{width:100%;height:auto;max-width:260px;max-height:170px;object-fit:contain;object-position:center;background:#f4f7fb}
+.seasonal-editor-merch{object-fit:contain;object-position:right bottom}
+@media(max-width:650px){.v42-photo img{height:220px;padding:8px}}
+/* Optional seasonal accents are visual only and must never block editing. */
+.seasonal-studio .seasonal-preview[data-theme="christmas"] .seasonal-preview-particles{pointer-events:none}
+@media(prefers-reduced-motion:reduce){
+ .seasonal-studio .seasonal-preview[data-theme="christmas"]::after,
+ .seasonal-studio .seasonal-preview[data-theme="christmas"] .seasonal-preview-particles::before{animation:none!important}
+}
