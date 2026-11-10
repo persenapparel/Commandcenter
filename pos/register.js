@@ -1,5 +1,5 @@
 'use strict';
-const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map();let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
+const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map(),inventoryCatalog=new Map(),eventProfiles=[],eventQuickTiles=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
@@ -34,6 +34,8 @@ function renderQuickCatalog(){
  const host=by('catalog'),filters=by('category-filters');host.replaceChildren();filters.replaceChildren();
  const q=by('search').value.trim().toLowerCase();
  const groups=new Map();for(const x of stock){
+  const cfg=inventoryCatalog.get(String(x.product_name||'').trim().toLowerCase());
+  if(inventoryCatalog.size&&(!cfg||cfg.inventory_type!=='sales'||cfg.is_active===false))continue;
   const m=variantMeta.get(x.id),category=m?.category||'Apparel';
   const key=(x.product_name||x.sku).trim()+'|'+category;
   if(!groups.has(key))groups.set(key,{name:x.product_name||x.sku,category,variants:[],type:m?.product_type||'other'});
@@ -43,39 +45,49 @@ function renderQuickCatalog(){
  const categories=['All',...new Set(all.map(x=>x.category))];
  if(!categories.includes(chosenCategory))chosenCategory='All';
  for(const category of categories){const button=document.createElement('button');button.type='button';button.textContent=category;button.setAttribute('aria-pressed',String(chosenCategory===category));button.onclick=()=>{chosenCategory=category;renderQuickCatalog()};filters.append(button)}
+ const selectedEvent=events.find(e=>e.id===by('event-select').value);
+ const profile=eventProfiles.find(p=>selectedEvent&&p.name.toLowerCase()===selectedEvent.name.toLowerCase())||eventProfiles.find(p=>p.active===true);
+ const pinned=profile?eventQuickTiles.filter(x=>x.event_id===profile.id).sort((a,b)=>a.sort_order-b.sort_order).map(x=>x.product_name.toLowerCase()):[];
  const matching=all.filter(g=>(chosenCategory==='All'||g.category===chosenCategory)&&
-    [g.name,g.category,...g.variants.flatMap(v=>[v.color,v.size,v.sku])].join(' ').toLowerCase().includes(q));
+   [g.name,g.category,...g.variants.flatMap(v=>[v.color,v.size,v.sku])].join(' ').toLowerCase().includes(q)&&
+   (!pinned.length||!!q||chosenCategory!=='All'||pinned.includes(g.name.toLowerCase())))
+   .sort((a,b)=>{
+     const ar=pinned.indexOf(a.name.toLowerCase()),br=pinned.indexOf(b.name.toLowerCase());
+     return (ar<0?999:ar)-(br<0?999:br)||a.name.localeCompare(b.name);
+   });
  for(const g of matching){
   const ready=g.variants.filter(x=>variantMeta.has(x.id)&&x.quantity>0);
   const total=g.variants.reduce((n,x)=>n+x.quantity,0);
   const price=ready.length?Math.min(...ready.map(x=>variantMeta.get(x.id).price_cents)):null;
-  const tile=document.createElement('button');tile.type='button';tile.className='quick-product';
+  const tile=document.createElement('button');tile.type='button';tile.className='quick-product'+(pinned.includes(g.name.toLowerCase())?' event-featured':'');
   tile.disabled=!ready.length;tile.setAttribute('aria-label','Choose size and color for '+g.name);
   const icon=document.createElement('span');icon.className='quick-symbol';icon.textContent=TYPE_ICONS[g.type]||TYPE_ICONS.other;
   const badge=document.createElement('span');badge.className='quick-count';badge.textContent=total+' in stock';
   const title=document.createElement('span');title.className='quick-name';title.textContent=g.name;
   const detail=document.createElement('span');detail.className='quick-detail';
-  detail.textContent=[...new Set(g.variants.map(v=>v.color).filter(Boolean))].join(' / ')||g.category;
+  detail.textContent=(pinned.includes(g.name.toLowerCase())?'★ EVENT PICK · ':'')+([...new Set(g.variants.map(v=>v.color).filter(Boolean))].join(' / ')||g.category);
   const amount=document.createElement('span');amount.className='quick-price';amount.textContent=price===null?'Set price':('$'+(price/100).toFixed(2)+(g.variants.length>1?' +':''));
   tile.append(icon,badge,title,detail,amount);
   tile.onclick=()=>pickVariant(g.name,g.variants);
   host.append(tile);
  }
- if(!matching.length){const empty=document.createElement('div');empty.className='quick-empty';empty.textContent=stock.length?'No matching products. Change the search or category.':'No products saved yet. Open Laptop Back Office to add products and sizes, then come back here.';host.append(empty)}
- const readyCount=stock.filter(x=>x.quantity>0&&variantMeta.has(x.id)).length;
+ if(!matching.length){const empty=document.createElement('div');empty.className='quick-empty';empty.textContent=stock.length?'No matching sales products. Search for more or change the event.':'No sales products yet. Add them under Sales Products first.';host.append(empty)}
+ if(pinned.length&&!q&&chosenCategory==='All'){const hint=document.createElement('p');hint.className='quick-event-hint';hint.textContent='Showing '+pinned.length+' event quick tiles. Search above to see more Sales Products.';host.append(hint)}
+ const readyCount=stock.filter(x=>x.quantity>0&&variantMeta.has(x.id)&&(!inventoryCatalog.size||inventoryCatalog.get(String(x.product_name||'').trim().toLowerCase())?.inventory_type==='sales')).length;
  by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
  by('open-register').disabled=readyCount===0;
 }
 function setRegisterOpen(open){
  if(!open&&checkout)return notice('Finish or cancel the open checkout before closing the register.');
- if(open&&!stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))return notice('First add at least one priced, in-stock item in Laptop Back Office.');
+ if(open&&!stock.some(x=>x.quantity>0&&variantMeta.has(x.id)&&(!inventoryCatalog.size||inventoryCatalog.get(String(x.product_name||'').trim().toLowerCase())?.inventory_type==='sales')))return notice('First add at least one priced Sales Product.');
  document.body.classList.toggle('pos-register-closed',!open);
  sessionStorage.setItem('pos-register-open',open?'1':'0');
  if(open)notice('Register open. Tap a product, pick the size/color and send checkout to the customer iPad.');
 }
 by('open-register').onclick=()=>setRegisterOpen(true);
 by('close-register').onclick=()=>setRegisterOpen(false);
-by('refresh-products').onclick=async()=>{if(checkout)return notice('Finish or cancel the current checkout first');try{await loadStock();notice('Product stock and prices refreshed from laptop back office.')}catch(e){notice('Could not refresh products: '+e.message)}};
+by('refresh-products').onclick=async()=>{if(checkout)return notice('Finish or cancel the current checkout first');try{await loadStock();notice('Sale products and event tiles refreshed.')}catch(e){notice('Could not refresh products: '+e.message)}};
+by('event-select').addEventListener('change',renderQuickCatalog);
 by('pair-quick').onclick=()=>by('pair').click();
 by('pair-setup').onclick=()=>by('pair').click();
 window.addEventListener('focus',()=>{if(user&&!checkout&&!cart.length)loadStock().catch(()=>{});});
@@ -104,12 +116,27 @@ function syncCheckoutUI(){
 }
 async function loadStock(){
  stock=await check(db.from('stock_items').select('id,sku,product_name,color,size,quantity,reorder_at').order('sku').limit(1000));
- // A dedicated owner-only price table avoids silently inventing price columns on stock_items.
+ // Inventory and quick tiles must come from the POS database. Staging remains isolated.
+ inventoryCatalog=new Map();eventProfiles=[];eventQuickTiles=[];
+ try {
+  const [catalog,profiles,quick]=await Promise.all([
+   check(db.from('inventory_catalog').select('name,inventory_type,price_cents,is_active').limit(1000)),
+   check(db.from('inventory_event_profiles').select('id,name,active').limit(150)),
+   check(db.from('inventory_event_quick_products').select('event_id,product_name,sort_order').limit(1200))
+  ]);
+  inventoryCatalog=new Map(catalog.map(x=>[x.name.trim().toLowerCase(),x]));
+  eventProfiles=profiles;eventQuickTiles=quick;
+ } catch(e){notice('Inventory event presets unavailable: '+e.message)}
  variantMeta=new Map();
  try{
   const rows=await check(db.from('pos_variant_details').select('stock_id,price_cents,taxable,category,description,product_type').limit(1000));
   for(const row of rows)variantMeta.set(row.stock_id,row);
- }catch(e){notice('POS product prices unavailable until the reviewed database draft is installed. Enter prices manually for test carts.')}
+ }catch(e){notice('POS variant prices unavailable: '+e.message)}
+ for(const item of stock){
+  const cfg=inventoryCatalog.get(String(item.product_name||'').trim().toLowerCase());
+  if(cfg?.inventory_type==='sales'&&cfg.is_active!==false&&Number.isSafeInteger(cfg.price_cents)&&cfg.price_cents>0)
+    variantMeta.set(item.id,{...variantMeta.get(item.id),price_cents:cfg.price_cents,taxable:variantMeta.get(item.id)?.taxable!==false,category:variantMeta.get(item.id)?.category||'Apparel',product_type:variantMeta.get(item.id)?.product_type||'other'});
+ }
  draw();renderProductList();
 }
 async function loadTemplates(){templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));by('templates').replaceChildren();for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;by('templates').append(opt)}const t=templates.find(x=>x.active)||templates[0];if(t){by('templates').value=t.id;showTemplate(t)}}
@@ -163,7 +190,28 @@ function fillEventSelectors(){
 }
 async function loadEvents(){
  events=await check(db.from('pos_events').select('id,name,event_date,venue,status,created_at').order('event_date',{ascending:false}).limit(300));
- fillEventSelectors();
+ // Event profiles configured in Inventory Hub become available in the register,
+ // avoiding a second manual event setup. The POS remains staging until approved.
+ try{
+  const profiles=await check(db.from('inventory_event_profiles').select('id,name,event_date,active').limit(150));
+  let created=false;
+  for(const profile of profiles){
+    const date=profile.event_date||new Date().toISOString().slice(0,10);
+    const exists=events.some(e=>e.name.trim().toLowerCase()===profile.name.trim().toLowerCase()&&e.event_date===date);
+    if(!exists){
+      const entry=await check(db.from('pos_events').insert({owner_id:user.id,name:profile.name,event_date:date,venue:'',status:'open'}).select('id,name,event_date,venue,status,created_at').single());
+      events.push(entry);created=true;
+    }
+  }
+  if(created)events.sort((a,b)=>b.event_date.localeCompare(a.event_date));
+  fillEventSelectors();
+  const active=profiles.find(p=>p.active);
+  if(active){
+    const ev=events.find(e=>e.name.trim().toLowerCase()===active.name.trim().toLowerCase()&&e.event_date===(active.event_date||new Date().toISOString().slice(0,10)));
+    if(ev)by('event-select').value=ev.id;
+  }
+ }catch(e){fillEventSelectors();notice('Event presets could not sync: '+e.message)}
+ renderQuickCatalog();
 }
 async function loadSales(){
  sales=await check(db.from('pos_sales').select('id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,created_at').order('created_at',{ascending:false}).limit(2000));
