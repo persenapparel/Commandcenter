@@ -51,6 +51,7 @@ jobs:
           node --check pos/pos-experience.js
           node --check pos/pos-cash.js
           node --check pos/register.js
+          node --check pos/admin.js
           node --check pos/checkout-flow.js
           node --check pos/display.js
           node --check pos/print-station.js
@@ -83,6 +84,9 @@ jobs:
           test ! -e pos-dist/pos-schema-review.sql
           if grep -q 'icxeuhkqxxhdkfdappio' pos-dist/config.js; then echo 'Production Supabase URL leaked into POS output' && exit 1; fi
           if POS_SUPABASE_URL=https://icxeuhkqxxhdkfdappio.supabase.co POS_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fake CF_PAGES=1 node pos/build-pages.mjs; then echo 'Production Supabase URL was wrongly accepted' && exit 1; fi
+          test -f pos-dist/admin.html
+          test -f pos-dist/admin.css
+          test -f pos-dist/admin.js
           test -f pos-dist/register.html
           test -f pos-dist/display.html
           test -f pos-dist/checkout-flow.js
