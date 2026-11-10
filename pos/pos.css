@@ -436,3 +436,6 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 
 /* Dedicated cashier event selector: persistent across sales without showing setup controls. */
 .quick-event-label{margin:0;font-size:11px;font-weight:900;color:#194b88;display:flex;align-items:center;gap:8px}.quick-event-label select{margin:0;width:min(250px,48vw);min-width:125px;padding:9px 11px;background:white;border:1px solid #bfd3ef;border-radius:9px;color:#163d71}
+
+/* Visible after cashier is opened; leave hidden only in setup mode. */
+.fast-mode:not(.pos-register-closed) .quick-toolbar{display:flex}
