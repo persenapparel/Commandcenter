@@ -33,7 +33,7 @@ assert.ok(!/jsonb_build_object\([^)]*phone/i.test(sql.slice(sql.indexOf('public.
 const cashierStatusSource=cashierJs.slice(cashierJs.indexOf('async function status()'),cashierJs.indexOf('async function begin()'));
 assert.ok(!/\bdraw\(\)/.test(cashierStatusSource),'Customer polling must not rebuild cart inputs');
 assert.ok(cashierJs.includes('syncCheckoutUI();renderCash();'),'Polling should only update lightweight checkout controls');
-assert.ok(cashierJs.includes('button.disabled=remaining<=0||!m||!Number.isSafeInteger(m.price_cents)')&&cashierJs.includes('tile.disabled=!ready.length'),'Unpriced inventory must never be offered as a selectable product');
+assert.ok(cashierJs.includes('button.disabled=remaining<=0||!priced')&&cashierJs.includes('tile.disabled=!ready.length')&&cashierJs.includes('price>0'),'Unpriced inventory must never be offered as a selectable product');
 assert.ok(cashierJs.includes("upsert(metadata,{onConflict:'stock_id'})"),'Existing variants need a price editor');
 assert.ok(cashier.includes('id="variant-dialog"')&&cashier.includes('id="open-register"'),'Cashier should expose quick product picker and launch action');
 const admin=fs.readFileSync('pos/admin.html','utf8');

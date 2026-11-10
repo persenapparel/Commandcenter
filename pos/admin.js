@@ -7,7 +7,7 @@ async function checked(q){const {data,error}=await q;if(error)throw error;return
 const elem=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=String(text);if(cls)e.className=cls;return e};
 const sizes=['XS','S','M','L','XL','2XL','3XL','4XL','One Size'];
 for(const size of sizes){const label=elem('label',size);const input=elem('input');input.type='number';input.min='0';input.max='1000000';input.step='1';input.value='0';input.name=size;input.inputMode='numeric';input.setAttribute('aria-label','Quantity for '+size);label.append(input);$('size-grid').append(label)}
-function moneyToCents(value){if(!/^\d+(\.\d{1,2})?$/.test(String(value).trim()))throw Error('Enter a valid price with up to two decimals');const n=Math.round(Number(value)*100);if(!Number.isSafeInteger(n)||n>10000000)throw Error('Price is too large');return n}
+function moneyToCents(value){if(!/^\d+(\.\d{1,2})?$/.test(String(value).trim()))throw Error('Enter a valid price with up to two decimals');const n=Math.round(Number(value)*100);if(!Number.isSafeInteger(n)||n>10000000)throw Error('Price is too large');if(n<=0)throw Error('Enter a selling price above $0.00');return n}
 async function loadInventory(){
  stock=await checked(db.from('stock_items').select('id,sku,product_name,color,size,quantity,reorder_at').order('product_name').limit(1000));
  const details=await checked(db.from('pos_variant_details').select('stock_id,price_cents,taxable,category,product_type').limit(1000));
@@ -32,7 +32,7 @@ function drawInventory(){
   const fields=elem('div',null,'edit-fields');
   for(const f of [
    ['Name',item.product_name,'name'],['Color',item.color,'color'],['Size',item.size,'size'],
-   ['In stock',item.quantity,'quantity','number'],['Price ($)',(Number(d.price_cents||0)/100).toFixed(2),'price','number'],
+   ['In stock',item.quantity,'quantity','number'],['Price ($)',d.price_cents>0?(d.price_cents/100).toFixed(2):'','price','number'],
    ['Category',d.category||'Apparel','category'],['Type',d.product_type||'other','type']
   ])fields.append(inputField(...f));
   const taxable=elem('label',null,'check');const check=elem('input');check.type='checkbox';check.checked=d.taxable!==false;taxable.append(check,document.createTextNode(' Taxable'));

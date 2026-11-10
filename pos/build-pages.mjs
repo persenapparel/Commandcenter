@@ -13,6 +13,7 @@ if(ciDryRun)console.warn('CI DRY RUN ONLY: generated POS artifact is intentional
 const parsed=new URL(url);
 if(parsed.protocol!=='https:'||!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(url))throw Error('Invalid POS Supabase URL');
 if(parsed.hostname==='icxeuhkqxxhdkfdappio.supabase.co')throw Error('Refusing to build POS against production Supabase');
+if(!ciDryRun&&parsed.hostname!=='naaqcspvbntzdtwuchrr.supabase.co')throw Error('Refusing to build POS against an unapproved Supabase project');
 if(!key.startsWith('sb_publishable_'))throw Error('Use a staging publishable key, never a secret or service_role key');
 const dest='pos-dist';
 await mkdir(dest,{recursive:true});
@@ -28,6 +29,8 @@ for(const f of ['register.html','display.html','index.html','print-station.html'
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  await writeFile(join(dest,f),s);
 }
-await writeFile(join(dest,'_headers'),'/register.html\n  X-Robots-Tag: noindex, nofollow\n/display.html\n  X-Robots-Tag: noindex, nofollow\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
+await writeFile(join(dest,'_headers'),'/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
+const commit=process.env.CF_PAGES_COMMIT_SHA;
+await writeFile(join(dest,'deployment.json'),JSON.stringify({environment:'staging',commit:/^[a-f0-9]{40}$/i.test(commit||'')?commit:null})+'\n');
 // Root route now serves index.html (device dashboard); no redirect to cashier.
 console.log('Prepared isolated POS Pages output in '+dest);

@@ -45,7 +45,10 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.getByRole('button',{name:/S · Forest Green/i}).click();assert.equal(await cashier.locator('#cart .cart-row').count(),2);
  });
  await step('Cashier quantity, discount, tax, close/reopen',async()=>{
-  const row=cashier.locator('#cart .cart-row').first();await row.locator('input[type=number]').first().fill('2');await row.locator('input[type=number]').first().dispatchEvent('change');
+  const row=cashier.locator('#cart .cart-row').first(),quantity=row.locator('input[type=number]').first();
+  assert.equal(await row.locator('input[aria-label^="Unit price for "]').getAttribute('readonly'),'');
+  await quantity.fill('4');await quantity.dispatchEvent('change');assert.equal(await quantity.inputValue(),'1');
+  await quantity.fill('2');await quantity.dispatchEvent('change');
   await cashier.locator('button[data-discount="10"]').click();assert.equal(await cashier.locator('#discount').inputValue(),'10');
   await cashier.locator('#tax').fill('0');await cashier.locator('#tax').dispatchEvent('input');assert.equal(await cashier.locator('#start').isDisabled(),false);
   await cashier.locator('#close-register').click();await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();assert.equal(await cashier.locator('#cart .cart-row').count(),2)
@@ -96,14 +99,17 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await customer.waitForFunction(()=>window.__POS_TEST_DB.get().tables.pos_checkouts.at(-1)?.status==='contact_received',null,{timeout:11000});await visible(customer,'#waiting-payment');
   const s=await state(customer);assert.equal(s.tables.pos_checkouts.at(-1).status,'contact_received');assert.equal(s.tables.pos_checkouts.at(-1).receipt_email,true)
  });
- await step('Cash drawer, exact, clear, denomination and paid sale',async()=>{
+ await step('Cash drawer and recovery after a lost payment response',async()=>{
   await cashier.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('ready for cashier'),null,{timeout:9000});
   await cashier.locator('#cash-exact').click();await cashier.locator('#cash-clear').click();
   await cashier.locator('#drawer-config').evaluate(x=>x.open=true);await cashier.locator('#drawer-grid [data-denom="2000"]').fill('3');
   await cashier.locator('#save-drawer').click();await txt(cashier,'#notice','Cash drawer saved');
   await cashier.locator('#cash-bills button').filter({hasText:'+$20'}).first().click();await cashier.locator('#cash-clear').click();
   await cashier.locator('#cash-exact').click();await cashier.waitForFunction(()=>document.querySelector('#cash')?.disabled===false,null,{timeout:6000});
+  await cashier.evaluate(()=>sessionStorage.setItem('mock-lose-cash-response','1'));
   await cashier.locator('#cash').click();await txt(cashier,'#notice','Cash sale recorded');
+  await visible(cashier,'#receipt');assert.equal(await cashier.locator('#cart .cart-row').count(),0);
+  assert.equal(await cashier.locator('#start').isDisabled(),true);
   assert.equal((await state(cashier)).tables.pos_sales.length,1)
  });
  await step('Print queue receives sale only after payment',async()=>{
