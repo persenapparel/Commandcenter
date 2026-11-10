@@ -64,6 +64,7 @@ function renderQuickCatalog(){
  if(!matching.length){const empty=document.createElement('div');empty.className='quick-empty';empty.textContent=stock.length?'No matching products. Change the search or category.':'No products saved yet. Open Laptop Back Office to add products and sizes, then come back here.';host.append(empty)}
  const readyCount=stock.filter(x=>x.quantity>0&&variantMeta.has(x.id)).length;
  by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
+ by('open-register').disabled=readyCount===0;
 }
 function setRegisterOpen(open){
  if(!open&&checkout)return notice('Finish or cancel the open checkout before closing the register.');
