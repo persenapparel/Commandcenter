@@ -1,5 +1,5 @@
 'use strict';
-const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map();let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
+const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map(),inventoryCatalog=new Map(),eventProfiles=[],eventQuickTiles=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
@@ -104,12 +104,27 @@ function syncCheckoutUI(){
 }
 async function loadStock(){
  stock=await check(db.from('stock_items').select('id,sku,product_name,color,size,quantity,reorder_at').order('sku').limit(1000));
- // A dedicated owner-only price table avoids silently inventing price columns on stock_items.
+ // Inventory and quick tiles must come from the POS database. Staging remains isolated.
+ inventoryCatalog=new Map();eventProfiles=[];eventQuickTiles=[];
+ try {
+  const [catalog,profiles,quick]=await Promise.all([
+   check(db.from('inventory_catalog').select('name,inventory_type,price_cents,is_active').limit(1000)),
+   check(db.from('inventory_event_profiles').select('id,name,active').limit(150)),
+   check(db.from('inventory_event_quick_products').select('event_id,product_name,sort_order').limit(1200))
+  ]);
+  inventoryCatalog=new Map(catalog.map(x=>[x.name.trim().toLowerCase(),x]));
+  eventProfiles=profiles;eventQuickTiles=quick;
+ } catch(e){notice('Inventory event presets unavailable: '+e.message)}
  variantMeta=new Map();
  try{
   const rows=await check(db.from('pos_variant_details').select('stock_id,price_cents,taxable,category,description,product_type').limit(1000));
   for(const row of rows)variantMeta.set(row.stock_id,row);
- }catch(e){notice('POS product prices unavailable until the reviewed database draft is installed. Enter prices manually for test carts.')}
+ }catch(e){notice('POS variant prices unavailable: '+e.message)}
+ for(const item of stock){
+  const cfg=inventoryCatalog.get(String(item.product_name||'').trim().toLowerCase());
+  if(cfg?.inventory_type==='sales'&&cfg.is_active!==false&&Number.isSafeInteger(cfg.price_cents)&&cfg.price_cents>0&&!variantMeta.has(item.id))
+    variantMeta.set(item.id,{price_cents:cfg.price_cents,taxable:true,category:'Apparel',product_type:'other'});
+ }
  draw();renderProductList();
 }
 async function loadTemplates(){templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));by('templates').replaceChildren();for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;by('templates').append(opt)}const t=templates.find(x=>x.active)||templates[0];if(t){by('templates').value=t.id;showTemplate(t)}}
