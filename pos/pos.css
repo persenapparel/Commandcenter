@@ -527,3 +527,5 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 }
 [data-pos-appearance="simple"] .pos-christmas-countdown{display:none!important}
 @media print{.pos-christmas-countdown{display:none!important}}
+
+#event-setup-dialog{width:min(680px,94vw);max-height:90vh;overflow:auto}#event-setup-form>label{display:grid;gap:6px;margin:12px 0}.event-product-choice{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #ccd6e2;border-radius:12px;margin:8px 0}.event-product-choice input{width:22px;height:22px;flex:none}#event-product-options{max-height:34vh;overflow:auto}#event-setup-message{color:#a32323}#setup-event-launch{margin-bottom:12px}

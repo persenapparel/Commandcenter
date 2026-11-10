@@ -3,6 +3,7 @@ const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElemen
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 let pendingCash=null,statusRunning=false,checkoutVersion=0;
+let selectedEventId=sessionStorage.getItem('pos-event')||'';
 const pendingCashKey=()=>`pos-pending-cash:${register.id}`;
 function rememberCash(id){
  pendingCash=id;
@@ -17,10 +18,10 @@ const ORDER_SIZES=['XS','S','M','L','XL','2XL','3XL','4XL','One Size'];let chose
 const catalogEntry=item=>inventoryCatalog.get(String(item.product_name||'').trim().toLowerCase());
 const isSalesStock=item=>{
  const cfg=catalogEntry(item);
- return !inventoryCatalog.size||(cfg?.inventory_type==='sales'&&cfg.is_active!==false);
+ return cfg?.inventory_type==='sales'&&cfg.is_active===true;
 };
 const hasPrice=item=>{
- const price=variantMeta.get(item.id)?.price_cents;
+ const price=catalogEntry(item)?.price_cents;
  return Number.isSafeInteger(price)&&price>0&&price<=10000000;
 };
 const readyToSell=item=>isSalesStock(item)&&hasPrice(item)&&item.quantity>0;
@@ -62,11 +63,11 @@ function renderQuickCatalog(){
  if(!categories.includes(chosenCategory))chosenCategory='All';
  for(const category of categories){const button=document.createElement('button');button.type='button';button.textContent=category;button.setAttribute('aria-pressed',String(chosenCategory===category));button.onclick=()=>{chosenCategory=category;renderQuickCatalog()};filters.append(button)}
  const selectedEvent=events.find(e=>e.id===by('event-select').value);
- const profile=eventProfiles.find(p=>selectedEvent&&p.name.toLowerCase()===selectedEvent.name.toLowerCase())||eventProfiles.find(p=>p.active===true);
+ const profile=eventProfiles.find(p=>p.id===selectedEvent?.inventory_profile_id);
  const pinned=profile?eventQuickTiles.filter(x=>x.event_id===profile.id).sort((a,b)=>a.sort_order-b.sort_order).map(x=>x.product_name.toLowerCase()):[];
  const matching=all.filter(g=>(chosenCategory==='All'||g.category===chosenCategory)&&
    [g.name,g.category,...g.variants.flatMap(v=>[v.color,v.size,v.sku])].join(' ').toLowerCase().includes(q)&&
-   (!pinned.length||!!q||chosenCategory!=='All'||pinned.includes(g.name.toLowerCase())))
+   (!selectedEvent||pinned.includes(g.name.toLowerCase())))
    .sort((a,b)=>{
      const ar=pinned.indexOf(a.name.toLowerCase()),br=pinned.indexOf(b.name.toLowerCase());
      return (ar<0?999:ar)-(br<0?999:br)||a.name.localeCompare(b.name);
@@ -88,7 +89,7 @@ function renderQuickCatalog(){
   host.append(tile);
  }
  if(!matching.length){const empty=document.createElement('div');empty.className='quick-empty';empty.textContent=stock.length?'No matching sales products. Search for more or change the event.':'No sales products yet. Add them under Sales Products first.';host.append(empty)}
- if(pinned.length&&!q&&chosenCategory==='All'){const hint=document.createElement('p');hint.className='quick-event-hint';hint.textContent='Showing '+pinned.length+' event quick tiles. Search above to see more Sales Products.';host.append(hint)}
+ if(pinned.length&&!q&&chosenCategory==='All'){const hint=document.createElement('p');hint.className='quick-event-hint';hint.textContent='Showing '+pinned.length+' event products. Use Add products to change your selection.';host.append(hint)}
  const readyCount=stock.filter(readyToSell).length;
  by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
  by('open-register').disabled=readyCount===0;
@@ -103,7 +104,7 @@ function setRegisterOpen(open){
 by('open-register').onclick=()=>setRegisterOpen(true);
 by('close-register').onclick=()=>setRegisterOpen(false);
 by('refresh-products').onclick=async()=>{if(checkout)return notice('Finish or cancel the current checkout first');try{await loadStock();notice('Sale products and event tiles refreshed.')}catch(e){notice('Could not refresh products: '+e.message)}};
-by('event-select').addEventListener('change',renderQuickCatalog);
+by('event-select').addEventListener('change',()=>{if(checkout||cart.length){by('event-select').value=selectedEventId;return notice('Finish or clear the cart before switching events.')}selectedEventId=by('event-select').value;sessionStorage.setItem('pos-event',selectedEventId);renderQuickCatalog()});
 by('pair-quick').onclick=()=>by('pair').click();
 by('pair-setup').onclick=()=>by('pair').click();
 window.addEventListener('focus',()=>{if(user&&!checkout&&!cart.length)loadStock().catch(()=>{});});
@@ -132,6 +133,7 @@ function syncCheckoutUI(){
  by('cancel').disabled=!checkout;
  by('discount').disabled=!!checkout;
  by('tax').disabled=!!checkout;
+ by('event-select').disabled=!!checkout||!!cart.length;
 }
 async function loadStock(){
  // Inventory and quick tiles must come from the POS database. Staging remains isolated.
@@ -150,7 +152,7 @@ async function loadStock(){
  }
  try{
   [eventProfiles,eventQuickTiles]=await Promise.all([
-   check(db.from('inventory_event_profiles').select('id,name,active').limit(150)),
+   check(db.from('inventory_event_profiles').select('id,name,event_date,active').limit(150)),
    check(db.from('inventory_event_quick_products').select('event_id,product_name,sort_order').limit(1200))
   ]);
  }catch(e){eventProfiles=[];eventQuickTiles=[];notice('Inventory event presets unavailable: '+e.message)}
@@ -247,28 +249,10 @@ function fillEventSelectors(){
  drawReport();fillEventEditor();
 }
 async function loadEvents(){
- events=await check(db.from('pos_events').select('id,name,event_date,venue,status,created_at').order('event_date',{ascending:false}).limit(300));
- // Event profiles configured in Inventory Hub become available in the register,
- // avoiding a second manual event setup. The POS remains staging until approved.
- try{
-  const profiles=await check(db.from('inventory_event_profiles').select('id,name,event_date,active').limit(150));
-  let created=false;
-  for(const profile of profiles){
-    const date=profile.event_date||new Date().toISOString().slice(0,10);
-    const exists=events.some(e=>e.name.trim().toLowerCase()===profile.name.trim().toLowerCase()&&e.event_date===date);
-    if(!exists){
-      const entry=await check(db.from('pos_events').insert({owner_id:user.id,name:profile.name,event_date:date,venue:'',status:'open'}).select('id,name,event_date,venue,status,created_at').single());
-      events.push(entry);created=true;
-    }
-  }
-  if(created)events.sort((a,b)=>b.event_date.localeCompare(a.event_date));
-  fillEventSelectors();
-  const active=profiles.find(p=>p.active);
-  if(active){
-    const ev=events.find(e=>e.name.trim().toLowerCase()===active.name.trim().toLowerCase()&&e.event_date===(active.event_date||new Date().toISOString().slice(0,10)));
-    if(ev)by('event-select').value=ev.id;
-  }
- }catch(e){fillEventSelectors();notice('Event presets could not sync: '+e.message)}
+ events=await check(db.from('pos_events').select('id,name,event_date,venue,status,created_at,inventory_profile_id').order('event_date',{ascending:false}).limit(300));
+ fillEventSelectors();
+ if(events.some(e=>e.id===selectedEventId&&e.status==='open'))by('event-select').value=selectedEventId;
+ else selectedEventId=by('event-select').value;
  renderQuickCatalog();
 }
 async function loadSales(){
@@ -580,3 +564,54 @@ by('pair').onclick=async()=>{
 by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t)};
 by('save-template').onclick=saveTemplate;by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');receipt();window.print()};
 createBillButtons();boot();
+
+// Event setup writes the same selections read by Command Center Inventory Hub.
+let eventDraft=new Set(),editingEvent=null;
+function drawEventProducts(){
+ const host=by('event-product-options');host.replaceChildren();
+ const query=by('event-product-search').value.trim().toLowerCase();
+ const products=[...inventoryCatalog.values()].filter(c=>c.inventory_type==='sales'&&c.is_active&&Number.isSafeInteger(c.price_cents)&&c.price_cents>0&&c.price_cents<=10000000);
+ for(const product of products.filter(c=>c.name.toLowerCase().includes(query))){
+  const label=document.createElement('label');label.className='event-product-choice';
+  const input=document.createElement('input');input.type='checkbox';input.checked=eventDraft.has(product.name);input.setAttribute('aria-label','Include '+product.name);
+  input.onchange=()=>{if(input.checked)eventDraft.add(product.name);else eventDraft.delete(product.name);by('event-selection-count').textContent=eventDraft.size+' of 12 products selected'};
+  const text=document.createElement('span');const count=stock.filter(x=>x.product_name.trim().toLowerCase()===product.name.toLowerCase()).reduce((n,x)=>n+x.quantity,0);
+  text.textContent=product.name+' · '+C.money(product.price_cents)+' · '+count+' pieces';label.append(input,text);host.append(label);
+ }
+ if(!products.length)host.textContent='No priced Sales Products yet. Add them in Command Center → Inventory → Sales Products.';
+ by('event-selection-count').textContent=eventDraft.size+' of 12 products selected';
+}
+async function openEventSetup(){
+ if(checkout||cart.length)return notice('Finish or clear the current cart before changing event products.');
+ try{
+  await Promise.all([loadStock(),loadEvents()]);
+  const select=by('setup-event');select.replaceChildren(eventOption('','New event'));
+  for(const e of events.filter(e=>e.status==='open'))select.append(eventOption(e.id,e.name+' · '+e.event_date));
+  for(const p of eventProfiles.filter(p=>!events.some(e=>e.inventory_profile_id===p.id)))select.append(eventOption('profile:'+p.id,p.name+' · Command Center'));
+  select.value=by('event-select').value;by('event-setup-message').textContent='';chooseSetupEvent();by('event-setup-dialog').showModal();
+ }catch(e){notice('Could not load event products: '+e.message)}
+}
+function chooseSetupEvent(){
+ editingEvent=events.find(e=>e.id===by('setup-event').value)||null;
+ const profile=eventProfiles.find(p=>'profile:'+p.id===by('setup-event').value);
+ if(profile)editingEvent={name:profile.name,event_date:profile.event_date,inventory_profile_id:profile.id};
+ by('setup-name').value=editingEvent?.name||'';by('setup-date').value=editingEvent?.event_date||new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+ eventDraft=new Set(eventQuickTiles.filter(t=>t.event_id===editingEvent?.inventory_profile_id).map(t=>t.product_name));
+ by('event-product-search').value='';drawEventProducts();
+}
+by('setup-event').onchange=chooseSetupEvent;
+by('event-product-search').oninput=drawEventProducts;
+by('setup-event-launch').onclick=openEventSetup;by('add-event-products').onclick=openEventSetup;
+by('close-event-setup').onclick=()=>by('event-setup-dialog').close();
+by('event-setup-form').onsubmit=async e=>{
+ e.preventDefault();const button=by('save-event-selection');button.disabled=true;
+ try{
+  if(checkout||cart.length)throw Error('Finish or clear the cart first');
+  const id=await check(db.rpc('pos_save_event_selection',{p_event:editingEvent?.id||null,p_name:by('setup-name').value.trim(),p_date:by('setup-date').value,p_names:[...eventDraft]}));
+  selectedEventId=id;sessionStorage.setItem('pos-event',id);
+  await Promise.all([loadStock(),loadEvents()]);by('event-select').value=id;renderQuickCatalog();
+  by('event-setup-dialog').close();setRegisterOpen(true);notice('Event saved. Your selected Sales Products are ready.');
+ }catch(err){by('event-setup-message').textContent=err.message}finally{button.disabled=false}
+};
+// Refresh on-hand counts without rebuilding an in-progress cart or dialog.
+setInterval(()=>{if(user&&!busy&&!checkout&&!cart.length&&!by('event-setup-dialog').open&&document.visibilityState==='visible')loadStock().catch(e=>notice('Inventory refresh failed: '+e.message));},15000);

@@ -21,33 +21,9 @@ function inputField(label,value,name,type){
  box.append(input);return box
 }
 function drawInventory(){
- const host=$('inventory-list');host.replaceChildren();const q=$('inventory-search').value.trim().toLowerCase();
- const matches=stock.filter(x=>[x.product_name,x.sku,x.size,x.color,meta.get(x.id)?.category].join(' ').toLowerCase().includes(q));
- if(!matches.length){host.append(elem('p',stock.length?'No matching products.':'No products yet. Add your first item above.','inventory-empty'));return}
- const grid=elem('div',null,'inventory-grid');
- for(const item of matches){
-  const d=meta.get(item.id)||{};
-  const card=elem('article',null,'inventory-card');
-  card.append(elem('h3',item.product_name||'Unnamed item'),elem('p',item.sku+' · '+(item.color||'No color')+' · '+(item.size||'One Size'),'sku'));
-  const fields=elem('div',null,'edit-fields');
-  for(const f of [
-   ['Name',item.product_name,'name'],['Color',item.color,'color'],['Size',item.size,'size'],
-   ['In stock',item.quantity,'quantity','number'],['Price ($)',d.price_cents>0?(d.price_cents/100).toFixed(2):'','price','number'],
-   ['Category',d.category||'Apparel','category'],['Type',d.product_type||'other','type']
-  ])fields.append(inputField(...f));
-  const taxable=elem('label',null,'check');const check=elem('input');check.type='checkbox';check.checked=d.taxable!==false;taxable.append(check,document.createTextNode(' Taxable'));
-  const button=elem('button','Save changes');button.type='button';
-  button.onclick=async()=>{
-   button.disabled=true;try{
-    const obj=Object.fromEntries([...fields.querySelectorAll('input')].map(x=>[x.name,x.value]));
-    const qty=Number(obj.quantity);if(!Number.isInteger(qty)||qty<0||qty>1000000)throw Error('Enter a whole-number stock quantity');
-    const cents=moneyToCents(obj.price);
-    await checked(db.rpc('pos_update_product_variant',{p_stock:item.id,p_name:obj.name,p_color:obj.color,p_size:obj.size,p_quantity:qty,p_price_cents:cents,p_taxable:check.checked,p_category:obj.category,p_type:obj.type}));
-    say('Saved '+obj.name+' · '+obj.size+' — price and stock updated.');await loadInventory();
-   }catch(err){say('Could not update product: '+err.message);button.disabled=false}
-  };
-  card.append(fields,taxable,button);grid.append(card)
- }host.append(grid)
+ const host=$('inventory-list');host.replaceChildren();
+ const link=elem('a','Open shared inventory editor →');link.href='inventory.html';host.append(link);
+ const note=elem('p','Use Sales Products to edit a product with all its sizes together. Register stock comes from these same tables.');host.append(note);
 }
 $('inventory-search').oninput=drawInventory;
 $('refresh').onclick=async()=>{try{await loadInventory();say('Inventory refreshed from staging database.')}catch(e){say('Inventory refresh failed: '+e.message)}};

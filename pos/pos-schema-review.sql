@@ -149,6 +149,7 @@ create table if not exists public.pos_events(
  status text not null default 'open' check(status in ('open','closed')),
  created_at timestamptz not null default now()
 );
+alter table public.pos_events add column if not exists inventory_profile_id uuid references public.inventory_event_profiles(id);
 alter table public.pos_events enable row level security;
 revoke all on public.pos_events from anon,authenticated;
 grant select,insert,update on public.pos_events to authenticated;
@@ -222,13 +223,14 @@ begin
      if not found or stockrow.quantity<qty then raise exception 'Insufficient stock'; end if;
      select * into catalog_item from public.inventory_catalog
        where lower(name)=lower(btrim(stockrow.product_name));
-     if catalog_configured and (not found or catalog_item.inventory_type<>'sales' or not catalog_item.is_active) then
+     if not found or catalog_item.inventory_type<>'sales' or not catalog_item.is_active then
        raise exception 'This item is not an active Sales Product';
      end if;
+     if p_event is not null and not exists(select 1 from public.pos_events e join public.inventory_event_quick_products t on t.event_id=e.inventory_profile_id where e.id=p_event and t.product_name=catalog_item.name) then raise exception 'Add this Sales Product to your event first'; end if;
      select v.price_cents,v.taxable into variant_price,item_taxable
        from public.pos_variant_details v where v.stock_id=stockrow.id;
      -- Keep legacy explicitly priced variants usable until the inventory catalog is configured.
-     unit:=coalesce(nullif(catalog_item.price_cents,0),variant_price);
+     unit:=catalog_item.price_cents;
      if unit is null or unit<=0 then raise exception 'Set a selling price for this product before checkout'; end if;
      item_taxable:=coalesce(item_taxable,true);
      if (line->>'unit_cents') is distinct from unit::text
