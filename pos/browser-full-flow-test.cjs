@@ -34,7 +34,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
  await step('Cashier starts closed, opens, and selects event',async()=>{
   cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');await cashier.locator('#open-register').click();
-  const cssState=await cashier.evaluate(()=>({body:document.body.className,toolbar:getComputedStyle(document.querySelector('.quick-toolbar')).display,outer:document.querySelector('.quick-toolbar')?.outerHTML.slice(0,350),ancestors:[...function*(x){while(x){yield {tag:x.tagName,cls:x.className,hidden:x.hidden};x=x.parentElement}}(document.querySelector('.quick-toolbar'))]}));console.log('DIAG cashier toolbar:',JSON.stringify(cssState));
+  await visible(cashier,'.quick-toolbar');
   await visible(cashier,'#catalog .quick-product');assert.ok(await cashier.locator('.quick-product').count()>=2);
   assert.equal(await cashier.locator('.product-manager:visible').count(),0);await cashier.locator('#event-select').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
  });
