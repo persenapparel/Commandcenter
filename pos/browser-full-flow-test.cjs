@@ -50,9 +50,17 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#tax').fill('0');await cashier.locator('#tax').dispatchEvent('input');assert.equal(await cashier.locator('#start').isDisabled(),false);
   await cashier.locator('#close-register').click();await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();assert.equal(await cashier.locator('#cart .cart-row').count(),2)
  });
- await step('Cashier pairing link and idle customer screen',async()=>{
-  await cashier.locator('#pair-quick').click();await txt(cashier,'#notice','Pairing link copied');
-  const link=await cashier.evaluate(()=>navigator.clipboard.readText());assert.match(link,/display\.html\?pair=[0-9a-f-]{36}/);
+ await step('Cashier pairing on iPad with blocked clipboard, manual link and retry',async()=>{
+  await cashier.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw Error('Clipboard not permitted')}});
+  await cashier.locator('#pair-quick').click();await txt(cashier,'#notice','Pairing link created');
+  await visible(cashier,'#pair-link-panel');
+  const link=await cashier.locator('#pair-link-field').inputValue();assert.match(link,/display\.html\?pair=[0-9a-f-]{36}/);
+  assert.equal(await cashier.locator('#pair-link-field').getAttribute('readonly'),'');
+  await cashier.locator('#pair-copy').click();await txt(cashier,'#pair-feedback','Safari blocked automatic copying');
+  assert.equal(await cashier.evaluate(()=>document.activeElement.id),'pair-link-field');
+  await cashier.evaluate(()=>{navigator.clipboard.writeText=async s=>localStorage.setItem('__clip',s)});
+  await cashier.locator('#pair-copy').click();await txt(cashier,'#pair-feedback','Private link copied');
+  assert.equal(link,await cashier.evaluate(()=>navigator.clipboard.readText()));
   customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await txt(customer,'#state','next order')
  });
  await step('Print station test print, paper selection, arm',async()=>{
