@@ -4,16 +4,80 @@ const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
 function current(){return C.totals(cart,Number(by('discount').value),C.taxMilli(by('tax').value));}
+/* Quick cashier catalog: one tile per product, explicit size/color chooser. */
+const TYPE_ICONS={hoodie:'🧥',tee:'👕',crew:'👚',hat:'🧢',other:'🛍️'};
+const ORDER_SIZES=['XS','S','M','L','XL','2XL','3XL','4XL','One Size'];let chosenCategory='All';
+function addVariant(x){
+ if(checkout)return notice('Finish or cancel the current checkout first');
+ const meta=variantMeta.get(x.id),line=cart.find(c=>c.stock_id===x.id);
+ if(!meta||!Number.isSafeInteger(meta.price_cents))return notice('This item needs a price set in Laptop Back Office.');
+ if(x.quantity-(line?.qty||0)<=0)return notice('No more stock available for '+(x.size||x.sku));
+ if(line)line.qty++;else cart.push({stock_id:x.id,name:x.product_name||x.sku,color:x.color,size:x.size,qty:1,unit_cents:meta.price_cents,service:'Apparel',taxable:meta.taxable!==false});
+ notice((x.product_name||'Product')+' · '+(x.size||'One Size')+' added to cart.');draw();
+}
+function pickVariant(title,options){
+ const dialog=by('variant-dialog');by('variant-title').textContent=title;
+ const host=by('variant-options');host.replaceChildren();
+ const rank=x=>{const v=ORDER_SIZES.indexOf(x.size);return v<0?99:v};
+ for(const x of options.slice().sort((a,b)=>String(a.color||'').localeCompare(String(b.color||''))||rank(a)-rank(b))){
+  const m=variantMeta.get(x.id),item=cart.find(c=>c.stock_id===x.id),remaining=x.quantity-(item?.qty||0);
+  const button=document.createElement('button');button.type='button';
+  const label=document.createElement('strong');label.textContent=(x.size||'One Size')+' · '+(x.color||'Default');
+  const price=document.createElement('span');price.className='variant-price';price.textContent=m?'$'+(m.price_cents/100).toFixed(2):'Set price on laptop';
+  const count=document.createElement('small');count.textContent=remaining>0?remaining+' available':'Out of stock';
+  button.disabled=remaining<=0||!m||!Number.isSafeInteger(m.price_cents);
+  button.append(label,price,count);button.onclick=()=>{addVariant(x);if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open')};host.append(button);
+ }
+ if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
+}
+function renderQuickCatalog(){
+ const host=by('catalog'),filters=by('category-filters');host.replaceChildren();filters.replaceChildren();
+ const q=by('search').value.trim().toLowerCase();
+ const groups=new Map();for(const x of stock){
+  const m=variantMeta.get(x.id),category=m?.category||'Apparel';
+  const key=(x.product_name||x.sku).trim()+'|'+category;
+  if(!groups.has(key))groups.set(key,{name:x.product_name||x.sku,category,variants:[],type:m?.product_type||'other'});
+  groups.get(key).variants.push(x);
+ }
+ const all=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name));
+ const categories=['All',...new Set(all.map(x=>x.category))];
+ if(!categories.includes(chosenCategory))chosenCategory='All';
+ for(const category of categories){const button=document.createElement('button');button.type='button';button.textContent=category;button.setAttribute('aria-pressed',String(chosenCategory===category));button.onclick=()=>{chosenCategory=category;renderQuickCatalog()};filters.append(button)}
+ const matching=all.filter(g=>(chosenCategory==='All'||g.category===chosenCategory)&&
+    [g.name,g.category,...g.variants.flatMap(v=>[v.color,v.size,v.sku])].join(' ').toLowerCase().includes(q));
+ for(const g of matching){
+  const ready=g.variants.filter(x=>variantMeta.has(x.id)&&x.quantity>0);
+  const total=g.variants.reduce((n,x)=>n+x.quantity,0);
+  const price=ready.length?Math.min(...ready.map(x=>variantMeta.get(x.id).price_cents)):null;
+  const tile=document.createElement('button');tile.type='button';tile.className='quick-product';
+  tile.disabled=!ready.length;tile.setAttribute('aria-label','Choose size and color for '+g.name);
+  const icon=document.createElement('span');icon.className='quick-symbol';icon.textContent=TYPE_ICONS[g.type]||TYPE_ICONS.other;
+  const badge=document.createElement('span');badge.className='quick-count';badge.textContent=total+' in stock';
+  const title=document.createElement('span');title.className='quick-name';title.textContent=g.name;
+  const detail=document.createElement('span');detail.className='quick-detail';
+  detail.textContent=[...new Set(g.variants.map(v=>v.color).filter(Boolean))].join(' / ')||g.category;
+  const amount=document.createElement('span');amount.className='quick-price';amount.textContent=price===null?'Set price':('$'+(price/100).toFixed(2)+(g.variants.length>1?' +':''));
+  tile.append(icon,badge,title,detail,amount);
+  tile.onclick=()=>pickVariant(g.name,g.variants);
+  host.append(tile);
+ }
+ if(!matching.length){const empty=document.createElement('div');empty.className='quick-empty';empty.textContent=stock.length?'No matching products. Change the search or category.':'No products saved yet. Open Laptop Back Office to add products and sizes, then come back here.';host.append(empty)}
+ const readyCount=stock.filter(x=>x.quantity>0&&variantMeta.has(x.id)).length;
+ by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
+}
+function setRegisterOpen(open){
+ if(!open&&checkout)return notice('Finish or cancel the open checkout before closing the register.');
+ if(open&&!stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))return notice('First add at least one priced, in-stock item in Laptop Back Office.');
+ document.body.classList.toggle('pos-register-closed',!open);
+ sessionStorage.setItem('pos-register-open',open?'1':'0');
+ if(open)notice('Register open. Tap a product, pick the size/color and send checkout to the customer iPad.');
+}
+by('open-register').onclick=()=>setRegisterOpen(true);
+by('close-register').onclick=()=>setRegisterOpen(false);
+by('close-variant').onclick=()=>{const dlg=by('variant-dialog');if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open')};
+by('variant-dialog').addEventListener('click',e=>{if(e.target===by('variant-dialog')){const dlg=by('variant-dialog');if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open')}});
 function draw(){
- by('catalog').replaceChildren();const q=by('search').value.toLowerCase();
- stock.filter(x=>[x.product_name,x.sku,x.color,x.size].join(' ').toLowerCase().includes(q)).forEach(x=>{
- const item=cart.find(c=>c.stock_id===x.id);const remaining=x.quantity-(item?.qty||0);const meta=variantMeta.get(x.id);
- const r=row(x.product_name||x.sku,'Add',()=>{if(checkout)return notice('Finish or cancel the open checkout first');if(remaining<=0)return notice('No stock available');if(item)item.qty++;else cart.push({stock_id:x.id,name:x.product_name||x.sku,color:x.color,size:x.size,qty:1,unit_cents:meta?.price_cents??0,service:'Apparel',taxable:meta?.taxable??true});draw();},[x.sku,x.color,x.size,'Available: '+remaining].join(' · '));
- const btn=r.querySelector('button');
- btn.disabled=remaining<=0||!meta||!Number.isSafeInteger(meta.price_cents);
- btn.title=!meta?'Configure a selling price in Product Manager first':remaining<=0?'Out of stock':'Add to cart';
- by('catalog').append(r);
- });
+ renderQuickCatalog();
  by('cart').replaceChildren();
  for(const [i,x] of cart.entries()){
  const r=document.createElement('div');r.className='cart-row';const title=document.createElement('div');title.textContent=x.name+' '+[x.color,x.size].filter(Boolean).join(' / ');
@@ -46,6 +110,8 @@ async function loadTemplates(){templates=await check(db.from('pos_receipt_templa
 function showTemplate(t){by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false}
 async function ensureRegister(){const regs=await check(db.from('pos_registers').select('*').eq('owner_id',user.id).eq('active',true).order('created_at').limit(1));register=regs[0]||await check(db.from('pos_registers').insert({owner_id:user.id,label:'Persen POS register'}).select('*').single());}
 async function status(){if(!register||busy)return;try{const list=await check(db.from('pos_checkouts').select('id,status,created_at,total_cents,payment_preference,receipt_print,receipt_email,customer_step,help_requested,progress_updated_at').eq('register_id',register.id).order('created_at',{ascending:false}).limit(1));const c=list[0];checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
+ document.body.classList.toggle('checkout-active',!!checkout);
+ if(checkout)document.body.classList.remove('pos-register-closed');
  const progressing=!!checkout;
  const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
  const stage=checkout?.status==='contact_received'?{...progress,step_number:8,percentage:100,step_label:'Questions finished · ready for cashier'}:progress;
@@ -71,7 +137,7 @@ if(!['ready','exact','exact_unconfigured'].includes(plan.status))throw Error('Ca
 const id=await check(db.rpc('pos_complete_cash',{p_checkout:checkout.id,p_tender_cents:tendered,p_received_breakdown:manualTender?tenderBills:{},p_change_breakdown:plan.breakdown||{},p_expected_drawer_version:drawerVersion}));const saved=await check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,tendered_cents,change_cents,change_breakdown,created_at').eq('id',id).single());lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};receipt();checkout=null;cart=[];resetTender();await Promise.all([loadStock(),loadSales(),reloadDrawer()]);notice('Cash sale recorded. Receipt queued for your Windows print station; manual reprint also available.')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-tax').textContent=C.money(lastSale.totals.tax_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
 async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
-async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales(),reloadDrawer()]);try{const contents=await check(db.from('site_content').select('key,value').in('key',['seasonal_campaigns_v1','v54_google_reviews']));const dict=Object.fromEntries((contents||[]).map(x=>[x.key,x.value]));season=C.season(dict.seasonal_campaigns_v1);reviewLink=R.reviewUrl(dict.v54_google_reviews);if(season){Experience.apply(document,season);by('seasonal-status').textContent='Active: '+season.title+' — receipt and display promotions';notice('Seasonal Studio connected: '+season.title)}else{by('seasonal-status').textContent='No published active campaign — classic receipt and customer display'}if(!reviewLink)notice('Google review link not configured in Command Center Site Studio; review invitation hidden until configured.')}catch(err){by('seasonal-status').textContent='Seasonal Studio temporarily unavailable';}by('pairing').textContent='Use Create temporary iPad link to pair the customer display. A new link expires after 2 hours and replaces the previous link.';await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
+async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales(),reloadDrawer()]);if(sessionStorage.getItem('pos-register-open')==='1'&&stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))setRegisterOpen(true);try{const contents=await check(db.from('site_content').select('key,value').in('key',['seasonal_campaigns_v1','v54_google_reviews']));const dict=Object.fromEntries((contents||[]).map(x=>[x.key,x.value]));season=C.season(dict.seasonal_campaigns_v1);reviewLink=R.reviewUrl(dict.v54_google_reviews);if(season){Experience.apply(document,season);by('seasonal-status').textContent='Active: '+season.title+' — receipt and display promotions';notice('Seasonal Studio connected: '+season.title)}else{by('seasonal-status').textContent='No published active campaign — classic receipt and customer display'}if(!reviewLink)notice('Google review link not configured in Command Center Site Studio; review invitation hidden until configured.')}catch(err){by('seasonal-status').textContent='Seasonal Studio temporarily unavailable';}by('pairing').textContent='Use Create temporary iPad link to pair the customer display. A new link expires after 2 hours and replaces the previous link.';await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
 
 /* Event manager: owner/admin-only RLS queries and historical immutable sale snapshots. */
 const eventOption=(id,label)=>{const o=document.createElement('option');o.value=id;o.textContent=label;return o};
