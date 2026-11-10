@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Persen POS | Laptop Back Office</title>
+<link rel="stylesheet" href="admin.css">
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="../config.js"></script><script defer src="../backend.js"></script>
+<script defer src="admin.js"></script>
+</head><body>
+<header class="top"><div class="brand"><img src="assets/persen-logo.png" alt="" onerror="this.hidden=true">PERSEN <span>POS</span><small>BACK OFFICE</small></div>
+<nav><a href="index.html">Dashboard</a><a href="register.html">Open Cashier</a><a href="print-station.html">Print Station</a></nav></header>
+<main>
+<div class="eyebrow">LAPTOP CONTROL CENTER · DEVELOPMENT</div>
+<div class="intro"><div><h1>Manage your store.</h1><p>Add all your apparel before an event, change prices and sizes, and keep an eye on checkouts from your laptop.</p></div><div class="env">TEST STAGING · NOT LIVE SALES</div></div>
+<div id="notice" role="status" class="notice">Connecting to staging...</div>
+<section id="auth" class="surface auth"><h2>Owner sign-in</h2><p>Use the separate staging POS owner account.</p><form id="login"><input type="email" name="email" placeholder="Owner email" required autocomplete="email"><input type="password" name="password" placeholder="Password" required autocomplete="current-password"><button type="submit" class="primary">Sign in</button></form></section>
+<div id="workspace" hidden>
+<div class="stats"><div class="stat"><span>Product variants</span><strong id="stat-variants">—</strong></div><div class="stat"><span>Pieces in stock</span><strong id="stat-pieces">—</strong></div><div class="stat"><span>Low stock</span><strong id="stat-low">—</strong></div><div class="stat"><span>Live checkouts</span><strong id="stat-active">—</strong></div></div>
+<div class="two-col">
+<section class="surface" id="add-products"><div class="section-head"><div><span class="eyebrow">01 · PRODUCT SETUP</span><h2>Add apparel in one save</h2></div></div>
+<p class="muted">Enter a product and color once, then fill in each size's stock. One click saves all selected sizes with their own inventory records and prices.</p>
+<form id="create-products">
+<div class="fields">
+<label>Product name<input name="name" maxlength="120" placeholder="Long Island Winter Hoodie" required></label>
+<label>Color<input name="color" maxlength="100" placeholder="Forest Green" required></label>
+<label>Category<input name="category" maxlength="90" value="Apparel"></label>
+<label>Type<select name="type"><option value="hoodie">Hoodie</option><option value="tee">T-shirt</option><option value="crew">Crewneck</option><option value="hat">Hat</option><option value="other">Other</option></select></label>
+<label>Price per piece ($)<input name="price" type="number" min="0" max="100000" step="0.01" inputmode="decimal" placeholder="40.00" required></label>
+<label>Supplier (optional)<input name="supplier" maxlength="120" placeholder="Your supplier"></label></div>
+<div class="size-heading"><strong>Stock by size</strong><span>Leave unused sizes at 0</span></div>
+<div id="size-grid" class="size-grid"></div>
+<label class="check"><input type="checkbox" name="taxable" checked> Item is taxable (confirm tax treatment before selling)</label>
+<button id="save-products" class="primary" type="submit">Save these sizes to inventory</button>
+</form></section>
+<section class="stack">
+<div class="surface monitor"><div class="section-head"><div><span class="eyebrow">02 · LIVE MONITOR</span><h2>Event activity</h2></div><span class="pulse" id="monitor-indicator">Checking</span></div>
+<p class="muted">Only checkout stage and help requests appear here, not customers' draft contact details. Refreshes automatically.</p>
+<div id="live-list" aria-live="polite" class="live-list">Checking checkout activity...</div></div>
+<div class="surface"><div class="section-head"><div><span class="eyebrow">03 · EVENT SETUP</span><h2>Event details</h2></div></div>
+<form id="event-form"><label>Event name<input name="name" placeholder="Rocky Point Holiday Boutique" required maxlength="100"></label><label>Date<input type="date" name="event_date" required></label><label>Location<input name="venue" placeholder="Rocky Point High School" maxlength="140"></label><button type="submit">Create event</button></form>
+<div id="event-list" class="event-list"></div>
+</div>
+<div class="surface launch"><div><span class="eyebrow">READY TO OPEN?</span><h2>Let the cashier iPad do the selling.</h2><p>Products save directly to the protected staging inventory. Open the cashier site on your iPad, tap <strong>Open Register</strong>, and use the big product tiles.</p></div><a class="primary" href="register.html">Open cashier register</a></div>
+</section></div>
+<section class="surface inventory" id="inventory"><div class="section-head"><div><span class="eyebrow">04 · INVENTORY EDITOR</span><h2>All products &amp; sizes</h2></div><button type="button" id="refresh">Refresh inventory</button></div>
+<p class="muted">Edit a product's name, color, size, price, and remaining quantity. Changes appear on the cashier after inventory refresh. Saving updates price and stock together.</p>
+<label>Search products, colors, SKUs or sizes<input type="search" id="inventory-search" placeholder="Search inventory"></label><div id="inventory-list"></div></section>
+</div></main><footer>Persen Apparel · Private POS staging back office · Real sales disabled until integration tests</footer></body></html>
