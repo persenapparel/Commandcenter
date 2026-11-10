@@ -74,6 +74,11 @@ function setRegisterOpen(open){
 }
 by('open-register').onclick=()=>setRegisterOpen(true);
 by('close-register').onclick=()=>setRegisterOpen(false);
+by('refresh-products').onclick=async()=>{if(checkout)return notice('Finish or cancel the current checkout first');try{await loadStock();notice('Product stock and prices refreshed from laptop back office.')}catch(e){notice('Could not refresh products: '+e.message)}};
+by('pair-quick').onclick=()=>by('pair').click();
+by('pair-setup').onclick=()=>by('pair').click();
+window.addEventListener('focus',()=>{if(user&&!checkout&&!cart.length)loadStock().catch(()=>{});});
+
 by('close-variant').onclick=()=>{const dlg=by('variant-dialog');if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open')};
 by('variant-dialog').addEventListener('click',e=>{if(e.target===by('variant-dialog')){const dlg=by('variant-dialog');if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open')}});
 function draw(){
