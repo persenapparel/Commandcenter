@@ -33,6 +33,12 @@ assert.ok(!/jsonb_build_object\([^)]*phone/i.test(sql.slice(sql.indexOf('public.
 const cashierStatusSource=cashierJs.slice(cashierJs.indexOf('async function status()'),cashierJs.indexOf('async function begin()'));
 assert.ok(!/\bdraw\(\)/.test(cashierStatusSource),'Customer polling must not rebuild cart inputs');
 assert.ok(cashierJs.includes('syncCheckoutUI();renderCash();'),'Polling should only update lightweight checkout controls');
-assert.ok(cashierJs.includes('btn.disabled=remaining<=0||!meta'),'Unpriced inventory must not be added silently');
+assert.ok(cashierJs.includes('button.disabled=remaining<=0||!m||!Number.isSafeInteger(m.price_cents)')&&cashierJs.includes('tile.disabled=!ready.length'),'Unpriced inventory must never be offered as a selectable product');
 assert.ok(cashierJs.includes("upsert(metadata,{onConflict:'stock_id'})"),'Existing variants need a price editor');
-console.log('Persen POS kiosk + cashier help monitoring and inventory UI: 23 offline checks passed.');
+assert.ok(cashier.includes('id="variant-dialog"')&&cashier.includes('id="open-register"'),'Cashier should expose quick product picker and launch action');
+const admin=fs.readFileSync('pos/admin.html','utf8');
+const adminJs=fs.readFileSync('pos/admin.js','utf8');
+assert.ok(admin.includes('id="create-products"')&&admin.includes('id="inventory-list"'),'Laptop back office must have product setup and inventory editor');
+assert.ok(adminJs.includes('pos_create_product_group')&&adminJs.includes('pos_update_product_variant'),'Laptop admin must use atomic staged database actions');
+assert.ok(build.includes("'admin.html'")&&build.includes("'admin.css'")&&build.includes("'admin.js'"),'POS deployment must include laptop back office assets');
+console.log('Persen POS kiosk + quick cashier + separate laptop admin checks passed.');
