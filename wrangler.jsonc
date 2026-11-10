@@ -1,9 +1,0 @@
-{
-  "name": "persen-pos-staging",
-  "compatibility_date": "2026-11-09",
-  "assets": {
-    "directory": "./pos-dist"
-  },
-  "preview_urls": true,
-  "previews": {}
-}
