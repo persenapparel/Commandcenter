@@ -127,4 +127,70 @@ set role anon;
 select set_config('request.jwt.claim.sub','',false);
 select 1/(case when public.pos_customer_view(:'secret'::uuid)->>'status'='unpaired' then 1 else 0 end) as expired_pairing_rejected;
 
+reset role;
+begin;
+insert into public.stock_items(id,sku,product_name,color,size,quantity) values
+ ('22222222-2222-4222-8222-222222222223','POS-TEST-UNPRICED','Unpriced Sale Item','Red','S',5),
+ ('22222222-2222-4222-8222-222222222224','POS-TEST-BLANK','Blank Garment','White','M',5),
+ ('22222222-2222-4222-8222-222222222225','POS-TEST-INACTIVE','Inactive Sale Item','Red','L',5),
+ ('22222222-2222-4222-8222-222222222226','POS-TEST-LEGACY','Unclassified Sale Item','Red','XL',5);
+insert into public.inventory_catalog(name,inventory_type,price_cents,is_active) values
+ ('POS Integration Hoodie','sales',61,true),
+ ('Unpriced Sale Item','sales',null,true),
+ ('Blank Garment','blanks',2500,true),
+ ('Inactive Sale Item','sales',2500,false);
+insert into public.pos_variant_details(stock_id,price_cents) values
+ ('22222222-2222-4222-8222-222222222223',0),('22222222-2222-4222-8222-222222222226',2500);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
+insert into public.pos_registers(id,owner_id,label) values
+ ('33333333-3333-4333-8333-333333333334','11111111-1111-4111-8111-111111111111','Checkout guard fixture');
+
+do $$
+declare
+ guard record;
+ register_id constant uuid:='33333333-3333-4333-8333-333333333334';
+ stock_id constant uuid:='22222222-2222-4222-8222-222222222222';
+ checkout_id uuid;
+begin
+ for guard in select * from (values
+  (stock_id,2500,true,'Product price or tax status changed. Refresh products and re-add the item.'),
+  (stock_id,61,false,'Product price or tax status changed. Refresh products and re-add the item.'),
+  ('22222222-2222-4222-8222-222222222223'::uuid,0,true,'Set a selling price for this product before checkout'),
+  ('22222222-2222-4222-8222-222222222224'::uuid,2500,true,'This item is not an active Sales Product'),
+  ('22222222-2222-4222-8222-222222222225'::uuid,2500,true,'This item is not an active Sales Product'),
+  ('22222222-2222-4222-8222-222222222226'::uuid,2500,true,'This item is not an active Sales Product')
+ ) as cases(id,price,taxable,message) loop
+  begin
+   perform public.pos_begin_checkout(register_id,
+    jsonb_build_array(jsonb_build_object('stock_id',guard.id,'qty',1,'unit_cents',guard.price,'taxable',guard.taxable)));
+   raise exception 'Checkout guard failed to reject an invalid stock line';
+  exception when raise_exception then
+   if sqlerrm<>guard.message then raise; end if;
+  end;
+ end loop;
+ checkout_id:=public.pos_begin_checkout(register_id,
+  jsonb_build_array(jsonb_build_object('stock_id',stock_id,'qty',1,'unit_cents',61,'taxable',true),
+    jsonb_build_object('name','Tax-exempt fixture','qty',1,'unit_cents',50,'taxable',false)),1500,8750);
+ if not exists(select 1 from public.pos_checkouts c where c.id=checkout_id and
+  c.subtotal_cents=111 and c.discount_cents=17 and c.tax_cents=5 and c.total_cents=99) then
+  raise exception 'Mixed discounted checkout disagreed with the cashier cart';
+ end if;
+end $$;
+
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111112',true);
+select 1/(case when count(*)=0 then 1 else 0 end) as non_admin_cannot_read_checkouts from public.pos_checkouts;
+do $$
+begin
+ begin
+  perform public.pos_begin_checkout('33333333-3333-4333-8333-333333333334',
+   '[{"name":"Non-admin fixture","qty":1,"unit_cents":100}]'::jsonb);
+  raise exception 'Non-admin started a checkout';
+ exception when raise_exception then
+  if sqlerrm<>'Unauthorized' then raise; end if;
+ end;
+end $$;
+rollback;
+
 \echo 'POS staged PostgreSQL checkout integration PASS (never connected to production)'

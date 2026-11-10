@@ -6,6 +6,15 @@ const tests=[];
 function test(name,fn){fn();tests.push(name)}
 test('Basic cash totals',()=>assert.deepEqual(C.totals([{qty:2,unit_cents:4000,taxable:true}],10,0),{subtotal_cents:8000,discount_cents:800,tax_cents:0,total_cents:7200}));
 test('Rounding and taxes',()=>assert.equal(C.totals([{qty:1,unit_cents:10000,taxable:true}],0,8625).tax_cents,863));
+test('Mixed cart allocates a discount before rounding tax once',()=>{
+ assert.deepEqual(C.totals([{qty:1,unit_cents:61},{qty:1,unit_cents:50,taxable:false}],15,8750),
+  {subtotal_cents:111,discount_cents:17,tax_cents:5,total_cents:99});
+});
+test('Cart preview uses the same basis points as checkout',()=>{
+ assert.equal(C.discountBps(12.345),1235);
+ assert.equal(C.totals([{qty:1,unit_cents:100000}],12.345,0).discount_cents,12350);
+});
+test('Missing prices do not turn into zero',()=>{for(const price of ['', ' ', null, undefined])assert.throws(()=>C.cents(price),/Invalid price/)});
 test('Non-taxable item',()=>assert.equal(C.totals([{qty:1,unit_cents:2000,taxable:false}],0,8625).tax_cents,0));
 test('100 percent discount',()=>assert.equal(C.totals([{qty:1,unit_cents:2000}],100,8625).total_cents,0));
 test('Phone validator',()=>{assert.equal(C.phone('(631) 555-1212'),'(631) 555-1212');assert.throws(()=>C.phone('555'),/phone/)});
