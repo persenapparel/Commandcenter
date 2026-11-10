@@ -17,6 +17,11 @@ insert into public.pos_variant_details(stock_id,price_cents,taxable,category,pro
 insert into public.pos_events(id,owner_id,name,event_date,status)
  values('44444444-4444-4444-8444-444444444444','11111111-1111-4111-8111-111111111111','Test fair',current_date,'open');
 
+insert into public.inventory_catalog(name,inventory_type,price_cents,is_active) values ('POS Integration Hoodie','sales',2500,true);
+insert into public.inventory_event_profiles(id,name,event_date) values ('88888888-8888-4888-8888-888888888888','Test fair',current_date);
+update public.pos_events set inventory_profile_id='88888888-8888-4888-8888-888888888888' where id='44444444-4444-4444-8444-444444444444';
+insert into public.inventory_event_quick_products(event_id,product_name) values ('88888888-8888-4888-8888-888888888888','POS Integration Hoodie');
+
 -- A newly created register secret must not work until owner issues a temporary pair.
 select display_secret as old_secret from public.pos_registers
 where id='33333333-3333-4333-8333-333333333333' \gset
@@ -161,7 +166,7 @@ insert into public.inventory_catalog(name,inventory_type,price_cents,is_active) 
  ('POS Integration Hoodie','sales',61,true),
  ('Unpriced Sale Item','sales',null,true),
  ('Blank Garment','blanks',2500,true),
- ('Inactive Sale Item','sales',2500,false);
+ ('Inactive Sale Item','sales',2500,false) on conflict(name) do update set price_cents=excluded.price_cents;
 insert into public.pos_variant_details(stock_id,price_cents) values
  ('22222222-2222-4222-8222-222222222223',0),('22222222-2222-4222-8222-222222222226',2500);
 

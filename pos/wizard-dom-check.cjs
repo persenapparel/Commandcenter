@@ -39,6 +39,8 @@ assert.ok(cashier.includes('id="variant-dialog"')&&cashier.includes('id="open-re
 const admin=fs.readFileSync('pos/admin.html','utf8');
 const adminJs=fs.readFileSync('pos/admin.js','utf8');
 assert.ok(admin.includes('id="create-products"')&&admin.includes('id="inventory-list"'),'Laptop back office must have product setup and inventory editor');
-assert.ok(adminJs.includes('pos_create_product_group')&&adminJs.includes('pos_update_product_variant'),'Laptop admin must use atomic staged database actions');
+const hub=fs.readFileSync('inventory-hub.js','utf8');
+assert.ok(adminJs.includes("link.href='inventory.html'")&&hub.includes('inventory_save_size_grid')&&hub.includes('inventory_save_event_tiles'),'Laptop routes to the shared atomic inventory actions');
+assert.ok(build.includes("'inventory.html'")&&build.includes("'inventory-hub.js'"),'Deploy shared inventory editor');
 assert.ok(build.includes("'admin.html'")&&build.includes("'admin.css'")&&build.includes("'admin.js'"),'POS deployment must include laptop back office assets');
 console.log('Persen POS kiosk + quick cashier + separate laptop admin checks passed.');
