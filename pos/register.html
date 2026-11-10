@@ -19,7 +19,18 @@
   <div id="customer-help-alert" class="customer-help-alert" hidden><strong>Customer requested assistance</strong><span>Check the customer iPad and help with the current step.</span></div>
 </div>
 <p id="receipt-request-status" class="hint">Receipt preferences will appear here after customer checkout.</p>
-<p id="pairing"></p><p id="external-payment-notice" class="hint" hidden>Customer requested payment instructions. Do not mark a sale paid until payment is independently verified. Automatic Venmo and Apple Cash processing is not connected.</p>
+<p id="pairing"></p><section id="pair-link-panel" class="pair-link-panel" hidden aria-label="Private customer iPad pairing link">
+  <strong>Customer iPad pairing link is ready</strong>
+  <p class="hint">This private link expires after two hours. Generating a new link disconnects the previous customer iPad. Only share with the device you control.</p>
+  <label for="pair-link-field">Private temporary link</label>
+  <input id="pair-link-field" type="text" readonly autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Private customer display pairing link">
+  <div class="pair-link-actions">
+    <button id="pair-copy" type="button">Copy private link</button>
+    <button id="pair-share" type="button">Share with customer iPad</button>
+    <a id="pair-open" target="_blank" rel="noopener noreferrer" href="display.html">Preview on this device</a>
+  </div>
+  <p class="hint" id="pair-feedback" role="status">Use Copy, Share, or select the link manually if Safari restricts the clipboard.</p>
+</section><p id="external-payment-notice" class="hint" hidden>Customer requested payment instructions. Do not mark a sale paid until payment is independently verified. Automatic Venmo and Apple Cash processing is not connected.</p>
 <details class="cashier-payment-help">
   <summary>Venmo & Apple Cash customer instructions</summary>
   <div class="cashier-payment-options">
