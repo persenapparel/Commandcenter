@@ -453,3 +453,9 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 .pair-link-actions a{color:#1558a6;background:#fff;border:1px solid #c4dbf4}
 .pair-link-actions [hidden]{display:none!important}
 @media(max-width:520px){.pair-link-actions>*{flex:1 1 100%}}
+
+
+/* Event-specific quick tiles, synced only when POS and Command Center share a database. */
+.quick-product.event-featured{border:2px solid #4c97e7!important;background:linear-gradient(160deg,#f0f8ff,#fff)!important;box-shadow:0 8px 20px #1454a81f}
+.quick-product.event-featured .quick-detail{font-weight:800;color:#205ba0}
+.quick-event-hint{grid-column:1/-1;color:#607b99;font-size:12px;font-weight:750;padding:9px 4px;margin:0}
