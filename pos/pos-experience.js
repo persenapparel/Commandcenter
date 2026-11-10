@@ -35,6 +35,16 @@ function palette(campaign){
   message:campaign?.published===true?String(campaign.announcement||base.message).trim().slice(0,170):base.message,
   active:campaign?.published===true};
 }
+/* Date-only UTC math avoids daylight-saving errors in the holiday day count. */
+function daysUntilChristmas(now=new Date()){
+ const date=new Date(now);
+ if(!Number.isFinite(date.getTime()))return null;
+ const year=date.getFullYear();
+ const today=Date.UTC(year,date.getMonth(),date.getDate());
+ let christmas=Date.UTC(year,11,25);
+ if(today>christmas)christmas=Date.UTC(year+1,11,25);
+ return Math.round((christmas-today)/86400000);
+}
 const MODE_KEY='persen-pos-appearance-v1';
 function mode(){try{return localStorage.getItem(MODE_KEY)||'auto'}catch(_){return 'auto'}}
 function setMode(value){if(!['auto','simple','christmas','winter','thanksgiving','halloween','valentines','newyear','stpatricks','easter','mothersday','fathersday','memorialday','july4','laborday','spring','summer','fall'].includes(value))return;try{localStorage.setItem(MODE_KEY,value)}catch(_){};if(typeof document!=='undefined')apply(document,window.__persenPosCampaign||null)}
@@ -57,9 +67,21 @@ function apply(doc,campaign){
  extras.forEach(node=>{node.textContent=p.active?p.secondary:'';node.hidden=!p.active});
  if(doc.body){doc.body.classList.toggle('pos-simple-mode',simple);}
  if(!simple && p.key==='christmas' && doc.body){const existing=doc.getElementById('pos-holiday-lights');if(!existing){const trim=doc.createElement('div');trim.id='pos-holiday-lights';trim.className='pos-holiday-lights';trim.setAttribute('aria-hidden','true');trim.innerHTML='<span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span>';doc.body.prepend(trim)}}else{doc.getElementById('pos-holiday-lights')?.remove()}
+ /* Optional, unobtrusive Christmas countdown; never shown in Simple Black Mode. */
+ const countdownId='pos-christmas-countdown';
+ const countdownAnchor=doc.querySelector('.experience-overline');
+ const priorCountdown=doc.getElementById(countdownId);
+ if(!simple&&p.key==='christmas'&&countdownAnchor){
+  const days=daysUntilChristmas();
+  if(days!==null){
+   const countdown=priorCountdown||doc.createElement('p');
+   if(!priorCountdown){countdown.id=countdownId;countdown.className='pos-christmas-countdown';countdownAnchor.insertAdjacentElement('afterend',countdown)}
+   countdown.textContent=days===0?'🎄 Merry Christmas!':`🎄 ${days} ${days===1?'day':'days'} until Christmas`;
+  }
+ }else{priorCountdown?.remove()}
  return p;
 }
 function mountControls(doc){if(doc.getElementById('pos-appearance-control'))return;const control=doc.createElement('label');control.id='pos-appearance-control';control.className='pos-appearance-control';const title=doc.createElement('span');title.textContent='Appearance';const select=doc.createElement('select');select.setAttribute('aria-label','POS appearance');for(const [value,label] of [['auto','Automatic holiday'],['simple','Simple black'],...Object.entries(presets).filter(([k])=>k!=='default').map(([k,v])=>[k,v.name])]){const option=doc.createElement('option');option.value=value;option.textContent=label;select.append(option)}select.value=mode();select.addEventListener('change',()=>setMode(select.value));control.append(title,select);doc.body.append(control);apply(doc,window.__persenPosCampaign||null)}
 if(typeof document!=='undefined'){const init=()=>{if(!document.body)return;const customer=!!document.body.classList.contains('kiosk-body');if(customer)apply(document,window.__persenPosCampaign||null);else mountControls(document)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init()}
-return {presets,presetFor,palette,apply,mode,setMode,mountControls};
+return {presets,presetFor,palette,apply,mode,setMode,mountControls,daysUntilChristmas};
 });
