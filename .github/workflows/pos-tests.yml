@@ -57,6 +57,8 @@ jobs:
           node --check pos/print-station.js
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Test POS holiday and Simple Black appearance safeguards
+        run: node pos/experience-tests.cjs
       - name: Test Resend receipt worker with offline mock provider
         run: node pos/receipt-worker-smoke.cjs
       - name: Simulate Dell automatic receipt queue to browser print
