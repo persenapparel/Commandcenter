@@ -43,7 +43,7 @@ begin
       group by lower(btrim(i->>'color')),upper(btrim(i->>'size')) having count(*)>1) then
       raise exception 'Duplicate color and size row';
     end if;
-    select count(*),max(id) into v_count,v_existing from public.stock_items
+    select count(*),(array_agg(id))[1] into v_count,v_existing from public.stock_items
     where lower(product_name)=lower(v_name) and lower(color)=lower(v_color) and upper(size)=v_size;
     if v_count>1 then raise exception 'Multiple inventory rows for % / %; resolve duplicates before editing',v_color,v_size;end if;
     if v_count=1 then
