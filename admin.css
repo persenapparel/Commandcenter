@@ -109,3 +109,36 @@
 .owner-quick-actions h2{margin:4px 0 7px;font-size:20px}.owner-quick-actions p{margin:0;color:#64748b;font-size:13px;line-height:1.5}
 .owner-quick-action-buttons{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:700px){.owner-quick-actions{align-items:flex-start;flex-direction:column;padding:18px}.owner-quick-action-buttons{justify-content:flex-start}.owner-quick-action-buttons .btn{flex:1 1 calc(50% - 9px)}}
+
+
+/* Seasonal Studio: lightweight festive Christmas preview; editor only, no customer-side changes. */
+.seasonal-studio .seasonal-preview[data-theme="christmas"]{
+  border:2px solid #d4b36c;
+  background:radial-gradient(circle at 78% 45%,#23644e 0%,#0a332b 55%,#09261f 100%);
+  padding-top:72px;
+}
+.seasonal-studio .seasonal-preview[data-theme="christmas"]::after{
+  content:"";
+  position:absolute;z-index:4;pointer-events:none;
+  top:10px;left:16px;right:16px;height:28px;
+  border-top:3px solid rgba(227,197,122,.9);
+  border-radius:50% 50% 0 0;
+  background:
+    radial-gradient(ellipse 7px 11px at 5% 14px,#ffd768 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 15% 16px,#ed5a5a 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 25% 19px,#c6f5d0 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 35% 21px,#ffd768 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 45% 22px,#ed5a5a 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 55% 22px,#c6f5d0 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 65% 21px,#ffd768 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 75% 19px,#ed5a5a 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 85% 16px,#c6f5d0 90%,transparent 100%),
+    radial-gradient(ellipse 7px 11px at 95% 14px,#ffd768 90%,transparent 100%);
+  filter:drop-shadow(0 0 6px #ffe3a6);
+  animation:persen-light-twinkle 3.5s ease-in-out infinite alternate;
+}
+.seasonal-studio .seasonal-preview[data-theme="christmas"] .preview-eyebrow{color:#ffe0a3}
+.seasonal-studio .seasonal-preview[data-theme="christmas"] .seasonal-preview-cta{background:#a91f2d}
+@keyframes persen-light-twinkle{from{opacity:.78;filter:drop-shadow(0 0 3px #ffe3a6)}to{opacity:1;filter:drop-shadow(0 0 10px #ffe3a6)}}
+@media(max-width:700px){.seasonal-studio .seasonal-preview[data-theme="christmas"]{padding-top:65px}}
+@media(prefers-reduced-motion:reduce){.seasonal-studio .seasonal-preview[data-theme="christmas"]::after{animation:none}}
