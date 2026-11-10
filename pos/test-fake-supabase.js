@@ -132,7 +132,7 @@ function rpc(name,p={}){
  }
 }
 const db={auth:{
- getUser:()=>result(get().signedOut?null:{id:USER,email:'service@persenapparel.com'}),
+ getUser:()=>result({user:get().signedOut?null:{id:USER,email:'service@persenapparel.com'}}),
  signInWithPassword:()=>{const s=get();s.signedOut=false;save(s);return result({user:{id:USER}})},
  signOut:()=>{const s=get();s.signedOut=true;save(s);return result(null)}
 },from:query,rpc,channel:()=>({on(){return this},subscribe(){return this}})};
