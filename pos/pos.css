@@ -433,3 +433,6 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 .quick-empty{padding:35px;background:#f7fbff;border:1px dashed #b8d0ed;border-radius:13px;color:#527196;grid-column:1/-1;line-height:1.6}
 @media(max-width:900px){.fast-mode .layout{grid-template-columns:1fr}.fast-mode .layout>.panel:nth-child(3){grid-column:auto}.fast-mode #catalog{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}}
 @media(max-width:570px){.fast-mode #catalog{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.quick-product{min-height:160px;padding:12px}.quick-product .quick-count{top:8px;right:8px}.variant-options{grid-template-columns:1fr}.register-launch{padding:23px 18px}.header-admin{display:none}}
+
+/* Dedicated cashier event selector: persistent across sales without showing setup controls. */
+.quick-event-label{margin:0;font-size:11px;font-weight:900;color:#194b88;display:flex;align-items:center;gap:8px}.quick-event-label select{margin:0;width:min(250px,48vw);min-width:125px;padding:9px 11px;background:white;border:1px solid #bfd3ef;border-radius:9px;color:#163d71}
