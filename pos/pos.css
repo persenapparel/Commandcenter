@@ -517,3 +517,13 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 [data-pos-appearance="simple"] .variant-options .variant-price{color:#111!important}
 [data-pos-appearance="simple"] .tag{background:#fff!important;color:#111!important;border:2px solid #111!important}
 [data-pos-appearance="simple"] .pos-appearance-control{color:#fff!important;background:#111!important}
+
+/* Holiday countdown is decorative information, never a checkout interaction. */
+.pos-christmas-countdown{
+ display:inline-flex;align-items:center;gap:7px;margin:5px 0 13px;padding:6px 12px;
+ border:1px solid #b7d6be;border-radius:999px;background:#f1faf3;color:#1d5936;
+ font:800 12px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;
+ font-variant-numeric:tabular-nums;white-space:normal;
+}
+[data-pos-appearance="simple"] .pos-christmas-countdown{display:none!important}
+@media print{.pos-christmas-countdown{display:none!important}}
