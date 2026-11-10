@@ -19,4 +19,13 @@ assert.match(css,/animation:none!important;/,'simple mode animation override exi
 assert.match(css,/\.pos-holiday-lights/,'Christmas light decoration is present');
 assert.match(css,/font-variant-numeric:tabular-nums/,'prices and quantities have aligned figures');
 assert.match(css,/prefers-reduced-motion:reduce/,'reduced motion supported');
+
+// Calendar math uses date-only values, including year rollover and Christmas Day.
+assert.equal(experience.daysUntilChristmas(new Date(2026,10,10,12)),45);
+assert.equal(experience.daysUntilChristmas(new Date(2026,11,24,12)),1);
+assert.equal(experience.daysUntilChristmas(new Date(2026,11,25,12)),0);
+assert.equal(experience.daysUntilChristmas(new Date(2026,11,26,12)),364);
+assert.equal(experience.daysUntilChristmas(new Date('invalid')),null);
+assert.match(css,/\.pos-christmas-countdown/,'Christmas countdown has dedicated styling');
+assert.match(css,/\[data-pos-appearance="simple"\] \.pos-christmas-countdown/,'simple mode hides countdown');
 console.log('PASS: POS holiday presets, unpublished campaigns, and static CSS safety checks');
