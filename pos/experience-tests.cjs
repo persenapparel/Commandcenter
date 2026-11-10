@@ -1,0 +1,15 @@
+'use strict';
+const assert = require('node:assert/strict');
+const experience = require('./pos-experience.js');
+const {presets,palette,presetFor} = experience;
+assert.equal(Object.keys(presets).length,17,'16 holidays plus neutral');
+assert.equal(presetFor({theme:'christmas'}),'christmas');
+assert.equal(presetFor({theme:'thanksgiving'}),'thanksgiving');
+assert.equal(presetFor({theme:'july4'}),'july4');
+assert.equal(palette({published:false,theme:'christmas'}).key,'default','unpublished campaign must not activate Christmas');
+assert.equal(palette(null).key,'default');
+assert.equal(palette({published:true,theme:'christmas'}).key,'christmas');
+assert.equal(palette({published:true,theme:'christmas',accent:'red'}).accent,presets.christmas.accent,'invalid CSS colors rejected');
+assert.equal(palette({published:true,theme:'christmas',accent:'#123456'}).accent,'#123456');
+assert.ok(palette({published:true,theme:'christmas',announcement:'x'.repeat(500)}).message.length<=170);
+console.log('PASS: POS holiday preset and unpublished-campaign regression tests');
