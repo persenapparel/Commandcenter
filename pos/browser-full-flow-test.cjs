@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),http=require('n
 const root=path.resolve('pos-dist'),types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.png':'image/png'};
 const server=http.createServer((req,res)=>{const u=new URL(req.url,'http://localhost');const file=path.resolve(root,'.'+(u.pathname==='/'?'/index.html':u.pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return}fs.readFile(file,(e,buf)=>e?res.writeHead(404).end():res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'}).end(buf))});
 const failures=[],opened=[];
-const step=async(name,fn)=>{try{await fn();console.log('PASS',name)}catch(e){console.error('FAIL',name,e.stack||e);failures.push(name+': '+e.message)}};
+const step=async(name,fn)=>{try{await fn();console.log('PASS',name)}catch(e){console.error('FAIL',name,e.stack||e);failures.push(name+': '+e.message);throw e}};
 const txt=async(p,s,t,timeout=11000)=>p.waitForFunction(({s,t})=>String(document.querySelector(s)?.textContent||'').includes(t),{s,t},{timeout});
 const visible=async(p,s,timeout=11000)=>p.waitForFunction(s=>{const e=document.querySelector(s);return e&&!e.hidden&&getComputedStyle(e).display!=='none'},s,{timeout});
 const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
@@ -12,6 +12,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const url='http://127.0.0.1:'+server.address().port+'/';
  const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({viewport:{width:1280,height:800}});
+ ctx.setDefaultTimeout(6000);
  await ctx.addInitScript({path:'pos/test-fake-supabase.js'});
  await ctx.addInitScript({content:"Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async s=>localStorage.setItem('__clip',s),readText:async()=>localStorage.getItem('__clip')}});Object.defineProperty(window,'print',{configurable:true,value:()=>localStorage.setItem('__prints',String(Number(localStorage.getItem('__prints')||0)+1))});window.confirm=()=>true;"});
  await ctx.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.fulfill({status:200,contentType:'application/javascript',body:''}));
@@ -32,7 +33,8 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
  await step('Cashier starts closed, opens, and selects event',async()=>{
-  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();
+  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');await cashier.locator('#open-register').click();
+  const cssState=await cashier.evaluate(()=>({body:document.body.className,toolbar:getComputedStyle(document.querySelector('.quick-toolbar')).display,outer:document.querySelector('.quick-toolbar')?.outerHTML.slice(0,350),ancestors:[...function*(x){while(x){yield {tag:x.tagName,cls:x.className,hidden:x.hidden};x=x.parentElement}}(document.querySelector('.quick-toolbar'))]}));console.log('DIAG cashier toolbar:',JSON.stringify(cssState));
   await visible(cashier,'#catalog .quick-product');assert.ok(await cashier.locator('.quick-product').count()>=2);
   assert.equal(await cashier.locator('.product-manager:visible').count(),0);await cashier.locator('#event-select').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
  });
