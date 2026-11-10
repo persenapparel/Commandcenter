@@ -83,7 +83,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Optional questionnaire and final checkout screen',async()=>{
   await customer.locator('input[name=marketing][value=no]').check();await customer.locator('input[name=marketing][value=yes]').check();
-  await customer.locator('#wizard-next').click();await customer.locator('input[name=rating][value=5]').check();await customer.locator('#wizard-next').click();
+  await customer.locator('#wizard-next').click();await customer.locator('input[name=rating][value="5"]').check();await customer.locator('#wizard-next').click();
   await customer.locator('input[name=interest][value=maybe]').check();await customer.locator('#wizard-next').click();
   await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await txt(customer,'#state','choices were saved');
   const s=await state(customer);assert.equal(s.tables.pos_checkouts.at(-1).status,'contact_received');assert.equal(s.tables.pos_checkouts.at(-1).receipt_email,true)
