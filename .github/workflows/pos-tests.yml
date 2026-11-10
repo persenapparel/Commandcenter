@@ -87,6 +87,8 @@ jobs:
           test -f pos-dist/admin.html
           test -f pos-dist/admin.css
           test -f pos-dist/admin.js
+          test ! -e pos-dist/test-fake-supabase.js
+          test ! -e pos-dist/browser-full-flow-test.cjs
           test -f pos-dist/register.html
           test -f pos-dist/display.html
           test -f pos-dist/checkout-flow.js
@@ -99,6 +101,11 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
           node pos/responsive-viewport-smoke.cjs
+      - name: Interactive four-station POS workflow (isolated mock browser)
+        run: |
+          node --check pos/browser-full-flow-test.cjs
+          node --check pos/test-fake-supabase.js
+          node pos/browser-full-flow-test.cjs
       - name: Verify no payment backend is executed by tests
         run: |
           echo "Static build and offline unit tests only; do not run live payments or production DB changes"
