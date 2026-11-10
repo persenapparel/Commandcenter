@@ -419,15 +419,58 @@ for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo usern
   notice(label+' copied. Verify the customer is sending to an approved account.');
  }catch{notice('Unable to copy. The payment details are shown in the reference panel.');}};
 }
-by('pair').onclick=async()=>{if(!register||busy)return;const button=by('pair');button.disabled=true;try{
- const token=await check(db.rpc('pos_issue_display_pairing',{p_register:register.id}));
- if(!/^[0-9a-f-]{36}$/i.test(String(token)))throw Error('Pairing service did not return a valid link.');
- const link=new URL('display.html',location.href);link.searchParams.set('pair',token);
- await navigator.clipboard.writeText(link.href);
- by('pairing').textContent='Temporary customer display link copied. Valid for 2 hours; generating a new link immediately disconnects the previous iPad.';
- notice('Pairing link copied. Transfer it privately to customer iPad Safari. Do not post or share publicly.');
- }catch(e){notice('Could not create or copy display link: '+e.message+'. Use HTTPS and allow clipboard access.');}
- finally{button.disabled=false}};
+/* Pairing links are sensitive. Show a local-only selectable fallback when iOS blocks clipboard.
+   Do not submit them to analytics, third-party QR services or persistent storage. */
+let activePairingUrl='';
+function showPairingUrl(url){
+ activePairingUrl=url;
+ by('pair-link-field').value=url;
+ by('pair-open').href=url;
+ by('pair-link-panel').hidden=false;
+ by('pair-share').hidden=typeof navigator.share!=='function';
+ by('pairing').textContent='A temporary pairing link was generated for 2 hours. The previous pairing, if any, is no longer valid.';
+}
+function pairingFeedback(message){by('pair-feedback').textContent=message}
+async function copyPairingUrl(){
+ if(!activePairingUrl)return pairingFeedback('Create a private pairing link first.');
+ try{
+  if(typeof navigator.clipboard?.writeText!=='function')throw Error('Clipboard API unavailable');
+  await navigator.clipboard.writeText(activePairingUrl);
+  pairingFeedback('Private link copied. Open it on your customer iPad.');
+ }catch{
+  const input=by('pair-link-field');
+  input.focus();input.select();
+  pairingFeedback('Safari blocked automatic copying. The link is selected: use Copy from the selection menu, or tap Share with customer iPad.');
+ }
+}
+by('pair-copy').onclick=copyPairingUrl;
+by('pair-share').onclick=async()=>{
+ if(!activePairingUrl)return pairingFeedback('Create a pairing link first.');
+ if(typeof navigator.share!=='function')return pairingFeedback('Sharing is unavailable here. Select and copy the link instead.');
+ try{
+  await navigator.share({title:'Persen POS — Private customer iPad',url:activePairingUrl});
+  pairingFeedback('Sharing menu completed. Check that the customer iPad received the private link.');
+ }catch(e){
+  if(e?.name!=='AbortError')pairingFeedback('Sharing did not complete. Select and copy the private link instead.');
+ }
+};
+by('pair-link-field').onclick=e=>e.currentTarget.select();
+by('pair').onclick=async()=>{
+ if(!register||busy)return notice('Sign in to the register before pairing the customer iPad.');
+ const button=by('pair');button.disabled=true;
+ by('pair-link-panel').hidden=true;
+ activePairingUrl='';
+ try{
+  const token=await check(db.rpc('pos_issue_display_pairing',{p_register:register.id}));
+  if(!/^[0-9a-f-]{36}$/i.test(String(token)))throw Error('Pairing service did not return a valid link.');
+  const link=new URL('display.html',location.href);link.searchParams.set('pair',token);
+  showPairingUrl(link.href);
+  notice('Pairing link created. Use the Copy or Share button below to send it privately to the customer iPad.');
+  pairingFeedback('Select Copy or Share. If Safari prevents copying, tap the link field and select Copy manually.');
+ }catch(e){
+  notice('Could not create a private pairing link: '+e.message+'. Check the POS connection and owner access.');
+ }finally{button.disabled=false}
+};
 by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t)};
 by('save-template').onclick=saveTemplate;by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');receipt();window.print()};
 createBillButtons();boot();
