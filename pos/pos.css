@@ -485,3 +485,35 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 @media(prefers-reduced-motion:reduce){.pos-holiday-lights span{animation:none!important}}
 @media print{.pos-appearance-control,.pos-holiday-lights{display:none!important}}
 @media(max-width:480px){.pos-appearance-control{right:6px;bottom:6px;padding:5px 7px}.pos-appearance-control span{display:none}.pos-appearance-control select{min-width:135px;max-width:155px}}
+
+/* Simple Black is a distraction-free accessibility setting, not just a palette. */
+[data-pos-appearance="simple"] *,
+[data-pos-appearance="simple"] *::before,
+[data-pos-appearance="simple"] *::after{
+  animation:none!important;
+  transition:none!important;
+  text-shadow:none!important;
+  scroll-behavior:auto!important;
+}
+[data-pos-appearance="simple"] .pos-holiday-lights,
+[data-pos-appearance="simple"] .display-season-banner,
+[data-pos-appearance="simple"] .experience-overline::after{display:none!important}
+[data-pos-appearance="simple"] button:not(:disabled):focus-visible,
+[data-pos-appearance="simple"] a:focus-visible,
+[data-pos-appearance="simple"] input:focus-visible,
+[data-pos-appearance="simple"] select:focus-visible{
+  outline:3px solid #111!important;outline-offset:3px!important;
+}
+[data-pos-appearance="simple"] button:not(:disabled){min-height:44px}
+[data-pos-appearance="simple"] .primary:not(:disabled):focus-visible{
+  outline:3px solid #fff!important;outline-offset:2px!important;
+  box-shadow:0 0 0 5px #111!important;
+}
+[data-pos-appearance="simple"] .quick-product.event-featured{
+  background:#fff!important;border-color:#111!important;box-shadow:none!important;
+}
+[data-pos-appearance="simple"] .quick-product.event-featured .quick-detail{color:#111!important}
+[data-pos-appearance="simple"] .variant-options button{background:#fff!important;color:#111!important;border-color:#777!important}
+[data-pos-appearance="simple"] .variant-options .variant-price{color:#111!important}
+[data-pos-appearance="simple"] .tag{background:#fff!important;color:#111!important;border:2px solid #111!important}
+[data-pos-appearance="simple"] .pos-appearance-control{color:#fff!important;background:#111!important}
