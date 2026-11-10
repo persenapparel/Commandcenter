@@ -190,7 +190,28 @@ function fillEventSelectors(){
 }
 async function loadEvents(){
  events=await check(db.from('pos_events').select('id,name,event_date,venue,status,created_at').order('event_date',{ascending:false}).limit(300));
- fillEventSelectors();
+ // Event profiles configured in Inventory Hub become available in the register,
+ // avoiding a second manual event setup. The POS remains staging until approved.
+ try{
+  const profiles=await check(db.from('inventory_event_profiles').select('id,name,event_date,active').limit(150));
+  let created=false;
+  for(const profile of profiles){
+    const date=profile.event_date||new Date().toISOString().slice(0,10);
+    const exists=events.some(e=>e.name.trim().toLowerCase()===profile.name.trim().toLowerCase()&&e.event_date===date);
+    if(!exists){
+      const entry=await check(db.from('pos_events').insert({owner_id:user.id,name:profile.name,event_date:date,venue:'',status:'open'}).select('id,name,event_date,venue,status,created_at').single());
+      events.push(entry);created=true;
+    }
+  }
+  if(created)events.sort((a,b)=>b.event_date.localeCompare(a.event_date));
+  fillEventSelectors();
+  const active=profiles.find(p=>p.active);
+  if(active){
+    const ev=events.find(e=>e.name.trim().toLowerCase()===active.name.trim().toLowerCase()&&e.event_date===(active.event_date||new Date().toISOString().slice(0,10)));
+    if(ev)by('event-select').value=ev.id;
+  }
+ }catch(e){fillEventSelectors();notice('Event presets could not sync: '+e.message)}
+ renderQuickCatalog();
 }
 async function loadSales(){
  sales=await check(db.from('pos_sales').select('id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,created_at').order('created_at',{ascending:false}).limit(2000));
