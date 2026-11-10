@@ -85,7 +85,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await customer.locator('input[name=marketing][value=no]').check();await customer.locator('input[name=marketing][value=yes]').check();
   await customer.locator('#wizard-next').click();await customer.locator('input[name=rating][value="5"]').check();await customer.locator('#wizard-next').click();
   await customer.locator('input[name=interest][value=maybe]').check();await customer.locator('#wizard-next').click();
-  await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await txt(customer,'#state','choices were saved');
+  await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await customer.waitForFunction(()=>window.__POS_TEST_DB.get().tables.pos_checkouts.at(-1)?.status==='contact_received',null,{timeout:11000});await visible(customer,'#waiting-payment');
   const s=await state(customer);assert.equal(s.tables.pos_checkouts.at(-1).status,'contact_received');assert.equal(s.tables.pos_checkouts.at(-1).receipt_email,true)
  });
  await step('Cash drawer, exact, clear, denomination and paid sale',async()=>{
