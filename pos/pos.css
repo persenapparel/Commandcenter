@@ -677,3 +677,72 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 [data-pos-appearance="festive"][data-season="christmas"] .cash-handoff{border-color:#cfa65f;background:linear-gradient(145deg,#eaf6e9,#fffaeb)}
 [data-pos-appearance="festive"][data-season="christmas"] .cash-handoff .finish-order{background:#176448}
 @media print{.cash-handoff{display:none!important}}
+
+
+/* Nov 2026 — standalone welcome/checkout pages. No change to receipt printing or inventory sync. */
+.kiosk-body.kiosk-idle{background:#081f43;color:#fff}
+.kiosk-body.kiosk-idle .kiosk-header{display:none}
+.kiosk-body.kiosk-idle .customer-device{max-width:none;padding:0;margin:0;min-height:100dvh}
+.customer-welcome{isolation:isolate;position:relative;display:grid;place-items:center;min-height:100dvh;overflow:hidden;padding:48px 24px;background:radial-gradient(circle at 85% 15%,#1b5da1 0,transparent 34%),linear-gradient(145deg,#07182f 0%,#0e3671 58%,#0c2350 100%);color:#fff;text-align:center}
+.welcome-content{position:relative;z-index:2;width:min(100%,850px);margin:auto}
+.welcome-logo{width:clamp(110px,16vw,178px);max-height:155px;object-fit:contain;margin:0 auto 28px;filter:drop-shadow(0 14px 28px #0004)}
+.welcome-eyebrow,.welcome-footer{font-size:clamp(11px,1.3vw,15px);font-weight:800;letter-spacing:.24em;color:#b8d5ff}
+.customer-welcome h1{font-size:clamp(47px,7.4vw,100px);line-height:1.05;letter-spacing:-.055em;margin:18px auto 22px;font-weight:850}
+.customer-welcome h1 span{color:#b8daff}
+.welcome-description{font-size:clamp(17px,2.3vw,25px);line-height:1.5;max-width:630px;margin:0 auto 28px;color:#e3eeff}
+.welcome-divider{display:flex;align-items:center;justify-content:center;gap:18px;color:#a9cdff;margin:22px auto}
+.welcome-divider span{height:1px;width:68px;background:#9ec7ff7d}
+.welcome-thank-you{font-size:clamp(23px,3.5vw,38px);font-weight:750;margin:14px auto}
+.welcome-status{display:inline-block;max-width:540px;padding:13px 24px;border:1px solid #ffffff4a;border-radius:999px;background:#ffffff14;font-size:clamp(13px,1.7vw,17px);color:#e0ecff}
+.welcome-footer{margin-top:42px;color:#adcaee}
+.welcome-footer span{padding:0 10px}
+.welcome-orbit{position:absolute;pointer-events:none;border:1px solid #ffffff1c;border-radius:50%;z-index:1}
+.welcome-orbit-a{width:650px;height:650px;right:-380px;top:-290px}
+.welcome-orbit-b{width:550px;height:550px;left:-390px;bottom:-330px}
+@media(max-width:650px){.customer-welcome{padding:38px 18px}.welcome-footer{letter-spacing:.12em}.welcome-logo{margin-bottom:18px}}
+@media(prefers-reduced-motion:no-preference){.welcome-content{animation:pos-welcome-in .6s ease both}@keyframes pos-welcome-in{from{opacity:.5;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}}
+@media print{.customer-welcome{display:none!important}}
+/* Cashier uses one focused screen at a time while the existing cart/stock code remains intact. */
+.cashier-stage-header{background:linear-gradient(135deg,#0c2f63,#1767b5);color:#fff;padding:27px 30px;margin:-22px -22px 23px;border-radius:20px 20px 12px 12px}
+.cashier-stage-badge{font-weight:850;letter-spacing:.15em;font-size:11px;color:#badcff}
+.cashier-stage-header h1{font-size:clamp(29px,4vw,44px);margin:10px 0 8px;line-height:1.15;color:#fff}
+.cashier-stage-header p{font-size:15px;line-height:1.5;color:#e1edff;max-width:680px}
+.cashier-stage-cancel{border:1px solid #fff8;background:#ffffff1d;color:white;padding:10px 17px;min-height:44px}
+.cashier-stage-cancel:hover:not(:disabled){background:#ffffff35}
+body[data-cashier-stage="customer"] .hero,
+body[data-cashier-stage="payment"] .hero,
+body[data-cashier-stage="external"] .hero,
+body[data-cashier-stage="handoff"] .hero,
+body[data-cashier-stage="customer"] .event-manager,
+body[data-cashier-stage="payment"] .event-manager,
+body[data-cashier-stage="external"] .event-manager,
+body[data-cashier-stage="handoff"] .event-manager,
+body[data-cashier-stage="customer"] .quick-toolbar,
+body[data-cashier-stage="payment"] .quick-toolbar,
+body[data-cashier-stage="external"] .quick-toolbar,
+body[data-cashier-stage="handoff"] .quick-toolbar{display:none!important}
+body[data-cashier-stage="customer"] .layout,
+body[data-cashier-stage="payment"] .layout,
+body[data-cashier-stage="external"] .layout,
+body[data-cashier-stage="handoff"] .layout{display:block;max-width:960px;margin:0 auto}
+body[data-cashier-stage="customer"] .layout>.panel:not(#cashier-checkout-panel),
+body[data-cashier-stage="payment"] .layout>.panel:not(#cashier-checkout-panel),
+body[data-cashier-stage="external"] .layout>.panel:not(#cashier-checkout-panel),
+body[data-cashier-stage="handoff"] .layout>.panel:not(#cashier-checkout-panel){display:none!important}
+body[data-cashier-stage="customer"] .receipt-studio,
+body[data-cashier-stage="payment"] .receipt-studio,
+body[data-cashier-stage="external"] .receipt-studio,
+body[data-cashier-stage="handoff"] .receipt-studio{display:none!important}
+body[data-cashier-stage="catalog"] .cash-terminal{display:none}
+body[data-cashier-stage="customer"] .cash-terminal{display:none}
+body[data-cashier-stage="customer"] .cashier-payment-help{display:none}
+body[data-cashier-stage="external"] .cash-terminal{display:none}
+body[data-cashier-stage="payment"] .cashier-customer-progress,
+body[data-cashier-stage="external"] .cashier-customer-progress,
+body[data-cashier-stage="handoff"] .cashier-customer-progress{display:none}
+body[data-cashier-stage="handoff"] .cash-terminal>:not(#cash-handoff){display:none!important}
+body[data-cashier-stage="handoff"] #receipt-request-status{display:none}
+body[data-cashier-stage="handoff"] .cashier-payment-help{display:none}
+body[data-cashier-stage="handoff"] #cashier-stage-header .cashier-stage-cancel{display:none}
+body[data-cashier-stage="handoff"] .cash-handoff{border:0;background:#fff;padding:24px}
+@media(max-width:650px){.cashier-stage-header{padding:22px 20px;margin:-22px -22px 20px}.customer-welcome h1{letter-spacing:-.04em}}
