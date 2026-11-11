@@ -474,7 +474,7 @@ end $$;
 
 -- Cash was already recorded. Finish Order means change/receipt has been handed back.
 create or replace function public.pos_finish_order(p_checkout uuid)
-returns boolean language plpgsql security definer set search_path='' as $
+returns boolean language plpgsql security definer set search_path='' as $$
 declare c public.pos_checkouts;
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then
@@ -489,7 +489,7 @@ begin
  if c.cash_handoff_complete then return true; end if;
  update public.pos_checkouts set cash_handoff_complete=true,updated_at=now() where id=c.id;
  return true;
-end $;
+end $$;
 revoke execute on function public.pos_finish_order(uuid) from public,anon;
 grant execute on function public.pos_finish_order(uuid) to authenticated;
 
