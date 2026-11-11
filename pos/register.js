@@ -9,6 +9,7 @@ function syncCashierStage(){
  if(lastCashierStage===stage)return;
  lastCashierStage=stage;
  document.body.dataset.cashierStage=stage;
+ if(typeof window.scrollTo==='function')window.scrollTo({top:0,behavior:'auto'});
  const headings={
   customer:['Customer is checking out','Their iPad shows each question. You can see their progress here without viewing their answers.'],
   payment:['Collect the payment','The customer finished their details. Enter the amount received or tap the bills they handed you.'],
