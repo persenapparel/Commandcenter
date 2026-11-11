@@ -17,6 +17,7 @@ create table if not exists public.pos_checkouts(
  register_id uuid not null references public.pos_registers(id),
  owner_id uuid not null references auth.users(id),
  status text not null default 'awaiting_customer' check(status in ('awaiting_customer','contact_received','completed','cancelled')),
+ cash_handoff_complete boolean not null default false,
  customer_step text not null default 'phone'
    check(customer_step in ('phone','receipt','email','payment','promos','rating','custom','review')),
  help_requested boolean not null default false,
@@ -38,7 +39,10 @@ create table if not exists public.pos_checkouts(
  created_at timestamptz not null default now(),
  updated_at timestamptz not null default now()
 );
-create unique index if not exists pos_one_open_checkout on public.pos_checkouts(register_id) where status in ('awaiting_customer','contact_received');
+-- The open checkout continues through cash change handoff.
+drop index if exists public.pos_one_open_checkout;
+create unique index pos_one_open_checkout on public.pos_checkouts(register_id)
+ where status in ('awaiting_customer','contact_received') or (status='completed' and cash_handoff_complete=false);
 create table if not exists public.pos_sales(
  id uuid primary key default gen_random_uuid(),
  checkout_id uuid not null unique references public.pos_checkouts(id),
@@ -262,14 +266,22 @@ begin
 end $$;
 create or replace function public.pos_customer_view(p_secret uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare r public.pos_registers; c public.pos_checkouts;
+declare r public.pos_registers; c public.pos_checkouts; due_change integer:=0; customer_status text;
 begin
- select * into r from public.pos_registers where display_secret=p_secret and active;
+ select * into r from public.pos_registers where display_secret=p_secret and active and display_expires_at>now();
  if not found then return jsonb_build_object('status','unpaired'); end if;
  select * into c from public.pos_checkouts where register_id=r.id order by created_at desc limit 1;
  if not found then return jsonb_build_object('status','idle','register',r.label); end if;
  if c.created_at<now()-interval '12 hours' then return jsonb_build_object('status','idle','register',r.label); end if;
- return jsonb_build_object('status',c.status,'register',r.label,'checkout_id',c.id,'items',c.items,'subtotal_cents',c.subtotal_cents,'discount_cents',c.discount_cents,'tax_cents',c.tax_cents,'total_cents',c.total_cents,'updated_at',c.updated_at);
+ customer_status:=c.status;
+ if c.status='completed' and not c.cash_handoff_complete then
+  select change_cents into due_change from public.pos_sales where checkout_id=c.id;
+  customer_status:='paid_awaiting_change';
+ end if;
+ return jsonb_build_object('status',customer_status,'register',r.label,'checkout_id',c.id,
+  'items',c.items,'subtotal_cents',c.subtotal_cents,'discount_cents',c.discount_cents,
+  'tax_cents',c.tax_cents,'total_cents',c.total_cents,'change_cents',coalesce(due_change,0),
+  'updated_at',c.updated_at);
 end $$;
 -- Only the step name and help flag are transmitted before final submission.
 -- No phone digits, email drafts, feedback answers or payment identifiers are stored as progress.
@@ -456,9 +468,30 @@ begin
   insert into public.pos_receipt_delivery_jobs(sale_id,owner_id,channel)
   values(sid,(select auth.uid()),'email');
  end if;
- update public.pos_checkouts set status='completed',updated_at=now() where id=c.id;
+ update public.pos_checkouts set status='completed',cash_handoff_complete=false,updated_at=now() where id=c.id;
  return sid;
 end $$;
+
+-- Cash was already recorded. Finish Order means change/receipt has been handed back.
+create or replace function public.pos_finish_order(p_checkout uuid)
+returns boolean language plpgsql security definer set search_path='' as $
+declare c public.pos_checkouts;
+begin
+ if (select auth.uid()) is null or not public.is_persen_admin() then
+  raise exception 'Unauthorized';
+ end if;
+ select * into c from public.pos_checkouts
+  where id=p_checkout and owner_id=(select auth.uid()) for update;
+ if not found or c.status<>'completed' or
+    not exists(select 1 from public.pos_sales where checkout_id=c.id and owner_id=(select auth.uid())) then
+  raise exception 'Paid checkout not found';
+ end if;
+ if c.cash_handoff_complete then return true; end if;
+ update public.pos_checkouts set cash_handoff_complete=true,updated_at=now() where id=c.id;
+ return true;
+end $;
+revoke execute on function public.pos_finish_order(uuid) from public,anon;
+grant execute on function public.pos_finish_order(uuid) to authenticated;
 
 -- Print station authenticated with an authorized owner account.
 -- Atomic claim stops two devices printing the same queued receipt simultaneously.
