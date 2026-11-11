@@ -25,6 +25,7 @@ let db=null,checkoutId=null,activeId=null,phoneDigits='',stepIndex=0,submitting=
 let lastStatus=null,needsHelp=false,progressQueue=Promise.resolve(),completedSince=null;
 function showWelcome(message='Your cashier will start your order shortly.'){
  document.body.classList.add('kiosk-idle');
+ document.body.classList.remove('kiosk-completed');
  $('customer-welcome').hidden=false;
  $('kiosk-shell').hidden=true;
  $('welcome-status').textContent=message;
