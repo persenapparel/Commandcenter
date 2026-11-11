@@ -113,6 +113,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Send checkout and laptop live monitor',async()=>{
   await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');
+  await cashier.waitForFunction(()=>document.body.dataset.cashierStage==='customer');
   await visible(customer,'#contact');await txt(admin,'#live-list','Customer is checking out',11000);
   const s=await state(admin);assert.equal(s.tables.pos_checkouts.at(-1).event_id,s.tables.pos_events[0].id)
  });
