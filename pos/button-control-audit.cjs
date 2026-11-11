@@ -19,7 +19,7 @@ for(const [page,script,buttons] of suites){
  }
 }
 const expectations=[
- ['admin.js',["$('create-products').onsubmit","$('event-form').onsubmit","$('login').onsubmit","button.onclick="]],
+ ['admin.js',["$('create-products').onsubmit","$('event-form').onsubmit","$('login').onsubmit","$('refresh').onclick"]],
  ['register.js',["by('new-event').addEventListener","by('new-product').addEventListener","by('edit-event').addEventListener","by('custom').onsubmit","by('login').onsubmit","[data-discount]","button.onclick="]],
  ['display.js',["[data-digit]","receipt_mode","wizard-next","wizard-finish","wizard-help"]],
  ['print-station.js',["$('paper').onchange","$('print-login').onsubmit","$('arm').onclick","$('disarm').onclick","$('test-print').onclick","retry.onclick="]]
