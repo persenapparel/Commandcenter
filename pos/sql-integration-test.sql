@@ -81,6 +81,33 @@ select 1/(case when public.pos_complete_cash(
 select 1/(case when count(*)=1 then 1 else 0 end) as no_duplicate_sales
  from public.pos_sales where checkout_id=:'checkout'::uuid;
 
+-- A cash sale is paid but NOT handed to the customer yet. No new sale until Finish Order.
+select 1/(case when status='completed' and not cash_handoff_complete then 1 else 0 end) as handoff_still_pending
+ from public.pos_checkouts where id=:'checkout'::uuid;
+set role anon;
+select set_config('request.jwt.claim.sub','',false);
+select 1/(case when public.pos_customer_view(:'secret'::uuid)->>'status'='paid_awaiting_change' then 1 else 0 end) as customer_waits_for_change;
+select 1/(case when (public.pos_customer_view(:'secret'::uuid)->>'change_cents')::integer=1500 then 1 else 0 end) as customer_knows_change_due;
+select 1/(case when not has_function_privilege('anon','public.pos_finish_order(uuid)','EXECUTE') then 1 else 0 end) as anon_cannot_finish_sale;
+set role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+do $
+declare blocked boolean:=false;
+begin
+ begin
+  perform public.pos_begin_checkout('33333333-3333-4333-8333-333333333333',
+   '[{"stock_id":"22222222-2222-4222-8222-222222222222","qty":1,"unit_cents":2500,"taxable":true}]'::jsonb);
+ exception when others then blocked:=true; end;
+ if not blocked then raise exception 'Cash handoff was bypassed by a new checkout'; end if;
+end $;
+select 1/(case when public.pos_finish_order(:'checkout'::uuid) then 1 else 0 end) as cashier_finished_handoff;
+select 1/(case when public.pos_finish_order(:'checkout'::uuid) then 1 else 0 end) as finish_is_idempotent;
+set role anon;
+select set_config('request.jwt.claim.sub','',false);
+select 1/(case when public.pos_customer_view(:'secret'::uuid)->>'status'='completed' then 1 else 0 end) as customer_final_thanks;
+set role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+
 -- Closing an event preserves its previous sales and blocks new sales assigned to it.
 update public.pos_events set status='closed' where id='44444444-4444-4444-8444-444444444444';
 do $$
