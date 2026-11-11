@@ -70,5 +70,20 @@
     percentage:Math.round((current+1)/steps.length*100),
     needs_help:needsHelp===true};
  }
- return {steps,digits,dial,formatPhone,validPhone,checkStep,receiptModes,receipt,validEmail,summary,monitor};
+ // Register view is a function of the authoritative checkout record, never local guesses.
+ function cashierStage(checkout){
+  if(!checkout)return 'catalog';
+  if(checkout.status==='completed'&&checkout.cash_handoff_complete===false)return 'handoff';
+  if(checkout.status==='contact_received')
+   return checkout.payment_preference&&checkout.payment_preference!=='cash'?'external':'payment';
+  if(checkout.status==='awaiting_customer')return 'customer';
+  return 'catalog';
+ }
+ // Completed orders briefly show thanks, then hide all previous order details.
+ function customerStage(status,completedAgeMs=0){
+  if(['idle','cancelled','unpaired','expired'].includes(status))return 'welcome';
+  if(status==='completed'&&completedAgeMs>=4000)return 'welcome';
+  return 'checkout';
+ }
+ return {steps,digits,dial,formatPhone,validPhone,checkStep,receiptModes,receipt,validEmail,summary,monitor,cashierStage,customerStage};
 });
