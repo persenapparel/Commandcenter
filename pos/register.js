@@ -2,7 +2,7 @@
 const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map(),inventoryCatalog=new Map(),eventProfiles=[],eventQuickTiles=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
-let pendingCash=null,statusRunning=false,checkoutVersion=0;
+let pendingCash=null,statusRunning=false,checkoutVersion=0,handoffCheckoutId=null;
 let selectedEventId=sessionStorage.getItem('pos-event')||'';
 const pendingCashKey=()=>`pos-pending-cash:${register.id}`;
 function rememberCash(id){
@@ -130,7 +130,7 @@ function draw(){
 // Lightweight status refresh: never rebuild the cart while the cashier types.
 function syncCheckoutUI(){
  by('start').disabled=!!checkout||!!pendingCash||!cart.length;
- by('cancel').disabled=!checkout;
+ by('cancel').disabled=!checkout||checkout.status==='completed';
  by('discount').disabled=!!checkout;
  by('tax').disabled=!!checkout;
  by('event-select').disabled=!!checkout||!!cart.length;
@@ -162,52 +162,91 @@ async function loadTemplates(){templates=await check(db.from('pos_receipt_templa
 function showTemplate(t){by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false}
 async function ensureRegister(){const regs=await check(db.from('pos_registers').select('*').eq('owner_id',user.id).eq('active',true).order('created_at').limit(1));register=regs[0]||await check(db.from('pos_registers').insert({owner_id:user.id,label:'Persen POS register'}).select('*').single());pendingCash=sessionStorage.getItem(pendingCashKey());syncCheckoutUI();}
 const saleForCheckout=id=>check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,tendered_cents,change_cents,change_breakdown,created_at').eq('checkout_id',id).maybeSingle());
+function showPaidAwaitingHandoff(saved,record){
+ const id=record.id;
+ lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};
+ if(!cart.length&&Array.isArray(saved.snapshot.items)){
+  cart=saved.snapshot.items.map(item=>({...item}));
+ }
+ checkout={...record,status:'completed',cash_handoff_complete:false};
+ handoffCheckoutId=id;rememberCash(null);
+ document.body.classList.add('checkout-active');
+ document.body.classList.remove('pos-register-closed');
+ by('cash-handoff').hidden=false;by('finish-order').disabled=false;
+ by('cash-handoff-change').textContent=C.money(saved.change_cents);
+ draw();
+ notice('Cash payment saved. Hand back '+C.money(saved.change_cents)+' in change, then tap Finish Order.');
+}
 async function showCompletedSale(saved){
  lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};
- checkout=null;cart=[];rememberCash(null);resetTender();receipt();draw();
+ handoffCheckoutId=null;checkout=null;cart=[];rememberCash(null);
+ by('cash-handoff').hidden=true;by('finish-order').disabled=true;
+ document.body.classList.remove('checkout-active');
+ resetTender();receipt();draw();
  const result=await Promise.allSettled([loadStock(),loadSales(),reloadDrawer()]);
- if(result.some(x=>x.status==='rejected'))return notice('Cash sale recorded. Refresh stock and drawer counts before the next sale.');
- notice(saved.snapshot.receipt_print?'Cash sale recorded. Receipt queued for the print station.':'Cash sale recorded. Receipt ready to view.');
+ if(result.some(x=>x.status==='rejected'))return notice('Order finished. Refresh inventory and cash drawer counts before next sale.');
+ notice('Order finished. Ready for the next customer.');
+}
+async function finishOrder(){
+ if(busy||!checkout||checkout.status!=='completed'||checkout.cash_handoff_complete===true)return;
+ busy=true;checkoutVersion++;by('finish-order').disabled=true;
+ try{
+  const id=checkout.id;
+  const result=await check(db.rpc('pos_finish_order',{p_checkout:id}));
+  if(result!==true)throw Error('Could not confirm customer handoff');
+  const saved=await saleForCheckout(id);
+  if(!saved)throw Error('Order was finished but receipt details are unavailable. Refresh to recover.');
+  await showCompletedSale(saved);
+ }catch(e){
+  by('finish-order').disabled=false;
+  notice('Could not finish order: '+e.message+'. Do not start another checkout until this is resolved.');
+ }finally{busy=false;await status()}
 }
 async function status(){
  if(!register||busy||statusRunning)return;
- statusRunning=true;
- const version=checkoutVersion;
+ statusRunning=true;const version=checkoutVersion;
  try{
- const list=await check(db.from('pos_checkouts').select('id,status,created_at,total_cents,payment_preference,receipt_print,receipt_email,customer_step,help_requested,progress_updated_at').eq('register_id',register.id).order('created_at',{ascending:false}).limit(1));
- if(version!==checkoutVersion)return;
- let c=list[0];
- const recoveryId=pendingCash||(checkout&&(c?.id!==checkout.id||c.status==='completed')?checkout.id:null);
- if(recoveryId){
-  const saved=await saleForCheckout(recoveryId);
+  const list=await check(db.from('pos_checkouts').select('id,status,cash_handoff_complete,created_at,total_cents,payment_preference,receipt_print,receipt_email,customer_step,help_requested,progress_updated_at').eq('register_id',register.id).order('created_at',{ascending:false}).limit(1));
   if(version!==checkoutVersion)return;
-  if(saved){
-   await showCompletedSale(saved);
-   if(c?.id===recoveryId)c={...c,status:'completed'};
+  let c=list[0];const awaitingHandoff=c?.status==='completed'&&c.cash_handoff_complete===false;
+  if(awaitingHandoff){
+   const saved=await saleForCheckout(c.id);
+   if(version!==checkoutVersion)return;
+   if(!saved){notice('Payment recorded but sale details are not available. Refresh before continuing.');return}
+   if(handoffCheckoutId!==c.id||by('cash-handoff').hidden)showPaidAwaitingHandoff(saved,c);
+   else checkout=c;
+  }else{
+   const recoveryId=pendingCash||(checkout&&(c?.id!==checkout.id||c.status==='completed')?checkout.id:null);
+   if(recoveryId){
+    const saved=await saleForCheckout(recoveryId);
+    if(version!==checkoutVersion)return;
+    if(saved){await showCompletedSale(saved);if(c?.id===recoveryId)c={...c,status:'completed'};}
+    else if(pendingCash&&(c?.id!==recoveryId||['contact_received','cancelled','awaiting_customer'].includes(c.status))){
+     rememberCash(null);notice('Cash was not recorded. Check the tender amount and try again.');
+    }
+    if(version!==checkoutVersion)return;
+   }
+   checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
+   if(!checkout)document.body.classList.remove('checkout-active');
+   if(checkout)document.body.classList.remove('pos-register-closed');
   }
-  else if(pendingCash&&(c?.id!==recoveryId||c.status==='cancelled'))rememberCash(null);
-  if(version!==checkoutVersion)return;
- }
- checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
- document.body.classList.toggle('checkout-active',!!checkout);
- if(checkout)document.body.classList.remove('pos-register-closed');
- const progressing=!!checkout;
- const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
- const stage=checkout?.status==='contact_received'?{...progress,step_number:8,percentage:100,step_label:'Questions finished · ready for cashier'}:progress;
- by('cashier-progress-count').textContent=progressing?'Step '+stage.step_number+' of 8':'Waiting for checkout';
- by('cashier-current-step').textContent=progressing?stage.step_label:'Start a sale to see which step the customer is on.';
- by('cashier-progress-fill').style.width=progressing?stage.percentage+'%':'0%';
- by('cashier-progress-bar').setAttribute('aria-valuenow',String(progressing?stage.step_number:0));
- const needHelp=progressing&&checkout?.status==='awaiting_customer'&&checkout.help_requested===true;
- by('customer-help-alert').hidden=!needHelp;
- const method=checkout?.payment_preference||'cash';
- by('payment-preference-badge').textContent=method==='venmo_info'?'Venmo instructions':method==='apple_cash_info'?'Apple Cash instructions':'Cash checkout';
- by('external-payment-notice').hidden=!checkout||method==='cash';
- if(checkout&&method!=='cash')document.querySelector('.cashier-payment-help').open=true;
- const receiptChannels=checkout?[checkout.receipt_print?'Print':null,checkout.receipt_email?'Email (delivery pending)':null].filter(Boolean):[];
- by('receipt-request-status').textContent=receiptChannels.length?'Requested receipt: '+receiptChannels.join(' · '):'No receipt selected yet.';
- by('status').textContent=c?({awaiting_customer:'Customer completing checkout screens',contact_received:'Customer choices saved · ready for cashier',completed:'Sale complete · receipt ready',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
- syncCheckoutUI();renderCash();
+  const progressing=!!checkout;
+  const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
+  const stage=checkout?.status==='contact_received'?{...progress,step_number:8,percentage:100,step_label:'Questions finished · ready for cashier'}:progress;
+  by('cashier-progress-count').textContent=progressing?'Step '+stage.step_number+' of 8':'Waiting for checkout';
+  by('cashier-current-step').textContent=progressing?(awaitingHandoff?'Cash recorded · hand over change and finish order':stage.step_label):'Start a sale to see which step the customer is on.';
+  by('cashier-progress-fill').style.width=progressing?stage.percentage+'%':'0%';
+  by('cashier-progress-bar').setAttribute('aria-valuenow',String(progressing?stage.step_number:0));
+  const needHelp=progressing&&checkout?.status==='awaiting_customer'&&checkout.help_requested===true;
+  by('customer-help-alert').hidden=!needHelp;
+  const method=checkout?.payment_preference||'cash';
+  by('payment-preference-badge').textContent=method==='venmo_info'?'Venmo instructions':method==='apple_cash_info'?'Apple Cash instructions':'Cash checkout';
+  by('external-payment-notice').hidden=!checkout||method==='cash';
+  if(checkout&&method!=='cash')document.querySelector('.cashier-payment-help').open=true;
+  const receiptChannels=checkout?[checkout.receipt_print?'Print':null,checkout.receipt_email?'Email (delivery pending)':null].filter(Boolean):[];
+  by('receipt-request-status').textContent=receiptChannels.length?'Requested receipt: '+receiptChannels.join(' · '):'No receipt selected yet.';
+  by('status').textContent=awaitingHandoff?'Cash recorded · give change, then tap Finish Order':c?({awaiting_customer:'Customer completing checkout screens',contact_received:'Customer choices saved · ready for cashier',completed:'Order finished · ready for next customer',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
+  syncCheckoutUI();renderCash();
  }catch(e){notice('Connection lost: '+e.message)}finally{statusRunning=false}
 }
 async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
@@ -217,7 +256,7 @@ async function cash(){
  if(checkout.payment_preference&&checkout.payment_preference!=='cash')return notice('This payment method only displays instructions. Do not record it as cash.');
  busy=true;checkoutVersion++;
  try{
-  const tendered=cashCents();if(tendered===null)throw Error('Enter the money you physically received.');
+  const tendered=cashCents();if(tendered===null)throw Error('Enter the cash you physically received.');
   const plan=CASH.plan(checkout.total_cents,tendered,drawer,drawerConfigured,manualTender?tenderBills:{});
   if(!['ready','exact','exact_unconfigured'].includes(plan.status))throw Error('Cannot confirm: '+plan.status+'. Check your cash drawer.');
   const id=checkout.id;
@@ -225,8 +264,10 @@ async function cash(){
   await check(db.rpc('pos_complete_cash',{p_checkout:id,p_tender_cents:tendered,p_received_breakdown:manualTender?tenderBills:{},p_change_breakdown:plan.breakdown||{},p_expected_drawer_version:drawerVersion}));
   const saved=await saleForCheckout(id);
   if(!saved)throw Error('Checking whether this sale was recorded. Keep this checkout open.');
-  await showCompletedSale(saved);
- }catch(e){notice(e.message)}finally{busy=false;await status()}
+  showPaidAwaitingHandoff(saved,{...checkout,status:'completed',cash_handoff_complete:false});
+ }catch(e){
+  notice('Cash payment could not be confirmed: '+e.message+'. Do not start another order until status is checked.');
+ }finally{busy=false;await status()}
 }
 function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-tax').textContent=C.money(lastSale.totals.tax_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
 async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
@@ -441,7 +482,7 @@ function renderCash(){
  by('cash-due').textContent=C.money(due);
  const paid=cashCents(),indicator=by('change-indicator'),change=by('change-amount'),
        message=by('change-message'),breakdown=by('change-breakdown');
- const inputAllowed=!!checkout&&!busy&&(!checkout.payment_preference||checkout.payment_preference==='cash');
+ const inputAllowed=!!checkout&&!busy&&['awaiting_customer','contact_received'].includes(checkout.status)&&(!checkout.payment_preference||checkout.payment_preference==='cash');
  const allowed=inputAllowed&&checkout.status==='contact_received';
  for(const b of by('cash-bills').querySelectorAll('button'))b.disabled=!inputAllowed;
  by('cash-exact').disabled=!inputAllowed;by('cash-clear').disabled=!inputAllowed;
@@ -502,7 +543,7 @@ by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.tar
 by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
-by('start').onclick=begin;by('cancel').onclick=cancel;by('cash').onclick=cash;
+by('start').onclick=begin;by('cancel').onclick=cancel;by('cash').onclick=cash;by('finish-order').onclick=finishOrder;
 for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo username'],['copy-apple-cash','6316440633','Apple Cash contact']]){
  by(buttonId).onclick=async()=>{try{
   await navigator.clipboard.writeText(value);
