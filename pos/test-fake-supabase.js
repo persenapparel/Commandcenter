@@ -14,7 +14,7 @@ const seed=()=>({
  pos_variant_details:[{stock_id:'44444444-4444-4444-8444-444444444444',price_cents:4000,taxable:true,category:'Apparel',product_type:'hoodie',description:''},{stock_id:'55555555-5555-4555-8555-555555555555',price_cents:4000,taxable:true,category:'Apparel',product_type:'hoodie',description:''}],
  pos_registers:[{id:REG,owner_id:USER,active:true,display_secret:PAIR,display_expires_at:null,label:'Front register',cash_drawer:{},drawer_version:0,drawer_configured:false,created_at:today}],
  pos_checkouts:[],pos_sales:[],pos_print_jobs:[],pos_events:[],
- inventory_catalog:[],inventory_event_profiles:[],inventory_event_quick_products:[],
+ inventory_catalog:[{name:'Christmas Hoodie',inventory_type:'sales',price_cents:4000,is_active:true}],inventory_event_profiles:[],inventory_event_quick_products:[],
  pos_receipt_templates:[{id:'66666666-6666-4666-8666-666666666666',owner_id:USER,name:'Default',headline:'THANK YOU!',promotion:'persenapparel.com',footer:'Shop local',active:true,updated_at:today}],
  site_content:[],pos_drawer_recounts:[]
  }});
@@ -76,7 +76,22 @@ function rpc(name,p={}){
   for(const [size,quantity] of Object.entries(sizes)){if(Number(quantity)<=0)continue;const id=newid(state);
    t.stock_items.push({id,sku:'E2E-'+id.slice(-8),product_name:p.p_name,color:p.p_color,size,quantity:Number(quantity),reorder_at:5,supplier:p.p_supplier});
    t.pos_variant_details.push({stock_id:id,price_cents:p.p_price_cents,taxable:p.p_taxable,category:p.p_category,product_type:p.p_type,description:''});n++}
+  if(!t.inventory_catalog.some(x=>x.name.toLowerCase()===String(p.p_name).toLowerCase()))t.inventory_catalog.push({name:p.p_name,inventory_type:'sales',price_cents:p.p_price_cents,is_active:true});
   return write(n);
+ }
+ case 'inventory_save_size_grid':{
+  const name=String(p.p_name||'').trim();
+  if(!name)return fail('Product name required');
+  let catalog=t.inventory_catalog.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(!catalog){catalog={name,inventory_type:p.p_type,price_cents:p.p_price_cents,is_active:true};t.inventory_catalog.push(catalog)}
+  else Object.assign(catalog,{inventory_type:p.p_type,price_cents:p.p_price_cents,is_active:true});
+  for(const row of p.p_items||[]){
+   let item=t.stock_items.find(x=>x.product_name.toLowerCase()===name.toLowerCase()&&String(x.color||'').toLowerCase()===String(row.color||'').toLowerCase()&&String(x.size||'').toUpperCase()===String(row.size||'').toUpperCase());
+   if(item){item.quantity=Number(row.quantity)}
+   else if(Number(row.quantity)>0){const id=newid(state);item={id,sku:'GRID-'+id.slice(-8),product_name:name,color:row.color,size:row.size,quantity:Number(row.quantity),reorder_at:5};t.stock_items.push(item)}
+   if(item){let detail=t.pos_variant_details.find(x=>x.stock_id===item.id);if(detail)detail.price_cents=p.p_price_cents;else t.pos_variant_details.push({stock_id:item.id,price_cents:p.p_price_cents,taxable:true,category:'Apparel',product_type:p.p_type})}
+  }
+  return write(true);
  }
  case 'pos_update_product_variant':{
   const item=t.stock_items.find(x=>x.id===p.p_stock),detail=t.pos_variant_details.find(x=>x.stock_id===p.p_stock);
@@ -84,6 +99,20 @@ function rpc(name,p={}){
   Object.assign(item,{product_name:p.p_name,color:p.p_color,size:p.p_size,quantity:p.p_quantity});
   Object.assign(detail,{price_cents:p.p_price_cents,taxable:p.p_taxable,category:p.p_category,product_type:p.p_type});
   return write(true);
+ }
+ case 'pos_save_event_selection':{
+  const existing=t.pos_events.find(x=>x.id===p.p_event);
+  const name=String(p.p_name||existing?.name||'').trim();
+  if(!name||(p.p_names||[]).length===0)return fail('Event and products required');
+  const event=existing||{id:newid(state),owner_id:USER,name,event_date:p.p_date,venue:'',status:'open'};
+  if(!existing)t.pos_events.push(event);
+  event.name=name;event.event_date=p.p_date;
+  let profile=t.inventory_event_profiles.find(x=>x.id===event.inventory_profile_id);
+  if(!profile){profile={id:newid(state),name,event_date:p.p_date,active:true};t.inventory_event_profiles.push(profile)}
+  profile.name=name;profile.event_date=p.p_date;event.inventory_profile_id=profile.id;
+  t.inventory_event_quick_products=t.inventory_event_quick_products.filter(x=>x.event_id!==profile.id);
+  (p.p_names||[]).forEach((name,i)=>t.inventory_event_quick_products.push({event_id:profile.id,product_name:name,sort_order:i}));
+  return write(event.id);
  }
  case 'pos_issue_display_pairing':reg.display_secret=PAIR;reg.display_expires_at=new Date(Date.now()+7200000).toISOString();return write(PAIR);
  case 'pos_begin_checkout':{

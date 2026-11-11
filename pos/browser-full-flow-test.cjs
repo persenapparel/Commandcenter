@@ -18,25 +18,64 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  await ctx.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.fulfill({status:200,contentType:'application/javascript',body:''}));
  let admin,cashier,customer,printer;
  try{
- await step('Device dashboard routes',async()=>{const p=await ctx.newPage();opened.push(p);assert.equal((await p.goto(url)).status(),200);for(const file of ['admin.html','register.html','display.html','print-station.html'])assert.equal(await p.locator('a[href="'+file+'"]').count(),1)});
- await step('Laptop owner authentication and inventory loaded',async()=>{admin=await ctx.newPage();opened.push(admin);await admin.goto(url+'admin.html');await visible(admin,'#workspace');await txt(admin,'#stat-variants','2');assert.equal(await admin.locator('.inventory-card').count(),2)});
- await step('Laptop bulk product sizes save',async()=>{
-  const f=admin.locator('#create-products');await f.locator('[name=name]').fill('Winter Crewneck');await f.locator('[name=color]').fill('Forest Green');await f.locator('[name=price]').fill('29.99');await f.locator('[name=S]').fill('3');await f.locator('[name=M]').fill('2');
-  await admin.locator('#save-products').click();await txt(admin,'#notice','Saved 2 size variants');await txt(admin,'#stat-variants','4');assert.equal((await state(admin)).tables.stock_items.length,4)
+ await step('Device dashboard PIN, unlock, lock and routes',async()=>{
+  const p=await ctx.newPage();opened.push(p);assert.equal((await p.goto(url)).status(),200);
+  await visible(p,'#pin-gate');assert.equal(await p.locator('#device-dashboard').isVisible(),false);
+  await p.locator('#pin-input').fill('0000');await p.locator('#pin-form button[type=submit]').click();
+  await txt(p,'#pin-error','Incorrect PIN');assert.equal(await p.locator('#device-dashboard').isVisible(),false);
+  await p.locator('#pin-input').fill('1790');await p.locator('#pin-form button[type=submit]').click();
+  await visible(p,'#device-dashboard');assert.equal(await p.locator('#pin-gate').isVisible(),false);
+  for(const file of ['admin.html','register.html','display.html','print-station.html'])assert.equal(await p.locator('a[href="'+file+'"]').count(),1);
+  await p.reload();await visible(p,'#device-dashboard');
+  await p.locator('#lock-dashboard').click();await visible(p,'#pin-gate');
+  assert.equal(await p.locator('#device-dashboard').isVisible(),false);
  });
- await step('Laptop inventory price and quantity editor',async()=>{
-  await admin.locator('#inventory-search').fill('Winter Crewneck');
-  const card=admin.locator('.inventory-card').filter({hasText:'Forest Green · S'}).first();assert.equal(await card.count(),1);
-  await card.locator('input[name=quantity]').fill('9');await card.locator('input[name=price]').fill('33.50');
-  await card.getByRole('button',{name:'Save changes'}).click();await txt(admin,'#notice','price and stock updated');await admin.locator('#refresh').click();await txt(admin,'#notice','Inventory refreshed');await admin.locator('#inventory-search').fill('');
-  const s=await state(admin);assert.ok(s.tables.stock_items.some(x=>x.product_name==='Winter Crewneck'&&x.size==='S'&&x.quantity===9));assert.ok(s.tables.pos_variant_details.some(x=>x.price_cents===3350));
+ await step('Laptop owner authentication and inventory loaded',async()=>{admin=await ctx.newPage();opened.push(admin);await admin.goto(url+'admin.html');await visible(admin,'#workspace');await txt(admin,'#stat-variants','2');assert.ok(await admin.locator('a[href="inventory.html"]').count()>=1)});
+ await step('Shared Sales Products grid adds multiple sizes',async()=>{
+  const inventory=await ctx.newPage();opened.push(inventory);await inventory.goto(url+'inventory.html');
+  await visible(inventory,'.hub-tabs');
+  await inventory.getByRole('button',{name:'Sales Products'}).click();
+  await inventory.getByRole('button',{name:'+ Add Product'}).click();
+  await visible(inventory,'.hub-editor');
+  await inventory.locator('.hub-edit-form input[name=name]').fill('Winter Crewneck');
+  await inventory.locator('.hub-editor input[placeholder="e.g. 25.00"]').fill('29.99');
+  await inventory.locator('.hub-editor input[placeholder="Add another color (e.g. Navy)"]').fill('Forest Green');
+  await inventory.getByRole('button',{name:'+ Add Color'}).click();
+  await inventory.locator('.hub-editor input[aria-label="Forest Green S quantity"]').fill('3');
+  await inventory.locator('.hub-editor input[aria-label="Forest Green M quantity"]').fill('2');
+  await inventory.getByRole('button',{name:'Save Product & Quantities'}).click();
+  await txt(inventory,'#inventory-hub-message','saved. Size totals updated');
+  assert.equal((await state(inventory)).tables.stock_items.length,4);
+  await admin.locator('#refresh').click();await txt(admin,'#stat-variants','4');
+ });
+ await step('Shared Sales Products grid edits quantity and price',async()=>{
+  const inventory=await ctx.newPage();opened.push(inventory);await inventory.goto(url+'inventory.html');
+  await visible(inventory,'#inventory-hub-root');await visible(inventory,'.hub-tabs');
+  await inventory.getByRole('button',{name:'Sales Products'}).click();
+  await visible(inventory,'.hub-product');
+  await inventory.getByRole('button',{name:'Edit Winter Crewneck stock and sizes'}).click();
+  await visible(inventory,'.hub-editor');
+  await inventory.locator('.hub-editor input[placeholder="e.g. 25.00"]').fill('33.50');
+  await inventory.locator('.hub-editor input[aria-label="Forest Green S quantity"]').fill('9');
+  await inventory.getByRole('button',{name:'Save Product & Quantities'}).click();
+  await txt(inventory,'#inventory-hub-message','saved. Size totals updated');
+  const s=await state(inventory);
+  assert.ok(s.tables.stock_items.some(x=>x.product_name==='Winter Crewneck'&&x.size==='S'&&x.quantity===9));
+  assert.ok(s.tables.inventory_catalog.some(x=>x.name==='Winter Crewneck'&&x.price_cents===3350));
+  await admin.locator('#refresh').click();await txt(admin,'#notice','Inventory refreshed');
  });
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
  await step('Cashier starts closed, opens, and selects event',async()=>{
-  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');await cashier.locator('#open-register').click();
+  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
+  await cashier.locator('#setup-event-launch').click();await visible(cashier,'#event-setup-dialog');
+  await cashier.locator('#setup-event').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
+  await cashier.locator('input[aria-label="Include Christmas Hoodie"]').check();
+  await cashier.locator('input[aria-label="Include Winter Crewneck"]').check();
+  await cashier.locator('#save-event-selection').click();await txt(cashier,'#notice','Event saved. Your selected Sales Products are ready.');
   await visible(cashier,'.quick-toolbar');
   await visible(cashier,'#catalog .quick-product');assert.ok(await cashier.locator('.quick-product').count()>=2);
-  assert.equal(await cashier.locator('.product-manager:visible').count(),0);await cashier.locator('#event-select').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
+  assert.equal(await cashier.locator('.product-manager:visible').count(),0);
+  assert.equal(await cashier.locator('#event-select').inputValue(),(await state(cashier)).tables.pos_events[0].id);
  });
  await step('Cashier big tiles → size/color picker → cart',async()=>{
   await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await visible(cashier,'#variant-dialog');
