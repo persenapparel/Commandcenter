@@ -91,7 +91,7 @@ select 1/(case when (public.pos_customer_view(:'secret'::uuid)->>'change_cents')
 select 1/(case when not has_function_privilege('anon','public.pos_finish_order(uuid)','EXECUTE') then 1 else 0 end) as anon_cannot_finish_sale;
 set role authenticated;
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
-do $
+do $$
 declare blocked boolean:=false;
 begin
  begin
@@ -99,7 +99,7 @@ begin
    '[{"stock_id":"22222222-2222-4222-8222-222222222222","qty":1,"unit_cents":2500,"taxable":true}]'::jsonb);
  exception when others then blocked:=true; end;
  if not blocked then raise exception 'Cash handoff was bypassed by a new checkout'; end if;
-end $;
+end $$;
 select 1/(case when public.pos_finish_order(:'checkout'::uuid) then 1 else 0 end) as cashier_finished_handoff;
 select 1/(case when public.pos_finish_order(:'checkout'::uuid) then 1 else 0 end) as finish_is_idempotent;
 set role anon;
