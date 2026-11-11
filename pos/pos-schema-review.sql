@@ -268,7 +268,7 @@ create or replace function public.pos_customer_view(p_secret uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare r public.pos_registers; c public.pos_checkouts; due_change integer:=0; customer_status text;
 begin
- select * into r from public.pos_registers where display_secret=p_secret and active and display_expires_at>now();
+ select * into r from public.pos_registers where display_secret=p_secret and active and display_expires_at > now();
  if not found then return jsonb_build_object('status','unpaired'); end if;
  select * into c from public.pos_checkouts where register_id=r.id order by created_at desc limit 1;
  if not found then return jsonb_build_object('status','idle','register',r.label); end if;
