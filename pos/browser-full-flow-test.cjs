@@ -103,7 +103,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.evaluate(()=>{navigator.clipboard.writeText=async s=>localStorage.setItem('__clip',s)});
   await cashier.locator('#pair-copy').click();await txt(cashier,'#pair-feedback','Private link copied');
   assert.equal(link,await cashier.evaluate(()=>navigator.clipboard.readText()));
-  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await txt(customer,'#state','next order')
+  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await visible(customer,'#customer-welcome');await txt(customer,'#welcome-status','Your cashier will start your order shortly')
  });
  await step('Print station test print, paper selection, arm',async()=>{
   printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');await visible(printer,'#station-panel');
