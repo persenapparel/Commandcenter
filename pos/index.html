@@ -31,11 +31,47 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 @media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.card{min-height:285px}}
 @media(max-width:590px){.grid{grid-template-columns:1fr}main{padding:24px 15px}.card{min-height:220px}.subtitle{font-size:14px}header{padding:13px 16px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* A friendly front-door PIN screen. Not a security boundary: Cloudflare Access
+   and the existing Supabase account authorization remain required. */
+.pin-wrap{min-height:calc(100vh - 155px);display:grid;place-items:center;padding:20px 0 44px}
+.pin-card{width:min(100%,480px);background:linear-gradient(155deg,#fffdf6,#fff);border:1px solid #d8cfb7;border-radius:28px;box-shadow:0 22px 64px #133a2f20;padding:34px;text-align:center}
+.pin-badge{width:76px;height:76px;display:grid;place-items:center;margin:0 auto 14px;font-size:33px;border-radius:22px;background:#e3f0e9;color:#214e3b}
+.pin-card .eyebrow{color:#2b624c}
+.pin-card h1{font-size:clamp(25px,4vw,36px);margin:10px 0}
+.pin-card p{color:#596f68;font-size:14px;line-height:1.55}
+.pin-card label{display:block;text-align:left;font-weight:750;font-size:13px;color:#214d3c;margin:24px 0 7px}
+.pin-card input{width:100%;min-height:58px;border:2px solid #bacfbd;background:white;border-radius:13px;font:700 24px system-ui;text-align:center;letter-spacing:.28em;color:#17392b}
+.pin-card input:focus-visible{outline:3px solid #d7b470;outline-offset:2px}
+.pin-card button{display:block;width:100%;min-height:54px;background:#8c2938;color:white;border:0;border-radius:13px;font:800 16px system-ui;margin-top:12px;cursor:pointer}
+.pin-card button:hover{background:#74212e}
+.pin-card .pin-error{min-height:22px;color:#9a2436;font-weight:750;font-size:13px;margin:9px 0 0}
+.pin-card .pin-foot{font-size:11px;margin-bottom:0}
+.dashboard-logout{font:700 12px system-ui;border:1px solid #cbd7e5;background:white;color:#153e62;padding:9px 13px;border-radius:9px;cursor:pointer;float:right}
+#device-dashboard[hidden],#pin-gate[hidden]{display:none!important}
+@media(max-width:590px){.pin-wrap{min-height:calc(100svh - 145px)}.pin-card{padding:25px 20px}}
+
 </style>
 </head>
 <body>
 <header><img class="logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><strong>PERSEN <em>POS</em></strong></header>
-<main>
+<main id="pin-gate" class="pin-wrap" aria-label="POS access PIN">
+  <section class="pin-card">
+   <div class="pin-badge" aria-hidden="true">🔒</div>
+   <span class="eyebrow">PERSEN APPAREL · PRIVATE POS</span>
+   <h1>Welcome to Persen POS</h1>
+   <p>Enter your four-digit access PIN to choose a device. Your account sign-in comes next.</p>
+   <form id="pin-form" autocomplete="off">
+    <label for="pin-input">Access PIN</label>
+    <input id="pin-input" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required aria-describedby="pin-error">
+    <button type="submit">Unlock POS →</button>
+    <p id="pin-error" class="pin-error" role="status" aria-live="polite"></p>
+   </form>
+   <p class="pin-foot">For authorized team devices only · Account login is still required</p>
+  </section>
+</main>
+<main id="device-dashboard" hidden>
+<button type="button" id="lock-dashboard" class="dashboard-logout">Lock dashboard</button>
 <span class="eyebrow">PERSEN APPAREL · DEVICE DASHBOARD</span>
 <h1>Your checkout, all in one place.</h1>
 <p class="subtitle">Use one iPad for the cashier, a second iPad for customers, and your Dell laptop for the NELKO receipt station. Choose the device you are setting up.</p>
@@ -73,5 +109,27 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 <section class="note"><h3>Before taking real orders</h3><p>Finish staged Supabase integration, secure short-lived customer pairing, test actual purchases without money, configure email delivery, and confirm that the Dell can print reliably without prompts. The existing Persen Apparel website is separate from this POS preview.</p></section>
 </main>
 <footer>© Persen Apparel · Custom apparel on Long Island</footer>
+
+<script>
+(function(){
+ 'use strict';
+ // This is a convenience screen only. The four digits are shipped to the browser
+ // and cannot replace Cloudflare Access, account sign-in, RLS or device pairing.
+ const PIN='1790',STORAGE_KEY='persen-pos-front-pin-unlocked';
+ const gate=document.getElementById('pin-gate'),dashboard=document.getElementById('device-dashboard');
+ const field=document.getElementById('pin-input'),error=document.getElementById('pin-error');
+ function openDashboard(){gate.hidden=true;dashboard.hidden=false;dashboard.querySelector('h1')?.setAttribute('tabindex','-1');dashboard.querySelector('h1')?.focus();}
+ function lockDashboard(){try{sessionStorage.removeItem(STORAGE_KEY)}catch(_){}dashboard.hidden=true;gate.hidden=false;field.value='';error.textContent='';field.focus();}
+ document.getElementById('pin-form').addEventListener('submit',function(e){
+   e.preventDefault();
+   if(field.value!==PIN){error.textContent='Incorrect PIN. Please try again.';field.value='';field.focus();return}
+   try{sessionStorage.setItem(STORAGE_KEY,'yes')}catch(_){}
+   error.textContent='';field.value='';openDashboard();
+ });
+ document.getElementById('lock-dashboard').addEventListener('click',lockDashboard);
+ try{if(sessionStorage.getItem(STORAGE_KEY)==='yes'){openDashboard();return}}catch(_){}
+ field.focus();
+})();
+</script>
 </body>
 </html>
