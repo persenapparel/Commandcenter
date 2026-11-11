@@ -20,9 +20,22 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  try{
  await step('Device dashboard routes',async()=>{const p=await ctx.newPage();opened.push(p);assert.equal((await p.goto(url)).status(),200);for(const file of ['admin.html','register.html','display.html','print-station.html'])assert.equal(await p.locator('a[href="'+file+'"]').count(),1)});
  await step('Laptop owner authentication and inventory loaded',async()=>{admin=await ctx.newPage();opened.push(admin);await admin.goto(url+'admin.html');await visible(admin,'#workspace');await txt(admin,'#stat-variants','2');assert.ok(await admin.locator('a[href="inventory.html"]').count()>=1)});
- await step('Laptop bulk product sizes save',async()=>{
-  const f=admin.locator('#create-products');await f.locator('[name=name]').fill('Winter Crewneck');await f.locator('[name=color]').fill('Forest Green');await f.locator('[name=price]').fill('29.99');await f.locator('[name=S]').fill('3');await f.locator('[name=M]').fill('2');
-  await admin.locator('#save-products').click();await txt(admin,'#notice','Saved 2 size variants');await txt(admin,'#stat-variants','4');assert.equal((await state(admin)).tables.stock_items.length,4)
+ await step('Shared Sales Products grid adds multiple sizes',async()=>{
+  const inventory=await ctx.newPage();opened.push(inventory);await inventory.goto(url+'inventory.html');
+  await visible(inventory,'.hub-tabs');
+  await inventory.getByRole('button',{name:'Sales Products'}).click();
+  await inventory.getByRole('button',{name:'+ Add Product'}).click();
+  await visible(inventory,'.hub-editor');
+  await inventory.locator('.hub-edit-form input[name=name]').fill('Winter Crewneck');
+  await inventory.locator('.hub-editor input[placeholder="e.g. 25.00"]').fill('29.99');
+  await inventory.locator('.hub-editor input[placeholder="Add another color (e.g. Navy)"]').fill('Forest Green');
+  await inventory.getByRole('button',{name:'+ Add Color'}).click();
+  await inventory.locator('.hub-editor input[aria-label="Forest Green S quantity"]').fill('3');
+  await inventory.locator('.hub-editor input[aria-label="Forest Green M quantity"]').fill('2');
+  await inventory.getByRole('button',{name:'Save Product & Quantities'}).click();
+  await txt(inventory,'#inventory-hub-message','saved. Size totals updated');
+  assert.equal((await state(inventory)).tables.stock_items.length,4);
+  await admin.locator('#refresh').click();await txt(admin,'#stat-variants','4');
  });
  await step('Shared Sales Products grid edits quantity and price',async()=>{
   const inventory=await ctx.newPage();opened.push(inventory);await inventory.goto(url+'inventory.html');
