@@ -150,6 +150,7 @@ function resetWizard(){
  phoneDisplay();
  showPaymentInfo('cash');
  $('waiting-payment').hidden=true;
+ $('waiting-change').hidden=true;
  $('thanks').hidden=true;
  $('wizard-next').disabled=false;
  $('wizard-finish').disabled=false;
@@ -176,6 +177,7 @@ function render(session){
   checkoutId=null;
   form.hidden=true;
   $('waiting-payment').hidden=true;
+  $('waiting-change').hidden=true;
   $('thanks').hidden=true;
   show('This iPad is not paired. Please ask the cashier to connect it.');
   return;
@@ -199,21 +201,26 @@ function render(session){
  $('total').textContent=C.money(session.total_cents||0);
  form.hidden=status!=='awaiting_customer'||submitting;
  $('waiting-payment').hidden=status!=='contact_received';
+ $('waiting-change').hidden=status!=='paid_awaiting_change';
+ $('customer-change').textContent=C.money(session.change_cents||0);
+ $('customer-change-message').textContent=Number(session.change_cents||0)>0?'Your cashier is preparing the following change for you:':'No change is owed. Please wait for your cashier to finish the order.';
+ $('customer-change').hidden=Number(session.change_cents||0)===0;
  $('thanks').hidden=status!=='completed';
  if(!session.checkout_id){
-  form.hidden=true;$('waiting-payment').hidden=true;$('thanks').hidden=true;
+  form.hidden=true;$('waiting-payment').hidden=true;$('waiting-change').hidden=true;$('thanks').hidden=true;
  }
  const messages={
   idle:'Your next order will appear here.',
   awaiting_customer:'Complete the steps below',
-  contact_received:'Choices saved — please finish with your cashier.',
-  completed:'Payment confirmed — thank you!',
+  contact_received:'Waiting for your cashier to enter your cash payment.',
+  paid_awaiting_change:'Cash recorded — waiting for change and cashier confirmation.',
+  completed:'Order finished — thank you!',
   cancelled:'This checkout was cancelled. Please see your cashier.'
  };
  show(messages[status]||status);
  if(lastStatus!==status){
   lastStatus=status;
-  if(status==='contact_received'||status==='completed'){
+  if(status==='contact_received'||status==='paid_awaiting_change'||status==='completed'){
    // Do not leave a customer's phone and email visible for the next person.
    phoneDigits='';
    $('phone-display').value='';
@@ -257,7 +264,7 @@ async function finish(){
   form.hidden=true;
   needsHelp=false;showHelpState();
   $('waiting-payment').hidden=false;
-  show('Thanks! Your choices were saved. Please see the cashier.');
+  show('Your choices are saved. Wait for the cashier to enter your cash payment.');
   await refresh();
  }catch(err){
   error(err?.message||'Checkout could not be submitted. Please try again.');
