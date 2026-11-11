@@ -221,6 +221,7 @@ function render(session){
   return;
  }
  showCheckout();
+ document.body.classList.toggle('kiosk-completed',status==='completed');
  const orderItems=$('items');
  orderItems.replaceChildren();
  for(const item of session.items||[]){
