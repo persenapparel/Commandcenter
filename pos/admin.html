@@ -9,7 +9,7 @@
 <script defer src="admin.js"></script>
 </head><body>
 <header class="top"><div class="brand"><img src="assets/persen-logo.png" alt="" onerror="this.hidden=true">PERSEN <span>POS</span><small>BACK OFFICE</small></div>
-<nav><a href="index.html">Dashboard</a><a href="register.html">Open Cashier</a><a href="print-station.html">Print Station</a></nav></header>
+<nav><a href="index.html">Dashboard</a><a href="inventory.html">Sales Products &amp; Inventory</a><a href="register.html">Open Cashier</a><a href="print-station.html">Print Station</a></nav></header>
 <main>
 <div class="eyebrow">LAPTOP CONTROL CENTER · DEVELOPMENT</div>
 <div class="intro"><div><h1>Manage your store.</h1><p>Add all your apparel before an event, change prices and sizes, and keep an eye on checkouts from your laptop.</p></div><div class="env">TEST STAGING · NOT LIVE SALES</div></div>
@@ -18,7 +18,7 @@
 <div id="workspace" hidden>
 <div class="stats"><div class="stat"><span>Product variants</span><strong id="stat-variants">—</strong></div><div class="stat"><span>Pieces in stock</span><strong id="stat-pieces">—</strong></div><div class="stat"><span>Low stock</span><strong id="stat-low">—</strong></div><div class="stat"><span>Live checkouts</span><strong id="stat-active">—</strong></div></div>
 <div class="two-col">
-<section class="surface" id="add-products"><div class="section-head"><div><span class="eyebrow">01 · PRODUCT SETUP</span><h2>Add apparel in one save</h2></div></div>
+<section class="surface" id="add-products" hidden><div class="section-head"><div><span class="eyebrow">01 · PRODUCT SETUP</span><h2>Add apparel in one save</h2></div></div>
 <p class="muted">Enter a product and color once, then fill in each size's stock. One click saves all selected sizes with their own inventory records and prices.</p>
 <form id="create-products">
 <div class="fields">
@@ -44,6 +44,6 @@
 <div class="surface launch"><div><span class="eyebrow">READY TO OPEN?</span><h2>Let the cashier iPad do the selling.</h2><p>Products save directly to the protected staging inventory. Open the cashier site on your iPad, tap <strong>Open Register</strong>, and use the big product tiles.</p></div><a class="primary" href="register.html">Open cashier register</a></div>
 </section></div>
 <section class="surface inventory" id="inventory"><div class="section-head"><div><span class="eyebrow">04 · INVENTORY EDITOR</span><h2>All products &amp; sizes</h2></div><button type="button" id="refresh">Refresh inventory</button></div>
-<p class="muted">Edit a product's name, color, size, price, and remaining quantity. Changes appear on the cashier after inventory refresh. Saving updates price and stock together.</p>
+<p class="muted">Manage finished Sales Products in the shared inventory editor. Blanks are kept separate.</p>
 <label>Search products, colors, SKUs or sizes<input type="search" id="inventory-search" placeholder="Search inventory"></label><div id="inventory-list"></div></section>
 </div></main><footer>Persen Apparel · Private POS staging back office · Real sales disabled until integration tests</footer></body></html>

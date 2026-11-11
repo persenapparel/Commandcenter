@@ -8,7 +8,9 @@ create function auth.uid() returns uuid language sql stable as $$
 $$;
 grant usage on schema auth to anon, authenticated;
 grant execute on function auth.uid() to anon, authenticated;
-create function public.is_persen_admin() returns boolean language sql stable as $$ select true $$;
+create function public.is_persen_admin() returns boolean language sql stable as $$
+ select coalesce(auth.uid()='11111111-1111-4111-8111-111111111111'::uuid,false)
+$$;
 create table public.stock_items(
  id uuid primary key default gen_random_uuid(),
  sku text not null unique,
