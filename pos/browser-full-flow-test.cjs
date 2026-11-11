@@ -55,10 +55,16 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
  await step('Cashier starts closed, opens, and selects event',async()=>{
-  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');await cashier.locator('#open-register').click();
+  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
+  await cashier.locator('#setup-event-launch').click();await visible(cashier,'#event-setup-dialog');
+  await cashier.locator('#setup-event').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
+  await cashier.locator('input[aria-label="Include Christmas Hoodie"]').check();
+  await cashier.locator('input[aria-label="Include Winter Crewneck"]').check();
+  await cashier.locator('#save-event-selection').click();await txt(cashier,'#notice','Event saved. Your selected Sales Products are ready.');
   await visible(cashier,'.quick-toolbar');
   await visible(cashier,'#catalog .quick-product');assert.ok(await cashier.locator('.quick-product').count()>=2);
-  assert.equal(await cashier.locator('.product-manager:visible').count(),0);await cashier.locator('#event-select').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
+  assert.equal(await cashier.locator('.product-manager:visible').count(),0);
+  assert.equal(await cashier.locator('#event-select').inputValue(),(await state(cashier)).tables.pos_events[0].id);
  });
  await step('Cashier big tiles → size/color picker → cart',async()=>{
   await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await visible(cashier,'#variant-dialog');
