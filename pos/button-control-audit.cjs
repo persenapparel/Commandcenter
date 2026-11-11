@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const read=f=>fs.readFileSync('pos/'+f,'utf8');
 const suites=[
- ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','cash-exact','cash-clear','save-drawer','pair','copy-venmo','copy-apple-cash','save-template','print','close-variant']],
+ ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','pair','copy-venmo','copy-apple-cash','save-template','print','close-variant']],
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
  ['print-station.html','print-station.js',['arm','disarm','test-print']]
