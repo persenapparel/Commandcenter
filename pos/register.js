@@ -227,7 +227,7 @@ async function status(){
     if(version!==checkoutVersion)return;
    }
    checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
-   if(!checkout)document.body.classList.remove('checkout-active');
+   document.body.classList.toggle('checkout-active',!!checkout);
    if(checkout)document.body.classList.remove('pos-register-closed');
   }
   const progressing=!!checkout;
