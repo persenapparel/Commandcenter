@@ -116,18 +116,20 @@ function rpc(name,p={}){
  }
  case 'pos_issue_display_pairing':reg.display_secret=PAIR;reg.display_expires_at=new Date(Date.now()+7200000).toISOString();return write(PAIR);
  case 'pos_begin_checkout':{
-  if(t.pos_checkouts.some(x=>['awaiting_customer','contact_received'].includes(x.status)))return fail('Checkout already active');
+  if(t.pos_checkouts.some(x=>['awaiting_customer','contact_received'].includes(x.status)||(x.status==='completed'&&!x.cash_handoff_complete)))return fail('Finish the current order first');
   const subtotal=p.p_items.reduce((n,i)=>n+i.qty*i.unit_cents,0);
   const discount=Math.round(subtotal*(p.p_discount_bps||0)/10000);
   const tax=Math.round((subtotal-discount)*(p.p_tax_milli||0)/100000);
-  const checkout={id:newid(state),register_id:p.p_register,owner_id:USER,created_at:new Date().toISOString(),updated_at:new Date().toISOString(),status:'awaiting_customer',customer_step:'phone',help_requested:false,items:clone(p.p_items),subtotal_cents:subtotal,discount_cents:discount,tax_cents:tax,total_cents:subtotal-discount+tax,payment_preference:'cash',receipt_print:true,receipt_email:false,event_id:p.p_event||null};
+  const checkout={id:newid(state),register_id:p.p_register,owner_id:USER,created_at:new Date().toISOString(),updated_at:new Date().toISOString(),status:'awaiting_customer',cash_handoff_complete:false,customer_step:'phone',help_requested:false,items:clone(p.p_items),subtotal_cents:subtotal,discount_cents:discount,tax_cents:tax,total_cents:subtotal-discount+tax,payment_preference:'cash',receipt_print:true,receipt_email:false,event_id:p.p_event||null};
   t.pos_checkouts.push(checkout);return write(checkout.id);
  }
  case 'pos_cancel_checkout':if(!match)return fail('Missing checkout');match.status='cancelled';return write(true);
  case 'pos_customer_view':{
   if(p.p_secret!==reg.display_secret||!reg.display_expires_at||Date.parse(reg.display_expires_at)<Date.now())return result({status:'expired'});
   const c=t.pos_checkouts.at(-1);
-  return result(c?{status:c.status,checkout_id:c.id,items:c.items,total_cents:c.total_cents}:{status:'idle',checkout_id:null,items:[],total_cents:0});
+  const sale=c&&c.status==='completed'?t.pos_sales.find(x=>x.checkout_id===c.id):null;
+   const visibleStatus=c?.status==='completed'&&!c.cash_handoff_complete?'paid_awaiting_change':c?.status;
+   return result(c?{status:visibleStatus,checkout_id:c.id,items:c.items,total_cents:c.total_cents,change_cents:sale?.change_cents||0}:{status:'idle',checkout_id:null,items:[],total_cents:0});
  }
  case 'pos_set_customer_progress':if(!match)return fail('Checkout missing');match.customer_step=p.p_step;match.help_requested=p.p_need_help;return write(true);
  case 'pos_submit_customer':if(!match)return fail('Checkout missing');Object.assign(match,{status:'contact_received',phone:p.p_phone,email:p.p_email,marketing_opt_in:p.p_marketing_opt_in,rating:p.p_rating,interest:p.p_interest,payment_preference:p.p_payment_preference,receipt_print:p.p_print_receipt,receipt_email:p.p_email_receipt});return write(true);
@@ -136,7 +138,7 @@ function rpc(name,p={}){
   if(!match||match.status!=='contact_received')return fail('Checkout not ready');
   if(match.payment_preference!=='cash')return fail('Only cash accepted in mock');
   if(p.p_tender_cents<match.total_cents)return fail('Underpaid');
-  match.status='completed';
+  match.status='completed';match.cash_handoff_complete=false;
   for(const item of match.items){if(item.stock_id){const row=t.stock_items.find(x=>x.id===item.stock_id);if(row)row.quantity-=item.qty}}
   const sale={id:newid(state),checkout_id:match.id,owner_id:USER,event_id:match.event_id,snapshot:{items:match.items,receipt_print:match.receipt_print},subtotal_cents:match.subtotal_cents,discount_cents:match.discount_cents,tax_cents:match.tax_cents,total_cents:match.total_cents,tendered_cents:p.p_tender_cents,change_cents:p.p_tender_cents-match.total_cents,change_breakdown:p.p_change_breakdown||{},created_at:new Date().toISOString()};
   t.pos_sales.push(sale);
@@ -147,6 +149,10 @@ function rpc(name,p={}){
    return fail('Lost the response after recording cash');
   }
   return write(sale.id);
+ }
+ case 'pos_finish_order':{
+  if(!match||match.status!=='completed'||!t.pos_sales.some(x=>x.checkout_id===match.id))return fail('Paid checkout not found');
+  match.cash_handoff_complete=true;return write(true);
  }
  case 'pos_claim_print_job':{
   const job=t.pos_print_jobs.find(j=>j.id===p.p_job);

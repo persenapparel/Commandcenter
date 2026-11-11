@@ -661,3 +661,19 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
  [data-pos-appearance="festive"][data-season="christmas"] .hero::before,
  [data-pos-appearance="festive"][data-season="christmas"] .hero::after{display:none!important}
 }
+
+
+/* Keep the payment and physical-change handoff as two clearly separate steps. */
+.cash-handoff{padding:23px 20px;margin:18px 0 5px;border:2px solid #a2ccb5;background:linear-gradient(140deg,#effcf4,#fffef7);border-radius:19px;text-align:center;box-shadow:0 9px 28px #145c341d}
+.cash-handoff[hidden]{display:none!important}
+.cash-handoff-eyebrow{font-size:11px;color:#206148;font-weight:900;letter-spacing:.13em}
+.cash-handoff h3{font-size:21px;margin:10px 0 7px;color:#174a33}
+.cash-handoff-change{display:block;font-size:clamp(34px,5vw,54px);line-height:1.15;color:#1d764d;font-weight:950;letter-spacing:-.055em}
+.cash-handoff p{color:#3d6655;line-height:1.55;font-size:13px;max-width:480px;margin:12px auto 19px}
+.cash-handoff .finish-order{width:100%;min-height:65px;font-size:19px;background:#19774b;border:0}
+.cash-handoff .finish-order:hover:not(:disabled){background:#125b38}
+.customer-change-amount{display:block;font-size:clamp(32px,5vw,52px);font-weight:950;color:#20774b;margin:15px 0;letter-spacing:-.05em}
+.customer-change-amount[hidden]{display:none!important}
+[data-pos-appearance="festive"][data-season="christmas"] .cash-handoff{border-color:#cfa65f;background:linear-gradient(145deg,#eaf6e9,#fffaeb)}
+[data-pos-appearance="festive"][data-season="christmas"] .cash-handoff .finish-order{background:#176448}
+@media print{.cash-handoff{display:none!important}}

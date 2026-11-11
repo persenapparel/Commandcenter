@@ -56,7 +56,14 @@
 <div class="change-total"><div><small>Change to return</small><strong id="change-amount">$0.00</strong></div><span id="change-indicator" class="change-indicator">Awaiting payment</span></div>
 <p id="change-message" role="status" aria-live="polite" class="cash-status">Enter the amount received to see change.</p>
 <div id="change-breakdown" class="change-breakdown"></div>
-<button id="cash" class="primary cash-confirm" disabled>Confirm cash · Record sale</button>
+<button id="cash" class="primary cash-confirm" disabled>Confirm cash received · Record sale</button>
+<div id="cash-handoff" class="cash-handoff" role="status" aria-live="polite" hidden>
+  <div class="cash-handoff-eyebrow">CASH PAYMENT RECORDED</div>
+  <h3>Hand the customer their change</h3>
+  <strong id="cash-handoff-change" class="cash-handoff-change">$0.00</strong>
+  <p>After you have given the customer their change and receipt, tap Finish Order. The customer iPad will then say “You're all set!”</p>
+  <button id="finish-order" type="button" class="primary finish-order" disabled>Finish Order →</button>
+</div>
 <p class="hint">Only confirm after receiving the cash. The NELKO receipt is queued automatically after successful payment.</p>
 <details id="drawer-config" class="drawer-settings"><summary>Cash drawer setup & change float <span aria-hidden="true">⌄</span></summary>
 <p class="hint">Count cash actually in your register. The POS checks whether it can return exact change using your current bills and coins. Update counts when you add or remove cash.</p>

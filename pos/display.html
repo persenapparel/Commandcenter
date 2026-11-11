@@ -144,8 +144,9 @@
 </div>
 <p id="wizard-secure-note" class="wizard-secure-note">Your phone and email are used for your order. Promotions are optional.</p>
   </form>
-  <div id="waiting-payment" class="kiosk-finished" hidden><span class="finished-icon">✓</span><h2>You're all set!</h2><p>Thank you. The cashier will help you finish payment and your receipt.</p></div>
-  <div id="thanks" class="kiosk-finished" hidden><span class="finished-icon">★</span><h2>Thank you for shopping local!</h2><p>We appreciate your support of Persen Apparel. Have a great day!</p></div>
+  <div id="waiting-payment" class="kiosk-finished" hidden><span class="finished-icon" aria-hidden="true">⌛</span><h2>Waiting for your cashier</h2><p>Your choices were saved. Please give the cashier your cash. Your order is not finished yet.</p></div>
+  <div id="waiting-change" class="kiosk-finished" hidden role="status" aria-live="polite"><span class="finished-icon" aria-hidden="true">💵</span><h2>Cash received</h2><p id="customer-change-message">Please wait while your cashier prepares your change.</p><strong id="customer-change" class="customer-change-amount">$0.00</strong><p>Please collect your change and receipt. Your cashier will finish the order.</p></div>
+  <div id="thanks" class="kiosk-finished" hidden><span class="finished-icon" aria-hidden="true">✓</span><h2>You're all set!</h2><p>Thank you for shopping local with Persen Apparel. Have a great day!</p></div>
 </section>
 </main>
 </body>
