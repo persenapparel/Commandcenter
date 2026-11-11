@@ -702,6 +702,7 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 @media(max-width:650px){.customer-welcome{padding:38px 18px}.welcome-footer{letter-spacing:.12em}.welcome-logo{margin-bottom:18px}}
 @media(prefers-reduced-motion:no-preference){.welcome-content{animation:pos-welcome-in .6s ease both}@keyframes pos-welcome-in{from{opacity:.5;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}}
 @media print{.customer-welcome{display:none!important}}
+.kiosk-body.kiosk-completed .kiosk-order-summary{display:none}
 /* Cashier uses one focused screen at a time while the existing cart/stock code remains intact. */
 .cashier-stage-header{background:linear-gradient(135deg,#0c2f63,#1767b5);color:#fff;padding:27px 30px;margin:-22px -22px 23px;border-radius:20px 20px 12px 12px}
 .cashier-stage-badge{font-weight:850;letter-spacing:.15em;font-size:11px;color:#badcff}
