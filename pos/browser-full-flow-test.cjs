@@ -135,21 +135,37 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await customer.locator('input[name=marketing][value=no]').check();await customer.locator('input[name=marketing][value=yes]').check();
   await customer.locator('#wizard-next').click();await customer.locator('input[name=rating][value="5"]').check();await customer.locator('#wizard-next').click();
   await customer.locator('input[name=interest][value=maybe]').check();await customer.locator('#wizard-next').click();
-  await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await customer.waitForFunction(()=>window.__POS_TEST_DB.get().tables.pos_checkouts.at(-1)?.status==='contact_received',null,{timeout:11000});await visible(customer,'#waiting-payment');
+  await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await customer.waitForFunction(()=>window.__POS_TEST_DB.get().tables.pos_checkouts.at(-1)?.status==='contact_received',null,{timeout:11000});await visible(customer,'#waiting-payment');assert.match(await customer.locator('#waiting-payment h2').innerText(),/Waiting for your cashier/);assert.equal(await customer.locator('#thanks').isVisible(),false);
   const s=await state(customer);assert.equal(s.tables.pos_checkouts.at(-1).status,'contact_received');assert.equal(s.tables.pos_checkouts.at(-1).receipt_email,true)
  });
- await step('Cash drawer and recovery after a lost payment response',async()=>{
+ await step('Cash changes, no early customer success, recovery and Finish Order gate',async()=>{
   await cashier.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('ready for cashier'),null,{timeout:9000});
-  await cashier.locator('#cash-exact').click();await cashier.locator('#cash-clear').click();
-  await cashier.locator('#drawer-config').evaluate(x=>x.open=true);await cashier.locator('#drawer-grid [data-denom="2000"]').fill('3');
+  assert.equal(await customer.locator('#thanks').isVisible(),false);
+  assert.equal(await cashier.locator('#cash').isDisabled(),true);
+  await cashier.locator('#drawer-config').evaluate(x=>x.open=true);
+  for(const [denom,count] of [['2000','3'],['1000','2'],['500','2'],['100','5'],['25','10'],['10','10'],['5','10'],['1','20']])
+    await cashier.locator('#drawer-grid [data-denom="'+denom+'"]').fill(count);
   await cashier.locator('#save-drawer').click();await txt(cashier,'#notice','Cash drawer saved');
-  await cashier.locator('#cash-bills button').filter({hasText:'+$20'}).first().click();await cashier.locator('#cash-clear').click();
-  await cashier.locator('#cash-exact').click();await cashier.waitForFunction(()=>document.querySelector('#cash')?.disabled===false,null,{timeout:6000});
+  await cashier.locator('#cash-received').fill('120.00');
+  await cashier.locator('#cash-received').dispatchEvent('input');
+  await txt(cashier,'#change-amount','$17.85');
+  await cashier.waitForFunction(()=>document.querySelector('#cash')?.disabled===false,null,{timeout:6000});
   await cashier.evaluate(()=>sessionStorage.setItem('mock-lose-cash-response','1'));
-  await cashier.locator('#cash').click();await txt(cashier,'#notice','Cash sale recorded');
-  await visible(cashier,'#receipt');assert.equal(await cashier.locator('#cart .cart-row').count(),0);
+  await cashier.locator('#cash').click();
+  await visible(cashier,'#cash-handoff');
+  await txt(cashier,'#cash-handoff-change','$17.85');
+  await visible(customer,'#waiting-change',11000);
+  await txt(customer,'#customer-change','$17.85');
+  assert.equal(await customer.locator('#thanks').isVisible(),false);
   assert.equal(await cashier.locator('#start').isDisabled(),true);
-  assert.equal((await state(cashier)).tables.pos_sales.length,1)
+  assert.equal((await state(cashier)).tables.pos_sales.length,1);
+  assert.equal((await state(cashier)).tables.pos_checkouts.at(-1).cash_handoff_complete,false);
+  // Customer cannot see final success until cashier consciously finishes the handoff.
+  await cashier.locator('#finish-order').click();
+  await txt(cashier,'#notice','Ready for the next customer.');
+  await visible(cashier,'#receipt');assert.equal(await cashier.locator('#cart .cart-row').count(),0);
+  assert.equal((await state(cashier)).tables.pos_checkouts.at(-1).cash_handoff_complete,true);
+  await visible(customer,'#thanks',11000);
  });
  await step('Print queue receives sale only after payment',async()=>{
   await printer.waitForFunction(()=>__POS_TEST_DB.get().tables.pos_print_jobs[0]?.state==='submitted_to_browser',null,{timeout:11000});
