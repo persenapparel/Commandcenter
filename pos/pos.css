@@ -529,3 +529,135 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 @media print{.pos-christmas-countdown{display:none!important}}
 
 #event-setup-dialog{width:min(680px,94vw);max-height:90vh;overflow:auto}#event-setup-form>label{display:grid;gap:6px;margin:12px 0}.event-product-choice{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #ccd6e2;border-radius:12px;margin:8px 0}.event-product-choice input{width:22px;height:22px;flex:none}#event-product-options{max-height:34vh;overflow:auto}#event-setup-message{color:#a32323}#setup-event-launch{margin-bottom:12px}
+
+
+/* Persen Holiday Market — 2026 Christmas facelift (decorative only).
+   Scoped: checkout logic, stock, prices, cash drawer and receipts are unchanged. */
+:root[data-pos-appearance="festive"][data-season="christmas"]{
+ --pa-holly:#153f34;--pa-forest:#1b5841;--pa-berry:#9e2838;--pa-gold:#d9b569;
+ --pa-cream:#fffaf0;--pa-ink:#173b32;--pos-season:#a92d3c;--pos-season-soft:#fff6e3;
+}
+[data-pos-appearance="festive"][data-season="christmas"] body{
+ background:
+ radial-gradient(circle at 16% 19%,#ffffffb5 0 2px,transparent 3px),
+ radial-gradient(circle at 73% 29%,#ffffffc8 0 3px,transparent 4px),
+ radial-gradient(circle at 44% 72%,#ffffffa9 0 2px,transparent 3px),
+ linear-gradient(145deg,#e8f0e7 0%,#f9f4e9 50%,#eef4ec 100%);
+ background-size:160px 170px,230px 210px,280px 250px,auto;
+ color:var(--pa-ink);
+}
+[data-pos-appearance="festive"][data-season="christmas"] header,
+[data-pos-appearance="festive"][data-season="christmas"] .kiosk-header{
+ background:linear-gradient(105deg,#0f372e 0%,#18543d 58%,#841f35 100%);
+ border-bottom:4px solid var(--pa-gold);
+ box-shadow:0 8px 24px #174a3533;
+}
+[data-pos-appearance="festive"][data-season="christmas"] header strong span{color:#f4dba4}
+[data-pos-appearance="festive"][data-season="christmas"] .hero{
+ position:relative;overflow:hidden;isolation:isolate;min-height:154px;
+ background:linear-gradient(112deg,#0e4637,#1e6749 52%,#a72d3e);
+ border:1px solid #d4b265;border-bottom:5px solid #d4b265;border-radius:24px;
+ color:#fff;padding:30px 34px;box-shadow:0 19px 38px #16463425;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .hero::before{
+ content:"❄   ✦   ❄   ✦   ❄";position:absolute;top:12px;right:10px;
+ width:40%;font-size:34px;letter-spacing:16px;line-height:1.6;
+ color:#fffae53d;white-space:normal;pointer-events:none;z-index:-1;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .hero::after{
+ content:"✧  LONG ISLAND HOLIDAY MARKET  ✧";
+ display:block;position:absolute;right:22px;bottom:18px;
+ font-size:10px;letter-spacing:.24em;font-weight:900;color:#ffecbe;
+ pointer-events:none;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .hero small,
+[data-pos-appearance="festive"][data-season="christmas"] .experience-overline{color:#ffebbc!important}
+[data-pos-appearance="festive"][data-season="christmas"] .hero h1{
+ color:#fff;font-weight:950;letter-spacing:-.035em;text-shadow:0 2px 10px #12392855;
+ font-size:clamp(25px,3.2vw,41px);
+}
+[data-pos-appearance="festive"][data-season="christmas"] .tag{
+ background:#fff6dd;color:#714c17;border:1px solid #e7c982;box-shadow:0 3px 12px #0e2f2b25;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .panel,
+[data-pos-appearance="festive"][data-season="christmas"] .kiosk-shell{
+ background:#fffdf8;border:1px solid #e2d6b9;
+ box-shadow:0 15px 35px #1f473514;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .panel h2,
+[data-pos-appearance="festive"][data-season="christmas"] .panel h3{color:#184b3b}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-toolbar{
+ background:linear-gradient(100deg,#e4f1e7,#fff0dc);color:#225444;
+ border:1px solid #ddcda9;border-radius:14px;box-shadow:0 6px 16px #16452d14;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-toolbar strong,
+[data-pos-appearance="festive"][data-season="christmas"] .quick-toolbar a,
+[data-pos-appearance="festive"][data-season="christmas"] .quick-event-label{color:#19513f}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product,
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product.event-featured{
+ background:linear-gradient(155deg,#fffdf6,#f4faef)!important;
+ border:2px solid #bed8c0!important;min-height:210px;border-radius:19px;
+ box-shadow:0 8px 19px #2c6d3b16;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product:hover:not(:disabled){
+ transform:translateY(-3px);border-color:var(--pa-gold)!important;
+ box-shadow:0 15px 25px #1b56362c;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product.event-featured{
+ border-color:#d9b569!important;background:linear-gradient(145deg,#fff9eb,#f0f6e8)!important;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product .quick-symbol{
+ background:#e6f2e7;border:1px solid #ccdfca;font-size:28px;
+ width:56px;height:56px;border-radius:15px;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product .quick-name{color:#184a39;font-size:17px}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product .quick-detail{color:#617c67}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product .quick-price{color:#9c2637;font-size:21px}
+[data-pos-appearance="festive"][data-season="christmas"] .quick-product .quick-count{
+ color:#174432;background:#e5f2e4;border:1px solid #c0dbbe;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .primary,
+[data-pos-appearance="festive"][data-season="christmas"] button.primary{
+ background:linear-gradient(100deg,#a62a3c,#7e1c2b);color:white;border:1px solid #b95461;
+ box-shadow:0 7px 19px #8d263425;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .primary:hover:not(:disabled),
+[data-pos-appearance="festive"][data-season="christmas"] button.primary:hover:not(:disabled){
+ background:linear-gradient(100deg,#8c2031,#681728);
+}
+[data-pos-appearance="festive"][data-season="christmas"] .category-filters button[aria-pressed="true"]{
+ color:#fff;background:#18523e;border-color:#18523e;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .total{
+ border-top:2px solid #d5b76d;color:#832539;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .register-launch{
+ background:linear-gradient(145deg,#fffdf7,#e6f3e9);
+ border:2px solid #dabd78;box-shadow:0 20px 35px #1f473520;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .register-launch .launch-icon{
+ background:#e3efe2;color:#8d2433;border:1px solid #d5bb7a;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .pos-christmas-countdown{
+ display:block!important;position:relative;z-index:1;color:#ffe9b4!important;
+ font-weight:900;font-size:13px;letter-spacing:.05em;margin:8px 0 0;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .pos-appearance-control{
+ border:2px solid #c7a65b;background:#fdf6e7;color:#214d3d;
+}
+[data-pos-appearance="festive"][data-season="christmas"] .pos-holiday-lights{
+ height:24px;border-top:2px solid #e7c477;
+}
+@media(max-width:700px){
+ [data-pos-appearance="festive"][data-season="christmas"] .hero{padding:20px 18px 33px;min-height:130px}
+ [data-pos-appearance="festive"][data-season="christmas"] .hero::after{left:19px;right:auto;bottom:10px;font-size:8px;letter-spacing:.1em}
+ [data-pos-appearance="festive"][data-season="christmas"] .hero::before{font-size:22px;letter-spacing:9px}
+ [data-pos-appearance="festive"][data-season="christmas"] .quick-product{min-height:190px}
+}
+@media(prefers-reduced-motion:reduce){
+ [data-pos-appearance="festive"][data-season="christmas"] .quick-product{transition:none}
+}
+@media print{
+ [data-pos-appearance="festive"][data-season="christmas"] .hero::before,
+ [data-pos-appearance="festive"][data-season="christmas"] .hero::after{display:none!important}
+}
