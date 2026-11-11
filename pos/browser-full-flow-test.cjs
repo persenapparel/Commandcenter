@@ -103,7 +103,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.evaluate(()=>{navigator.clipboard.writeText=async s=>localStorage.setItem('__clip',s)});
   await cashier.locator('#pair-copy').click();await txt(cashier,'#pair-feedback','Private link copied');
   assert.equal(link,await cashier.evaluate(()=>navigator.clipboard.readText()));
-  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await txt(customer,'#state','next order')
+  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await visible(customer,'#customer-welcome');await txt(customer,'#welcome-status','Your cashier will start your order shortly')
  });
  await step('Print station test print, paper selection, arm',async()=>{
   printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');await visible(printer,'#station-panel');
@@ -113,6 +113,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Send checkout and laptop live monitor',async()=>{
   await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');
+  await cashier.waitForFunction(()=>document.body.dataset.cashierStage==='customer');
   await visible(customer,'#contact');await txt(admin,'#live-list','Customer is checking out',11000);
   const s=await state(admin);assert.equal(s.tables.pos_checkouts.at(-1).event_id,s.tables.pos_events[0].id)
  });
@@ -178,14 +179,17 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await printer.waitForFunction(n=>Number(localStorage.getItem('__prints'))>n,prior,{timeout:9000})
  });
  await step('Inventory reflects sale and customer completion',async()=>{
-  await customer.waitForFunction(()=>document.querySelector('#thanks')?.hidden===false,null,{timeout:9000});
+  await visible(customer,'#customer-welcome',11000);
+  assert.equal(await customer.locator('#kiosk-shell').isVisible(),false);
+  assert.equal(await customer.locator('#items .cart-row').count(),0);
+  assert.equal(await customer.locator('#total').innerText(),'$0.00');
   await cashier.locator('#refresh-products').click();await txt(cashier,'#notice','refreshed');
   await admin.locator('#refresh').click();
   assert.ok((await state(admin)).tables.stock_items.find(x=>x.sku==='XMAS-RED-M').quantity<3)
  });
  await step('Cancel checkout leaves sales and receipts unchanged',async()=>{
   await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await cashier.getByRole('button',{name:/L · Red/i}).click();
-  await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');await cashier.locator('#cancel').click();await txt(cashier,'#notice','Checkout cancelled');
+  await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');await cashier.locator('#checkout-cancel-quick').click();await txt(cashier,'#notice','Checkout cancelled');
   assert.equal((await state(cashier)).tables.pos_sales.length,1);assert.equal((await state(cashier)).tables.pos_print_jobs.length,1)
  });
  }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}

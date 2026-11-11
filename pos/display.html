@@ -22,7 +22,21 @@
   <small>SECURE CUSTOMER DISPLAY · DEVELOPMENT</small>
 </header>
 <main class="customer-device customer-wizard">
-<section class="panel kiosk-shell">
+<section id="customer-welcome" class="customer-welcome" hidden aria-label="Welcome to Persen Apparel">
+  <div class="welcome-orbit welcome-orbit-a" aria-hidden="true"></div>
+  <div class="welcome-orbit welcome-orbit-b" aria-hidden="true"></div>
+  <div class="welcome-content">
+    <img class="welcome-logo" src="assets/persen-logo.png" alt="Persen Apparel" onerror="this.hidden=true">
+    <span class="welcome-eyebrow">CUSTOM APPAREL · MADE FOR YOU</span>
+    <h1>Welcome to<br><span>Persen Apparel.</span></h1>
+    <p class="welcome-description">Custom apparel for your business, school, team, and every special moment.</p>
+    <div class="welcome-divider" aria-hidden="true"><span></span> ✦ <span></span></div>
+    <p class="welcome-thank-you">Thank you for shopping local!</p>
+    <p id="welcome-status" class="welcome-status" role="status">Your cashier will start your order shortly.</p>
+    <div class="welcome-footer">PERSENAPPAREL.COM <span aria-hidden="true">·</span> @PERSENAPPAREL</div>
+  </div>
+</section>
+<section class="panel kiosk-shell" id="kiosk-shell">
   <div class="experience-overline"><span data-season-icon aria-hidden="true">✦</span><span data-season-label>Persen Apparel</span><span data-season-easter-egg hidden aria-hidden="true"></span></div>
   <div id="seasonal-banner" class="display-season-banner" hidden><strong id="seasonal-banner-title"></strong><p id="seasonal-banner-description"></p></div>
   <div class="kiosk-order-summary">
