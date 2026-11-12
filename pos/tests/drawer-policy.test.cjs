@@ -12,10 +12,14 @@ test('bad amounts and negative expected rejected',()=>{
  assert.throws(()=>drawerSummary({openingCents:0,cashTenders:[1.5]}),/Invalid/);
  assert.throws(()=>countDenominations({3:1}),/Invalid/);
 });
-test('owner action approval contract fails closed for missing, expired or mismatched evidence',()=>{
- const a={serverVerified:true,action:'refund',ownerId:'owner-id',actorId:'cashier-id',verifiedAt:100,expiresAt:110};
- assert.equal(authorizeAction({actorRole:'staff',action:'refund'}),false);
+test('owner approval cannot be granted by client supplied serverVerified flag',()=>{
+ const a={id:'one-time-approval',serverVerified:true,action:'refund',ownerId:'owner-id',actorId:'cashier-id',verifiedAt:100,expiresAt:110};
+ assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:a}),false);
  assert.equal(authorizeAction({actorRole:'staff',action:'discount',approval:a}),false);
- assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:{...a,expiresAt:100}}),false);
- assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:a}),true);
+ const trustedContext={source:'authenticated-server',approvalConsumed:true,actorAuthenticated:true,actorId:'cashier-id',ownerId:'owner-id',consumedApprovalId:'one-time-approval',now:105};
+ assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:a,trustedContext}),true);
+ assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:a,trustedContext:{...trustedContext,now:110}}),false);
+ assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:a,trustedContext:{...trustedContext,actorId:'another-cashier'}}),false);
+ assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:a,trustedContext:{...trustedContext,approvalConsumed:false}}),false);
+ assert.equal(authorizeAction({actorRole:'staff',action:'refund',approval:a,trustedContext:{...trustedContext,consumedApprovalId:'other'}}),false);
 });
