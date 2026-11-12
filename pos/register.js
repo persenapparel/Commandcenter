@@ -582,7 +582,7 @@ function scanSku(input){
  try{
   index=model.buildBarcodeIndex(stock.filter(x=>isSalesStock(x)&&hasPrice(x)&&
     /^[A-Z0-9_-]{3,64}$/.test(String(x.sku||'').trim().toUpperCase()))
-    .map(x=>({productId:String(x.product_name||x.sku),variantId:x.id,
+    .map(x=>({productId:String(x.id),variantId:x.id,
       label:[x.product_name,x.color,x.size].filter(Boolean).join(' · '),
       unitCents:variantMeta.get(x.id).price_cents,available:x.quantity,barcode:x.sku})));
  }catch(e){
