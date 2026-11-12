@@ -1,0 +1,30 @@
+'use strict';
+/* Offline structural coverage for the staged Square-inspired live-cart feature.
+ * Final transactional and physical-device tests still require staging/iPad checkout. */
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const read=name=>fs.readFileSync(__dirname+'/'+name,'utf8');
+const cashier=read('register.js'),register=read('register.html');
+const display=read('display.js'),screen=read('display.html');
+const migration=read('square-live-cart-staging.sql');
+assert.match(cashier,/function queueCustomerPreview\(/);
+assert.match(cashier,/draft_snapshot:snapshot/);
+assert.match(cashier,/\.eq\('owner_id',user\.id\)/);
+assert.match(cashier,/\.onchange=|qty\.onchange/);
+assert.match(cashier,/wedgeBuffer/);
+assert.match(cashier,/by\('clear-cart'\)\.onclick/);
+assert.match(register,/id="clear-cart"/);
+assert.match(register,/id="scan-code"/);
+assert.match(display,/function renderDraft\(/);
+assert.match(display,/function showOrderSummary\(/);
+assert.match(display,/pos_customer_cart_preview/);
+assert.match(display,/preview\.error\?null:preview\.data/);
+assert.match(screen,/id="summary-subtotal"/);
+assert.match(screen,/id="summary-discount"/);
+assert.match(screen,/id="summary-tax"/);
+assert.match(screen,/id="live-preview-note"/);
+assert.match(migration,/display_expires_at\s*>\s*now\(\)/);
+assert.match(migration,/cash_handoff_complete=false/);
+assert.match(migration,/revoke all on function public\.pos_customer_cart_preview/);
+assert.match(migration,/grant execute on function public\.pos_customer_cart_preview/);
+console.log('Square-inspired paired cart structure checked.');

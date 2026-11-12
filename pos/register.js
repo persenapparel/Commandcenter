@@ -33,6 +33,37 @@ function rememberCash(id){
 }
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
 function current(){return C.totals(cart,Number(by('discount').value),C.taxMilli(by('tax').value));}
+/* Paired iPad shows a read-only draft as the cashier builds the cart.
+   This is presentation only: the checkout RPC still validates prices and stock. */
+let draftTimer=null,draftDirty=false,draftSending=false,draftFailureShown=false;
+function queueCustomerPreview(){
+ if(!db||!user||!register)return;
+ draftDirty=true;
+ clearTimeout(draftTimer);
+ draftTimer=setTimeout(()=>{void flushCustomerPreview()},160);
+}
+async function flushCustomerPreview(){
+ if(draftSending||!draftDirty||!db||!register||!user)return;
+ draftSending=true;
+ try{
+  while(draftDirty){
+   draftDirty=false;
+   const t=!checkout&&!document.body.classList.contains('pos-register-closed')?current():null;
+   const snapshot=t?{
+    items:cart.map(x=>({name:x.name,color:x.color,size:x.size,qty:x.qty,unit_cents:x.unit_cents})),
+    subtotal_cents:t.subtotal_cents,discount_cents:t.discount_cents,
+    tax_cents:t.tax_cents,total_cents:t.total_cents
+   }:{items:[]};
+   const {error}=await db.from('pos_registers').update({
+    draft_snapshot:snapshot,draft_updated_at:new Date().toISOString()
+   }).eq('id',register.id).eq('owner_id',user.id);
+   if(error)throw error;
+  }
+ }catch(e){
+  // A disconnected display must never stop cashier checkout.
+  if(!draftFailureShown){draftFailureShown=true;notice('Customer live cart preview unavailable. Apply staging cart-preview update: '+e.message)}
+ }finally{draftSending=false;if(draftDirty)queueCustomerPreview()}
+}
 /* Quick cashier catalog: one tile per product, explicit size/color chooser. */
 const TYPE_ICONS={hoodie:'🧥',tee:'👕',crew:'👚',hat:'🧢',other:'🛍️'};
 const ORDER_SIZES=['XS','S','M','L','XL','2XL','3XL','4XL','One Size'];let chosenCategory='All';
@@ -106,7 +137,7 @@ function renderQuickCatalog(){
   detail.textContent=(pinned.includes(g.name.toLowerCase())?'★ EVENT PICK · ':'')+([...new Set(g.variants.map(v=>v.color).filter(Boolean))].join(' / ')||g.category);
   const amount=document.createElement('span');amount.className='quick-price';amount.textContent=price===null?'Set price':('$'+(price/100).toFixed(2)+(g.variants.length>1?' +':''));
   tile.append(icon,badge,title,detail,amount);
-  tile.onclick=()=>pickVariant(g.name,g.variants);
+  tile.onclick=()=>{if(ready.length===1)addVariant(ready[0]);else pickVariant(g.name,g.variants)};
   host.append(tile);
  }
  if(!matching.length){const empty=document.createElement('div');empty.className='quick-empty';empty.textContent=stock.length?'No matching sales products. Search for more or change the event.':'No sales products yet. Add them under Sales Products first.';host.append(empty)}
@@ -120,6 +151,7 @@ function setRegisterOpen(open){
  if(open&&!stock.some(readyToSell))return notice('First add at least one priced Sales Product.');
  document.body.classList.toggle('pos-register-closed',!open);
  sessionStorage.setItem('pos-register-open',open?'1':'0');
+ queueCustomerPreview();
  if(open)notice('Register open. Tap a product, pick the size/color and send checkout to the customer iPad.');
 }
 by('open-register').onclick=()=>setRegisterOpen(true);
@@ -146,7 +178,7 @@ function draw(){
  const remove=document.createElement('button');remove.textContent='×';remove.disabled=!!checkout;remove.onclick=()=>{cart.splice(i,1);draw()};r.append(title,qty,price,service,remove);by('cart').append(r);
  }
  try{by('total').textContent=C.money(current().total_cents)}catch(e){notice(e.message)}
- syncCheckoutUI();renderCash();
+ syncCheckoutUI();renderCash();queueCustomerPreview();
 }
 // Lightweight status refresh: never rebuild the cart while the cashier types.
 function syncCheckoutUI(){
@@ -618,6 +650,26 @@ function scanSku(input){
 by('scan-form').addEventListener('submit',e=>{
  e.preventDefault();const field=by('scan-code');scanSku(field.value);field.value='';field.focus();
 });
+/* HID Bluetooth/USB scanners: capture rapid characters only when
+   focus is outside text fields; staff PIN/password typing stays untouched. */
+let wedgeBuffer='',wedgeStart=0,wedgeLast=0;
+window.addEventListener('keydown',e=>{
+ if(e.ctrlKey||e.metaKey||e.altKey||e.isComposing)return;
+ if(document.body.classList.contains('pos-register-closed')||checkout||busy||pendingCash)return;
+ const focused=document.activeElement;
+ if(focused&&(focused.matches('input,textarea,select')||focused.isContentEditable))return;
+ const now=performance.now();
+ if(e.key==='Enter'){
+  if(wedgeBuffer.length>=3&&now-wedgeStart<=2300&&now-wedgeLast<=300){
+   e.preventDefault();scanSku(wedgeBuffer);
+  }
+  wedgeBuffer='';wedgeStart=0;wedgeLast=0;return;
+ }
+ if(!/^[a-zA-Z0-9_-]$/.test(e.key)){wedgeBuffer='';return;}
+ if(!wedgeBuffer||now-wedgeLast>95){wedgeBuffer='';wedgeStart=now;}
+ wedgeBuffer+=e.key;wedgeLast=now;
+ if(wedgeBuffer.length>64){wedgeBuffer='';wedgeStart=0;}
+});
 function labelCsvCell(value){
  const source=String(value??'').slice(0,160);
  const safe=/^[=+@\-\t\r]/.test(source)?"'"+source:source;
@@ -651,6 +703,7 @@ by('scan-search').addEventListener('click',()=>{
 by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
+by('clear-cart').onclick=()=>{if(checkout||pendingCash)return notice('Finish the current order first.');if(!cart.length)return;if(!window.confirm('Clear all items from this cart?'))return;cart=[];draw();notice('Cart cleared. Customer display will reset.')};
 by('start').onclick=begin;by('cancel').onclick=cancel;by('checkout-cancel-quick').onclick=cancel;by('cash').onclick=cash;by('finish-order').onclick=finishOrder;
 for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo username']]){
  by(buttonId).onclick=async()=>{try{

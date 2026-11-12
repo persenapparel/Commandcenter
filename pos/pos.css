@@ -762,3 +762,38 @@ body[data-cashier-stage="handoff"] .cash-handoff{border:0;background:#fff;paddin
 .pos-label-export{margin:.8rem 0 1rem;padding:.7rem 1rem;background:#fff;border:1px solid #d4e2f5;border-radius:12px}
 .pos-label-export button{min-height:48px;font-weight:700}
 .pos-label-export .hint{margin:.45rem 0 0}
+
+/* Square Register-inspired staging refinement. Persen brand, not Square assets. */
+body.fast-mode #catalog{grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:11px}
+body.fast-mode .quick-product{min-height:153px;padding:15px;gap:8px;border-radius:13px;background:#fff;border:1px solid #d8e1ef;box-shadow:0 2px 7px #103b6c0b}
+body.fast-mode .quick-product:hover:not(:disabled){background:#f5faff;box-shadow:0 6px 16px #174e9412}
+body.fast-mode .quick-product:focus-visible{outline:3px solid #2674cf;outline-offset:2px}
+body.fast-mode .quick-product .quick-symbol{width:43px;height:43px;border-radius:10px;background:#edf5ff;font-size:23px}
+body.fast-mode .quick-product .quick-name{font-size:14px;line-height:1.23}
+body.fast-mode .quick-product .quick-detail{font-size:11px;margin-top:0}
+body.fast-mode .quick-product .quick-price{margin-top:auto;font-variant-numeric:tabular-nums}
+body.fast-mode .quick-product.event-featured{border-color:#82b5ee;box-shadow:inset 0 0 0 1px #82b5ee}
+.cart-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.cart-heading h2{margin:0}
+.clear-cart-action{border:1px solid #cfdceb;background:#fff;color:#395779;border-radius:10px;padding:9px 12px;cursor:pointer;white-space:nowrap}
+.clear-cart-action:hover{background:#edf3fc}
+.live-cart-hint{margin:12px 0;color:#486687}
+.customer-device .order-breakdown{border-top:1px solid #d8e5f6;padding:10px 17px 12px}
+.order-breakdown>div{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:13px;padding:4px 0;color:#537095}
+.order-breakdown strong{color:#203c65;font-variant-numeric:tabular-nums}
+.live-preview-note{margin:0;padding:12px 17px 16px;background:#e9f4ff;color:#234d81;font-weight:700;font-size:12px;line-height:1.5}
+.kiosk-preview .kiosk-order-summary{border:1px solid #a6cbed;background:#f9fbff}
+.kiosk-preview .order-total-box strong{font-size:clamp(26px,5vw,38px)}
+.kiosk-preview .order-details summary{font-weight:850}
+.kiosk-preview #contact{display:none!important}
+.kiosk-preview .order-details .cart-row{font-size:14px;padding:11px 0}
+@media(min-width:1000px){
+ body.fast-mode[data-cashier-stage="catalog"] .layout>.panel:nth-child(2){position:sticky;top:12px;align-self:start;max-height:calc(100vh - 30px);overflow:auto}
+}
+@media(max-width:630px){
+ body.fast-mode #catalog{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ body.fast-mode .quick-product{min-height:142px;padding:11px}
+ .cart-heading{flex-wrap:wrap}
+ .order-summary-head{align-items:flex-start}
+ .order-total-box{max-width:45%}
+}
