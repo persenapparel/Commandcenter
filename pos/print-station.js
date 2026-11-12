@@ -43,14 +43,21 @@ function renderReceipt(sale){
  $('receipt-review-link').hidden=!presentation.review_url;
  text('receipt-footer',presentation.footer);
 }
+const Paper=window.PersenPOSPaperLayout;
+function pageOptions(){return {paper:$('paper').value,marginMm:Number($('receipt-margin').value),fontPx:Number($('receipt-font').value),feedMm:Number($('receipt-feed').value)};}
 function applyPaper(){
- const [width,height]=$('paper').value.split('x').map(Number);
- // @page size is also set dynamically so Chrome can match the driver.
- let el=$('receipt-paper-size');
- if(!el){el=document.createElement('style');el.id='receipt-paper-size';document.head.append(el);}
- el.textContent='@page{size:'+width+'mm '+height+'mm;margin:0}@media print{body,#receipt{width:'+width+'mm!important}}';
+ const opts=pageOptions(),base=Paper.layoutFor({...opts,contentPx:0}),receipt=$('receipt');
+ receipt.style.width=base.widthMm+'mm';receipt.style.minHeight='0';receipt.style.boxSizing='border-box';
+ receipt.style.padding=opts.marginMm+'mm';receipt.style.fontSize=opts.fontPx+'px';receipt.style.lineHeight='1.25';
+ const layout=Paper.layoutFor({...opts,contentPx:receipt.scrollHeight});
+ let el=$('receipt-paper-size');if(!el){el=document.createElement('style');el.id='receipt-paper-size';document.head.append(el);}
+ el.textContent=layout.fits?Paper.printCss(layout,opts):'';
+ text('paper-feedback',layout.fits?'Estimated '+layout.widthMm+' × '+layout.heightMm+' mm ('+layout.kind+'). '+(layout.kind==='continuous'?'Content-sized roll page; confirm actual driver/media support.':'Fixed stock length; remaining blank space is physical label media.'):'Cannot print: '+layout.reason+'. Choose longer media or reduce receipt contents.');
+ return layout;
 }
-function printReceipt(sale){applyPaper();renderReceipt(sale);window.print();}
+function printReceipt(sale){renderReceipt(sale);const layout=applyPaper();if(!layout.fits)throw Error(layout.reason);window.print();}
+function sampleReceipt(){return {is_test:true,sale_id:'TEST',created_at:new Date().toISOString(),items:[{name:'Persen Apparel test item',qty:1,unit_cents:1000,color:'',size:'M'}],subtotal_cents:1000,discount_cents:0,tax_cents:0,total_cents:1000,tendered_cents:2000,change_cents:1000};}
+function resetPrinterVerification(){printerConfirmed=false;testPrintRequested=false;armed=false;$('test-printed').checked=false;$('test-printed').disabled=true;showArmed();text('printer-check-message','Paper/layout changed. Print and physically verify another test before arming.');}
 async function loadSettings(){
  const [t,content]=await Promise.all([
   checked(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}).limit(40)),
@@ -137,7 +144,7 @@ $('arm').onclick=()=>{
 };
 $('disarm').onclick=()=>{armed=false;showArmed();message('Print station paused. Paid receipts stay queued for later printing.');};
 $('test-print').onclick=()=>{
- const t={is_test:true,sale_id:'TEST',created_at:new Date().toISOString(),items:[{name:'Persen Apparel test item',qty:1,unit_cents:1000,color:'',size:'M'}],subtotal_cents:1000,discount_cents:0,tax_cents:0,total_cents:1000,tendered_cents:2000,change_cents:1000};
+ const t=sampleReceipt();
  testPrintRequested=false;printerConfirmed=false;armed=false;
  $('test-printed').checked=false;$('test-printed').disabled=true;showArmed();
  try{
@@ -153,7 +160,14 @@ $('test-printed').onchange=()=>{
  text('printer-check-message',printerConfirmed?'Physical test confirmed by operator for this browser session.':'Printer not verified. Automatic printing disabled.');
  message(printerConfirmed?'Physical receipt test confirmed. You can start automatic printing.':'Printer not confirmed. Print a sample receipt before starting automatic printing.');
 };
-$('paper').onchange=applyPaper;
+$('preview-test').onclick=()=>{
+ try{renderReceipt(sampleReceipt());const layout=applyPaper();if(!layout.fits)throw Error(layout.reason);
+ document.body.classList.toggle('preview-open');
+ $('preview-test').textContent=document.body.classList.contains('preview-open')?'Hide sample preview':'Preview sample receipt (no printing)';
+ message('Preview only; no paper has been printed. Test physical output separately.');
+ }catch(e){message('Preview unavailable: '+errorText(e));}
+};
+for(const id of ['paper','receipt-margin','receipt-font','receipt-feed'])$(id).onchange=()=>{resetPrinterVerification();applyPaper();};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&armed)void processQueue()});
 window.addEventListener('beforeunload',()=>{armed=false});
 showArmed();applyPaper();void signIn(null);
