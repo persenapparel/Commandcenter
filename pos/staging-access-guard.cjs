@@ -1,0 +1,11 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const page = fs.readFileSync('pos/index.html', 'utf8');
+assert.doesNotMatch(page, /const\s+PIN\s*=|sessionStorage\.setItem\([^)]*pin|id="pin-input"/i, 'No hardcoded browser PIN gate');
+assert.match(page, /Cloudflare Access/, 'Staging security requirement must be visible');
+assert.match(page, /href="register\.html"/, 'Cashier route must remain available');
+assert.match(page, /href="admin\.html"/, 'Owner route must remain available');
+assert.match(page, /href="display\.html"/, 'Customer route must remain available');
+assert.match(page, /href="print-station\.html"/, 'Print route must remain available');
+console.log('Staging access guard passed (static only; Cloudflare Access must still be verified separately)');
