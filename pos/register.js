@@ -48,7 +48,7 @@ async function flushCustomerPreview(){
  try{
   while(draftDirty){
    draftDirty=false;
-   const t=!checkout?current():null;
+   const t=!checkout&&!document.body.classList.contains('pos-register-closed')?current():null;
    const snapshot=t?{
     items:cart.map(x=>({name:x.name,color:x.color,size:x.size,qty:x.qty,unit_cents:x.unit_cents})),
     subtotal_cents:t.subtotal_cents,discount_cents:t.discount_cents,
@@ -151,6 +151,7 @@ function setRegisterOpen(open){
  if(open&&!stock.some(readyToSell))return notice('First add at least one priced Sales Product.');
  document.body.classList.toggle('pos-register-closed',!open);
  sessionStorage.setItem('pos-register-open',open?'1':'0');
+ queueCustomerPreview();
  if(open)notice('Register open. Tap a product, pick the size/color and send checkout to the customer iPad.');
 }
 by('open-register').onclick=()=>setRegisterOpen(true);
