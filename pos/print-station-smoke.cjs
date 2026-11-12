@@ -83,14 +83,24 @@ async function flush(){for(let i=0;i<24;i++)await Promise.resolve();await new Pr
  await flush();
  assert.equal(typeof node('arm').onclick,'function','Print station must load and offer arming');
  assert.equal(printCalls.length,0,'Must not print before arming');
+ assert.equal(node('arm').disabled,true,'Automatic printing must remain disabled until physical printer test');
  node('arm').onclick();await flush();
- assert.equal(printCalls.length,1,'Armed print station must invoke window.print exactly once');
+ assert.equal(printCalls.length,0,'Unverified printer must never automatically print a sale');
+ assert.equal(jobState,'queued','Unverified printer must leave existing receipt job untouched');
+ node('test-print').onclick();await flush();
+ assert.equal(printCalls.length,1,'Test receipt should be sent to browser exactly once');
+ assert.equal(node('test-printed').disabled,false,'Confirmation becomes available after test command');
+ assert.equal(node('arm').disabled,true,'Test command alone must not mark physical paper as printed');
+ node('test-printed').checked=true;node('test-printed').onchange();
+ assert.equal(node('arm').disabled,false,'Operator can arm after confirming physical paper');
+ node('arm').onclick();await flush();
+ assert.equal(printCalls.length,2,'Armed print station must invoke window.print for queued sale exactly once');
  assert.equal(jobState,'submitted_to_browser','Must never falsely mark the paper as physically printed');
- assert.deepEqual(events.filter(s=>s==='pos_claim_print_job'||s==='window.print'||s==='pos_finish_print_job'),
+ assert.deepEqual(events.filter(s=>s==='pos_claim_print_job'||s==='window.print'||s==='pos_finish_print_job').slice(1),
   ['pos_claim_print_job','window.print','pos_finish_print_job'],'Print queue processing order');
  for(const t of timers)await t.fn();
  await flush();
- assert.equal(printCalls.length,1,'Completed receipt job must not print twice');
+ assert.equal(printCalls.length,2,'Completed receipt job must not print twice');
  assert.match(node('station-message').textContent,/Confirm paper printed/,'Operator must verify actual paper');
  console.log('Dell print-station mocked sale → claim → window.print → browser acknowledgement PASS; hardware NOT tested.');
 })().catch(e=>{console.error(e);process.exitCode=1});
