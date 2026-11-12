@@ -8,7 +8,7 @@ if (!url || !expected || !/^[a-f0-9]{40}$/i.test(expected)) {
   process.exit(2);
 }
 const origin = new URL(url);
-if (origin.protocol !== 'https:' || !/\\.pages\\.dev$/i.test(origin.hostname)) {
+if (origin.protocol !== 'https:' || !/\.pages\.dev$/i.test(origin.hostname)) {
   console.error('Only an explicit Cloudflare Pages preview hostname (*.pages.dev) is allowed.');
   process.exit(2);
 }
