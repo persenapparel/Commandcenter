@@ -6,6 +6,16 @@ import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {join} from 'node:path';
 // CI can build a nonfunctional artifact with placeholders; real deployments require explicit staging settings.
 const ciDryRun=process.env.CI==='true' && !process.env.CF_PAGES && !process.env.POS_SUPABASE_URL && !process.env.POS_SUPABASE_PUBLISHABLE_KEY;
+// Fail closed for Cloudflare builds until an operator has independently verified
+// Cloudflare Access protects the isolated staging hostname. This flag is an
+// operator acknowledgement, NOT proof of protection; verify access externally.
+if(process.env.CF_PAGES && process.env.POS_STAGING_ACCESS_VERIFIED!=='true'){
+ throw Error('Refusing Cloudflare POS build: staging Access verification acknowledgement missing');
+}
+if(process.env.CF_PAGES && process.env.CF_PAGES_BRANCH==='feature/persen-pos-foundation'){
+ throw Error('Refusing deployment from the protected foundation branch');
+}
+
 const url=ciDryRun?'https://pos-ci-placeholder.supabase.co':process.env.POS_SUPABASE_URL;
 const key=ciDryRun?'sb_publishable_CI_PLACEHOLDER_NOT_FOR_DEPLOYMENT':process.env.POS_SUPABASE_PUBLISHABLE_KEY;
 if(!url||!key)throw Error('POS staging requires POS_SUPABASE_URL and POS_SUPABASE_PUBLISHABLE_KEY');
