@@ -42,12 +42,14 @@
   <div class="kiosk-order-summary">
     <div class="order-summary-head">
       <div><span class="eyebrow">YOUR ORDER</span><p id="state" role="status">Connecting to register…</p></div>
-      <div class="order-total-box"><span>Total due</span><strong id="total">$0.00</strong></div>
+      <div class="order-total-box"><span id="total-label">Total due</span><strong id="total">$0.00</strong></div>
     </div>
     <details class="order-details" id="order-details">
-      <summary>View order items <span aria-hidden="true">⌄</span></summary>
-      <div id="items" class="cart" aria-label="Purchased items"></div>
+      <summary>Items in your order <span aria-hidden="true">⌄</span></summary>
+      <div id="items" class="cart" aria-label="Items in your cart"></div>
     </details>
+    <div id="order-breakdown" class="order-breakdown" hidden><div><span>Subtotal</span><strong id="summary-subtotal">$0.00</strong></div><div id="summary-discount-row" hidden><span>Discount</span><strong id="summary-discount">$0.00</strong></div><div id="summary-tax-row" hidden><span>Tax</span><strong id="summary-tax">$0.00</strong></div></div>
+    <p id="live-preview-note" class="live-preview-note" hidden>Live cart · Your cashier is adding items. You can review everything before answering a few checkout questions.</p>
   </div>
   <form id="contact" novalidate hidden>
     <div class="wizard-progress">
