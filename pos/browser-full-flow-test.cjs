@@ -93,6 +93,14 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#cart .cart-row button').last().click();
   assert.equal(await cashier.locator('#cart .cart-row').count(),0);
  });
+ await step('Inventory scanner lookup does not create a sale or add cart items',async()=>{
+  await cashier.locator('#scan-mode-inventory').click();
+  await cashier.locator('#scan-code').fill('XMAS-RED-M');await cashier.locator('#scan-code').press('Enter');
+  await txt(cashier,'#scan-status','Nothing was added');await txt(cashier,'#scan-inventory-result','Christmas Hoodie');
+  assert.equal(await cashier.locator('#cart .cart-row').count(),0);
+  assert.equal((await state(cashier)).tables.pos_sales.length,0);
+  await cashier.locator('#scan-mode-sell').click();
+ });
  await step('Cashier big tiles → size/color picker → cart',async()=>{
   await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await visible(cashier,'#variant-dialog');
   await cashier.getByRole('button',{name:/M · Red/i}).click();await txt(cashier,'#cart','Christmas Hoodie');
@@ -119,7 +127,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.evaluate(()=>{navigator.clipboard.writeText=async s=>localStorage.setItem('__clip',s)});
   await cashier.locator('#pair-copy').click();await txt(cashier,'#pair-feedback','Private link copied');
   assert.equal(link,await cashier.evaluate(()=>navigator.clipboard.readText()));
-  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await visible(customer,'#customer-welcome');await txt(customer,'#welcome-status','Your cashier will start your order shortly')
+  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await visible(customer,'#live-preview-note');await txt(customer,'#items','Christmas Hoodie');assert.equal(await customer.locator('#contact').isVisible(),false)
  });
  await step('Print station test print, paper selection, arm',async()=>{
   printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');await visible(printer,'#station-panel');

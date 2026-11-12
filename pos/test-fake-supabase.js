@@ -124,6 +124,12 @@ function rpc(name,p={}){
   t.pos_checkouts.push(checkout);return write(checkout.id);
  }
  case 'pos_cancel_checkout':if(!match)return fail('Missing checkout');match.status='cancelled';return write(true);
+ case 'pos_customer_cart_preview':{
+  if(p.p_secret!==reg.display_secret||!reg.active||Date.parse(reg.display_expires_at||'')<=Date.now())return result({status:'unpaired'});
+  if(t.pos_checkouts.some(c=>['awaiting_customer','contact_received'].includes(c.status)||(c.status==='completed'&&!c.cash_handoff_complete)))return result({status:'checkout_active'});
+  if(!reg.draft_updated_at||Date.parse(reg.draft_updated_at)<Date.now()-600000||!reg.draft_snapshot?.items?.length)return result({status:'idle'});
+  return result({...reg.draft_snapshot,status:'draft'});
+ }
  case 'pos_customer_view':{
   if(p.p_secret!==reg.display_secret||!reg.display_expires_at||Date.parse(reg.display_expires_at)<Date.now())return result({status:'expired'});
   const c=t.pos_checkouts.at(-1);
