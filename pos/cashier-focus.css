@@ -1,0 +1,11 @@
+/* Persen POS staging: focused cashier catalog. No payment or data changes. */
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] .hero,
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] .event-manager,
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] #cashier-checkout-panel,
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] .product-manager {display:none!important}
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] .layout {display:grid;grid-template-columns:minmax(0,1.4fr) minmax(290px,.85fr);align-items:start;gap:18px}
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] .layout>.panel {min-width:0}
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] .quick-toolbar {position:sticky;top:0;z-index:5;background:#fff;box-shadow:0 5px 18px #10284b17}
+body:not(.pos-register-closed)[data-cashier-stage="catalog"] #start {min-height:58px;font-size:18px}
+@media(max-width:850px){body:not(.pos-register-closed)[data-cashier-stage="catalog"] .layout{grid-template-columns:minmax(0,1fr)}body:not(.pos-register-closed)[data-cashier-stage="catalog"] .quick-toolbar{position:static}}
+@media print{body:not(.pos-register-closed)[data-cashier-stage="catalog"] .quick-toolbar{display:none!important}}
