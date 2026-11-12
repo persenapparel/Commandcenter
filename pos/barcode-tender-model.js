@@ -32,6 +32,21 @@
   const line={productId:variant.productId,variantId:variant.variantId,label:variant.label,unitCents:variant.unitCents,quantity:next};
   return {status:'added',code,cart:current?cart.map(x=>x.productId===line.productId&&x.variantId===line.variantId?line:x):[...cart,line]};
  }
+ // Read-only inventory lookup, including sold-out and non-sale variants. Never touches a cart.
+ function lookupInventory(variants,raw){
+  if(!Array.isArray(variants))throw Error('Invalid inventory');
+  const code=normalizeCode(raw);
+  let match=null;
+  for(const variant of variants){
+   if(!variant||typeof variant.sku!=='string')continue;
+   let sku;
+   try{sku=normalizeCode(variant.sku)}catch{continue;}
+   if(sku!==code)continue;
+   if(match)throw Error('Duplicate inventory barcode');
+   match=variant;
+  }
+  return match?{status:'found',code,variant:{...match}}:{status:'not-found',code};
+ }
  const METHODS=Object.freeze({CASH:'cash',VENMO:'venmo'});
  function totalWithTip(subtotal,tip){if(!cents(subtotal)||!cents(tip)||!cents(subtotal+tip))throw Error('Invalid total');return subtotal+tip;}
  function tenderSummary(total,tenders){
@@ -64,5 +79,5 @@
   return tenders.map((x,i)=>i===index?{...x,status:'verified'}:{...x});
  }
  function receiptChoice(choice){if(!['print','email','none'].includes(choice))throw Error('Invalid receipt choice');return choice;}
- return {METHODS,normalizeCode,skuFor,buildBarcodeIndex,scanCart,totalWithTip,tenderSummary,addTender,verifyVenmo,receiptChoice};
+ return {METHODS,normalizeCode,skuFor,buildBarcodeIndex,scanCart,lookupInventory,totalWithTip,tenderSummary,addTender,verifyVenmo,receiptChoice};
 });
