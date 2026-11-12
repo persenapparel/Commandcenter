@@ -616,8 +616,63 @@ function scanSku(input){
  addVariant(variant);
  out.textContent=match.label+' added. '+(cart.find(x=>x.stock_id===variant.id)?.qty||1)+' in cart.';
 }
+// Keep stock inspection separate from selling: checking a code never changes a cart or payment.
+let scanMode='sell';
+function setScanMode(mode){
+ scanMode=mode==='inventory'?'inventory':'sell';
+ by('scan-mode-sell').setAttribute('aria-pressed',String(scanMode==='sell'));
+ by('scan-mode-inventory').setAttribute('aria-pressed',String(scanMode==='inventory'));
+ by('scan-mode-sell').classList.toggle('active',scanMode==='sell');
+ by('scan-mode-inventory').classList.toggle('active',scanMode==='inventory');
+ by('scan-label').textContent=scanMode==='inventory'?'Scan a barcode to check inventory':'Scan product barcode to add to cart';
+ by('scan-submit').textContent=scanMode==='inventory'?'Check inventory':'Add scanned item';
+ by('scan-status').textContent=scanMode==='inventory'?'Inventory check mode — scans do not add products to the cart.':'Add-to-cart mode — scans add products to the sale.';
+ by('scan-inventory-result').hidden=true;
+ by('scan-search').hidden=true;
+ by('scan-code').value='';
+ by('scan-code').focus();
+}
+function checkInventorySku(input){
+ const out=by('scan-status'),panel=by('scan-inventory-result');
+ panel.replaceChildren();panel.hidden=true;
+ by('scan-search').hidden=true;
+ if(!user||!register){out.textContent='Sign in before checking inventory.';return;}
+ let result;
+ try{result=window.PersenPOSBarcodeTender.lookupInventory(stock,input)}
+ catch(e){out.textContent='Unable to check barcode: '+e.message;return;}
+ if(result.status==='not-found'){
+  out.textContent='No inventory found for '+result.code+'. Check the SKU or refresh products.';
+  return;
+ }
+ const v=result.variant,meta=variantMeta.get(v.id);
+ const reserved=cart.find(x=>x.stock_id===v.id)?.qty||0;
+ const available=Number(v.quantity)||0;
+ const price=isSalesStock(v)&&hasPrice(v)&&meta&&Number.isSafeInteger(meta.price_cents)?C.money(meta.price_cents):'Not priced for sale';
+ const heading=document.createElement('strong');
+ heading.className='pos-inventory-name';heading.textContent=v.product_name||'Unnamed item';
+ const details=document.createElement('dl');
+ for(const [name,value] of [
+  ['Color',v.color||'Not specified'],['Size',v.size||'One Size'],
+  ['In stock',String(available)],['Already in cart',String(reserved)],
+  ['Available for this sale',String(Math.max(0,available-reserved))],
+  ['Selling price',price],['Barcode / SKU',v.sku]
+ ]){
+  const dt=document.createElement('dt'),dd=document.createElement('dd');
+  dt.textContent=name;dd.textContent=value;details.append(dt,dd);
+ }
+ const state=document.createElement('p');state.className='pos-inventory-availability';
+ state.textContent=available>0?'In stock — read-only lookup':'Out of stock — read-only lookup';
+ panel.append(heading,details,state);panel.hidden=false;
+ out.textContent='Inventory checked. Nothing was added to the cart.';
+}
+by('scan-mode-sell').addEventListener('click',()=>setScanMode('sell'));
+by('scan-mode-inventory').addEventListener('click',()=>setScanMode('inventory'));
 by('scan-form').addEventListener('submit',e=>{
- e.preventDefault();const field=by('scan-code');scanSku(field.value);field.value='';field.focus();
+ e.preventDefault();
+ const field=by('scan-code');
+ if(scanMode==='inventory')checkInventorySku(field.value);
+ else scanSku(field.value);
+ field.value='';field.focus();
 });
 function labelCsvCell(value){
  const source=String(value??'').slice(0,160);
