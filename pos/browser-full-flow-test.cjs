@@ -75,6 +75,24 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(await cashier.locator('.product-manager:visible').count(),0);
   assert.equal(await cashier.locator('#event-select').inputValue(),(await state(cashier)).tables.pos_events[0].id);
  });
+ await step('Barcode keyboard scanner increments sizes, rejects unknown and sold-out codes',async()=>{
+  const field=cashier.locator('#scan-code');
+  for(const count of [1,2,3]){
+   await field.fill('XMAS-RED-M');await field.press('Enter');
+   await txt(cashier,'#scan-status','added');
+   assert.equal(await cashier.locator('#cart .cart-row input[aria-label^="Quantity"]').first().inputValue(),String(count));
+  }
+  await field.fill('XMAS-RED-M');await field.press('Enter');
+  await txt(cashier,'#scan-status','Sold Out');
+  await visible(cashier,'#variant-dialog');
+  assert.equal(await cashier.getByRole('button',{name:/M · Red/i}).isDisabled(),true);
+  await cashier.locator('#close-variant').click();
+  await field.fill('PERSEN-NOT-FOUND');await field.press('Enter');
+  await txt(cashier,'#scan-status','Product Not Found');
+  assert.equal(await cashier.locator('#scan-search').isVisible(),true);
+  await cashier.locator('#cart .cart-row button').last().click();
+  assert.equal(await cashier.locator('#cart .cart-row').count(),0);
+ });
  await step('Cashier big tiles → size/color picker → cart',async()=>{
   await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await visible(cashier,'#variant-dialog');
   await cashier.getByRole('button',{name:/M · Red/i}).click();await txt(cashier,'#cart','Christmas Hoodie');
