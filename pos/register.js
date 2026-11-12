@@ -58,11 +58,16 @@ async function flushCustomerPreview(){
     draft_snapshot:snapshot,draft_updated_at:new Date().toISOString()
    }).eq('id',register.id).eq('owner_id',user.id);
    if(error)throw error;
+   draftFailureShown=false;
   }
  }catch(e){
+  draftDirty=true;
   // A disconnected display must never stop cashier checkout.
-  if(!draftFailureShown){draftFailureShown=true;notice('Customer live cart preview unavailable. Apply staging cart-preview update: '+e.message)}
- }finally{draftSending=false;if(draftDirty)queueCustomerPreview()}
+  if(!draftFailureShown){draftFailureShown=true;notice('Customer live cart connection interrupted; retrying automatically. '+e.message)}
+ }finally{
+  draftSending=false;
+  if(draftDirty){clearTimeout(draftTimer);draftTimer=setTimeout(()=>{void flushCustomerPreview()},2000)}
+ }
 }
 /* Quick cashier catalog: one tile per product, explicit size/color chooser. */
 const TYPE_ICONS={hoodie:'🧥',tee:'👕',crew:'👚',hat:'🧢',other:'🛍️'};
@@ -633,7 +638,7 @@ function scanSku(input){
     t.product_name.toLowerCase()===String(variant.product_name).toLowerCase());
   if(!allowed){out.textContent='This size is not assigned to the selected event. Change event or search its products.';return;}
  }
- const scanCart=cart.filter(x=>x.stock_id).map(x=>({variantId:x.stock_id,quantity:x.qty}));
+ const scanCart=cart.filter(x=>x.stock_id).map(x=>({productId:String(x.stock_id),variantId:x.stock_id,quantity:x.qty}));
  let result;
  try{result=model.scanCart(index,scanCart,code)}catch(e){
   out.textContent='Could not scan: '+e.message;return;
@@ -647,8 +652,62 @@ function scanSku(input){
  addVariant(variant);
  out.textContent=match.label+' added. '+(cart.find(x=>x.stock_id===variant.id)?.qty||1)+' in cart.';
 }
+let scanMode='sell';
+function setScanMode(mode){
+ scanMode=mode==='inventory'?'inventory':'sell';
+ by('scan-mode-sell').setAttribute('aria-pressed',String(scanMode==='sell'));
+ by('scan-mode-inventory').setAttribute('aria-pressed',String(scanMode==='inventory'));
+ by('scan-mode-sell').classList.toggle('active',scanMode==='sell');
+ by('scan-mode-inventory').classList.toggle('active',scanMode==='inventory');
+ by('scan-label').textContent=scanMode==='inventory'?'Scan a barcode to check inventory':'Scan product barcode to add to cart';
+ by('scan-submit').textContent=scanMode==='inventory'?'Check inventory':'Add scanned item';
+ by('scan-status').textContent=scanMode==='inventory'?'Inventory check mode — scans do not add products to the cart.':'Add-to-cart mode — scans add products to the sale.';
+ by('scan-inventory-result').hidden=true;
+ by('scan-search').hidden=true;
+ by('scan-code').value='';
+ by('scan-code').focus();
+}
+function checkInventorySku(input){
+ const out=by('scan-status'),panel=by('scan-inventory-result');
+ panel.replaceChildren();panel.hidden=true;
+ by('scan-search').hidden=true;
+ if(!user||!register){out.textContent='Sign in before checking inventory.';return;}
+ let result;
+ try{result=window.PersenPOSBarcodeTender.lookupInventory(stock,input)}
+ catch(e){out.textContent='Unable to check barcode: '+e.message;return;}
+ if(result.status==='not-found'){
+  out.textContent='No inventory found for '+result.code+'. Check the SKU or refresh products.';
+  return;
+ }
+ const v=result.variant,meta=variantMeta.get(v.id);
+ const reserved=cart.find(x=>x.stock_id===v.id)?.qty||0;
+ const available=Number(v.quantity)||0;
+ const price=isSalesStock(v)&&hasPrice(v)&&meta&&Number.isSafeInteger(meta.price_cents)?C.money(meta.price_cents):'Not priced for sale';
+ const heading=document.createElement('strong');
+ heading.className='pos-inventory-name';heading.textContent=v.product_name||'Unnamed item';
+ const details=document.createElement('dl');
+ for(const [name,value] of [
+  ['Color',v.color||'Not specified'],['Size',v.size||'One Size'],
+  ['In stock',String(available)],['Already in cart',String(reserved)],
+  ['Available for this sale',String(Math.max(0,available-reserved))],
+  ['Selling price',price],['Barcode / SKU',v.sku]
+ ]){
+  const dt=document.createElement('dt'),dd=document.createElement('dd');
+  dt.textContent=name;dd.textContent=value;details.append(dt,dd);
+ }
+ const state=document.createElement('p');state.className='pos-inventory-availability';
+ state.textContent=available>0?'In stock — read-only lookup':'Out of stock — read-only lookup';
+ panel.append(heading,details,state);panel.hidden=false;
+ out.textContent='Inventory checked. Nothing was added to the cart.';
+}
+by('scan-mode-sell').addEventListener('click',()=>setScanMode('sell'));
+by('scan-mode-inventory').addEventListener('click',()=>setScanMode('inventory'));
 by('scan-form').addEventListener('submit',e=>{
- e.preventDefault();const field=by('scan-code');scanSku(field.value);field.value='';field.focus();
+ e.preventDefault();
+ const field=by('scan-code');
+ if(scanMode==='inventory')checkInventorySku(field.value);
+ else scanSku(field.value);
+ field.value='';field.focus();
 });
 /* HID Bluetooth/USB scanners: capture rapid characters only when
    focus is outside text fields; staff PIN/password typing stays untouched. */
@@ -661,7 +720,7 @@ window.addEventListener('keydown',e=>{
  const now=performance.now();
  if(e.key==='Enter'){
   if(wedgeBuffer.length>=3&&now-wedgeStart<=2300&&now-wedgeLast<=300){
-   e.preventDefault();scanSku(wedgeBuffer);
+   e.preventDefault();if(scanMode==='inventory')checkInventorySku(wedgeBuffer);else scanSku(wedgeBuffer);
   }
   wedgeBuffer='';wedgeStart=0;wedgeLast=0;return;
  }

@@ -42,3 +42,16 @@ test('commercial Apple Cash P2P remains hidden from customer and cashier',()=>{
  assert.doesNotMatch(h,/name="payment_preference" value="apple_cash_info"/);
  assert.doesNotMatch(js,/apple_cash_info/);
 });
+
+test('inventory checking is a distinct read-only scan mode',()=>{
+ const html=read('register.html'),js=read('register.js');
+ for(const id of ['scan-mode-sell','scan-mode-inventory','scan-inventory-result','scan-submit'])
+   assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(js,/function checkInventorySku\(input\)/);
+ assert.match(js,/PersenPOSBarcodeTender\.lookupInventory\(stock,input\)/);
+ assert.match(js,/if\(scanMode==='inventory'\)checkInventorySku\(field.value\)/);
+ const start=js.indexOf('function checkInventorySku(input)');
+ const end=js.indexOf("by('scan-mode-sell').addEventListener",start);
+ const lookupOnly=js.slice(start,end);
+ assert.doesNotMatch(lookupOnly,/addVariant\(|cart.push\(|pos_complete_cash|\.insert\(|\.update\(/);
+});

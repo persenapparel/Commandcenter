@@ -797,3 +797,14 @@ body.fast-mode .quick-product.event-featured{border-color:#82b5ee;box-shadow:ins
  .order-summary-head{align-items:flex-start}
  .order-total-box{max-width:45%}
 }
+
+/* Read-only stock lookup mode: distinct from adding a product to the cart. */
+.pos-scan-mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.8rem}
+.pos-scan-mode-toggle button{min-height:48px;border:1px solid #8aa6c9;border-radius:10px;background:#fff;color:#163963;font-weight:700}
+.pos-scan-mode-toggle button.active{background:#13345d;color:#fff;border-color:#13345d}
+.pos-inventory-result{padding:.85rem;margin-top:.65rem;background:#fff;border:1px solid #8aa6c9;border-radius:12px}
+.pos-inventory-name{display:block;font-size:1.12rem;margin-bottom:.7rem}
+.pos-inventory-result dl{display:grid;grid-template-columns:minmax(8rem,1fr) minmax(7rem,1.4fr);gap:.4rem .8rem;margin:0}
+.pos-inventory-result dt{font-weight:600;color:#4d6480}
+.pos-inventory-result dd{margin:0;overflow-wrap:anywhere;font-weight:650}
+.pos-inventory-availability{margin:.8rem 0 0;font-weight:700;color:#13345d}
