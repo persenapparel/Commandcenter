@@ -132,7 +132,17 @@ function rpc(name,p={}){
    return result(c?{status:visibleStatus,checkout_id:c.id,items:c.items,total_cents:c.total_cents,change_cents:sale?.change_cents||0}:{status:'idle',checkout_id:null,items:[],total_cents:0});
  }
  case 'pos_set_customer_progress':if(!match)return fail('Checkout missing');match.customer_step=p.p_step;match.help_requested=p.p_need_help;return write(true);
- case 'pos_submit_customer':if(!match)return fail('Checkout missing');Object.assign(match,{status:'contact_received',phone:p.p_phone,email:p.p_email,marketing_opt_in:p.p_marketing_opt_in,rating:p.p_rating,interest:p.p_interest,payment_preference:p.p_payment_preference,receipt_print:p.p_print_receipt,receipt_email:p.p_email_receipt});return write(true);
+ case 'pos_submit_customer':
+ case 'pos_submit_customer_v2':{
+  if(!match)return fail('Checkout missing');
+  const marketingResponse=name==='pos_submit_customer_v2'?(p.p_marketing_choice||'not_answered'):(p.p_marketing_opt_in?'yes':'not_answered');
+  if(!['yes','no','not_answered'].includes(marketingResponse))return fail('Invalid marketing response');
+  Object.assign(match,{status:'contact_received',phone:p.p_phone,email:p.p_email,
+   marketing_opt_in:marketingResponse==='yes',marketing_response:marketingResponse,
+   rating:p.p_rating,custom_interest:p.p_interest||'not_answered',payment_preference:p.p_payment_preference,
+   receipt_print:p.p_print_receipt,receipt_email:p.p_email_receipt,customer_step:'review'});
+  return write(true);
+ }
  case 'pos_set_cash_drawer':reg.cash_drawer=p.p_counts;reg.drawer_configured=true;reg.drawer_version++;return write({cash_drawer:reg.cash_drawer,drawer_version:reg.drawer_version});
  case 'pos_complete_cash':{
   if(!match||match.status!=='contact_received')return fail('Checkout not ready');
