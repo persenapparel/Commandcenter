@@ -28,3 +28,34 @@ test('unknown code does not alter cart',()=>{
  assert.equal(result.status,'not-found');
  assert.deepEqual(result.cart,cart);
 });
+
+// Reproduce the cashier's stock_id/qty cart representation for repeated scans.
+test('cashier stock shape enforces existing quantities',()=>{
+ const fs=require('node:fs');
+ const source=fs.readFileSync('pos/register.js','utf8');
+ assert.ok(source.includes('productId:String(x.stock_id),variantId:x.stock_id,quantity:x.qty'));
+ const cashierCart=[{stock_id:'hoodie-red-l',qty:2}];
+ const normalized=cashierCart.map(x=>({productId:String(x.stock_id),variantId:x.stock_id,quantity:x.qty}));
+ const testIndex=buildBarcodeIndex([{productId:'hoodie-red-l',variantId:'hoodie-red-l',label:'Red Hoodie Large',unitCents:4000,available:2,barcode:'PA-HOODIE-RED-L'}]);
+ const result=scanCart(testIndex,normalized,'PA-HOODIE-RED-L');
+ assert.equal(result.status,'sold-out');
+ assert.deepEqual(result.cart,normalized);
+});
+
+test('inventory lookup is read only, case insensitive, and shows out-of-stock sizes',()=>{
+ const {lookupInventory}=require('../barcode-tender-model.js');
+ const inventory=[
+  {id:'r-l',sku:'PA-RED-L',product_name:'Christmas Hoodie',color:'Red',size:'L',quantity:2},
+  {id:'g-xl',sku:'PA-GREEN-XL',product_name:'Christmas Hoodie',color:'Green',size:'XL',quantity:0}
+ ];
+ const before=JSON.stringify(inventory);
+ const result=lookupInventory(inventory,'pa-red-l');
+ assert.equal(result.status,'found');
+ assert.equal(result.variant.size,'L');
+ assert.equal(result.variant.color,'Red');
+ assert.equal(result.variant.quantity,2);
+ assert.equal(lookupInventory(inventory,'PA-GREEN-XL').variant.quantity,0);
+ assert.equal(lookupInventory(inventory,'PA-MISSING').status,'not-found');
+ assert.equal(JSON.stringify(inventory),before);
+ assert.throws(()=>lookupInventory([...inventory,{...inventory[0],id:'dup'}],'PA-RED-L'),/Duplicate inventory barcode/);
+});
