@@ -35,6 +35,10 @@ function showWelcome(message='Your cashier will start your order shortly.'){
  $('waiting-payment').hidden=true;
  $('waiting-change').hidden=true;
  $('thanks').hidden=true;
+ $('live-preview-note').hidden=true;
+ $('order-breakdown').hidden=true;
+ $('order-details').open=false;
+ document.body.classList.remove('kiosk-preview');
 }
 function showCheckout(){
  document.body.classList.remove('kiosk-idle');
@@ -189,7 +193,40 @@ function ensureValidWholeWizard(){
  }
  return true;
 }
-function render(session){
+function showOrderSummary(session,isPreview=false){
+ const rows=$('items');rows.replaceChildren();
+ const items=Array.isArray(session.items)?session.items:[];
+ for(const item of items){
+  const row=document.createElement('div');row.className='cart-row';
+  const name=document.createElement('span'),price=document.createElement('strong');
+  name.textContent=String(item.qty||0)+' × '+String(item.name||'Item')+' '+[item.color,item.size].filter(Boolean).join(' / ');
+  price.textContent=C.money((item.qty||0)*(item.unit_cents||0));
+  row.append(name,price);rows.append(row);
+ }
+ $('order-details').open=items.length>0;
+ $('total-label').textContent=isPreview?'Current total':'Total due';
+ $('total').textContent=C.money(session.total_cents||0);
+ $('summary-subtotal').textContent=C.money(session.subtotal_cents||0);
+ $('summary-discount').textContent='−'+C.money(session.discount_cents||0);
+ $('summary-tax').textContent=C.money(session.tax_cents||0);
+ $('summary-discount-row').hidden=!(session.discount_cents>0);
+ $('summary-tax-row').hidden=!(session.tax_cents>0);
+ $('order-breakdown').hidden=items.length===0;
+ $('live-preview-note').hidden=!isPreview;
+}
+function renderDraft(preview){
+ if(activeId!==null){activeId=null;checkoutId=null;completedSince=null;resetWizard()}
+ showCheckout();
+ document.body.classList.add('kiosk-preview');
+ document.body.classList.remove('kiosk-completed');
+ form.hidden=true;$('waiting-payment').hidden=true;$('waiting-change').hidden=true;$('thanks').hidden=true;
+ showOrderSummary(preview,true);
+ show('Your cashier is adding items');
+ lastStatus='draft';
+}
+function render(session,preview){
+ if(preview?.status==='draft'&&['idle','cancelled','completed'].includes(session?.status))return renderDraft(preview);
+ document.body.classList.remove('kiosk-preview');
  const status=session?.status||'unpaired';
  if(['unpaired','expired','idle','cancelled'].includes(status)){
   if(activeId!==null){
@@ -221,17 +258,7 @@ function render(session){
  }
  showCheckout();
  document.body.classList.toggle('kiosk-completed',status==='completed');
- const orderItems=$('items');
- orderItems.replaceChildren();
- for(const item of session.items||[]){
-  const row=document.createElement('div');
-  row.className='cart-row';
-  const name=document.createElement('span'),price=document.createElement('strong');
-  name.textContent=String(item.qty||0)+' × '+String(item.name||'Item')+' '+[item.color,item.size].filter(Boolean).join(' / ');
-  price.textContent=C.money((item.qty||0)*(item.unit_cents||0));
-  row.append(name,price);orderItems.append(row);
- }
- $('total').textContent=C.money(session.total_cents||0);
+ showOrderSummary(session);
  form.hidden=status!=='awaiting_customer'||submitting;
  $('waiting-payment').hidden=status!=='contact_received';
  $('waiting-change').hidden=status!=='paid_awaiting_change';
@@ -266,8 +293,13 @@ async function refresh(){
  if(waiting||!db||!token)return;
  waiting=true;
  try{
-  const session=await checked(db.rpc('pos_customer_view',{p_secret:token}));
-  render(session);
+  const [sale,preview]=await Promise.all([
+   db.rpc('pos_customer_view',{p_secret:token}),
+   db.rpc('pos_customer_cart_preview',{p_secret:token})
+  ]);
+  if(sale.error)throw sale.error;
+  // Preview failure never blocks existing validated checkout.
+  render(sale.data,preview.error?null:preview.data);
  }catch(err){show('Connection interrupted. Please ask the cashier if it does not reconnect.')}
  finally{waiting=false}
 }
