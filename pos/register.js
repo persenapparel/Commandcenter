@@ -618,6 +618,33 @@ function scanSku(input){
 by('scan-form').addEventListener('submit',e=>{
  e.preventDefault();const field=by('scan-code');scanSku(field.value);field.value='';field.focus();
 });
+function labelCsvCell(value){
+ const source=String(value??'').slice(0,160);
+ const safe=/^[=+@\-\t\r]/.test(source)?"'"+source:source;
+ return '"'+safe.replace(/"/g,'""')+'"';
+}
+function exportBarcodeLabels(){
+ // This is a CSV import for DYMO Connect on the owner's computer, NOT direct printer control.
+ try{
+  if(!user||!register||!stock.length)throw Error('Sign in and load products first.');
+  const used=new Set(),rows=[['Barcode Code128','Product','Color','Size']];
+  for(const item of stock.filter(isSalesStock)){
+   const code=window.PersenPOSBarcodeTender.normalizeCode(item.sku);
+   if(!/^[A-Z0-9]/.test(code))throw Error('Barcode must start with a letter or number: '+code);
+   if(used.has(code))throw Error('Duplicate size/variant barcode: '+code);
+   used.add(code);
+   rows.push([code,item.product_name,item.color||'',item.size||'One Size']);
+  }
+  if(rows.length<2)throw Error('No sales inventory variants to export.');
+  const csv=rows.map(row=>row.map(labelCsvCell).join(',')).join('\r\n')+'\r\n';
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  const a=document.createElement('a');a.href=url;a.download='persen-variant-barcodes.csv';
+  a.hidden=true;document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  notice((rows.length-1)+' unique product-size codes exported. Print as Code128 using DYMO desktop, then scan a physical test label.');
+ }catch(e){notice('Barcode CSV export unavailable: '+e.message)}
+}
+by('barcode-csv').addEventListener('click',exportBarcodeLabels);
 by('scan-search').addEventListener('click',()=>{
  const field=by('search');field.focus();by('scan-search').hidden=true;
 });
