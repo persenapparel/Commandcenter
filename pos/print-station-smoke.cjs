@@ -10,7 +10,7 @@ const nodes=new Map();
 function node(id=''){
  if(nodes.has(id))return nodes.get(id);
  const x={
-  id,hidden:false,disabled:false,value:id==='paper'?'50.8x101.6':'1',
+  id,hidden:false,disabled:false,value:({paper:'50.8x101.6','receipt-margin':'2','receipt-font':'10','receipt-feed':'2'}[id]||'1'),scrollHeight:220,
   className:'',style:{},textContent:'',innerText:'',children:[],onclick:null,onsubmit:null,
   classList:{toggle(){}},
   append(...xs){this.children.push(...xs)},
@@ -56,6 +56,7 @@ const db={
  }
 };
 const window={
+ PersenPOSPaperLayout:require('./receipt-paper-layout.js'),
  PersenPOSCore:{money:raw=>(Number(raw)/100).toFixed(2)},
  PersenPOSReceipt:{reviewUrl:()=>'',presentation:()=>({
   headline:'Thank you',promotion:'',footer:'',review_message:'',review:'',review_url:'',

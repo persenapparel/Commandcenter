@@ -19,7 +19,7 @@ const dest='pos-dist';
 await mkdir(dest,{recursive:true});
 await mkdir(join(dest,'assets'),{recursive:true});
 await copyFile(join('assets','persen-logo.png'),join(dest,'assets','persen-logo.png'));
-for(const f of ['pos.css','cashier-focus.css','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','register.js','display.js','print-station.js','print-station.css','admin.css','admin.js','inventory.js']){
+for(const f of ['pos.css','cashier-focus.css','pos.js','pos-core.js','pos-events.js','pos-receipt.js','receipt-paper-layout.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','register.js','display.js','print-station.js','print-station.css','admin.css','admin.js','inventory.js']){
  await copyFile(join('pos',f),join(dest,f));
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));

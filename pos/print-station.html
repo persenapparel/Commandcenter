@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="pos.css"><link rel="stylesheet" href="print-station.css">
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="../config.js"></script><script defer src="../backend.js"></script>
-<script defer src="pos-core.js"></script><script defer src="pos-receipt.js"></script><script defer src="print-station.js"></script></head>
+<script defer src="pos-core.js"></script><script defer src="pos-receipt.js"></script><script defer src="receipt-paper-layout.js"></script><script defer src="print-station.js"></script></head>
 <body><header><img class="pos-brand-logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><strong>PERSEN <span>POS</span></strong><small>RECEIPT PRINT STATION · DEVELOPMENT</small></header>
 <main class="print-station">
 <section class="hero"><div><small>PERSEN COMMAND CENTER</small><h1>Receipt Print Station</h1><p>Keep this page open on the computer connected to the NELKO by USB.</p></div><div class="tag">Not live · Hardware testing required</div></section>
@@ -25,9 +25,23 @@
 <h2>NELKO setup</h2>
 <label for="paper">Paper size loaded in the NELKO</label>
 <select id="paper">
-<option value="50.8x101.6">2 × 4 inch direct-thermal label (test first)</option>
-<option value="58x120">58 mm × 120 mm thermal receipt (unverified)</option>
+<option value="50.8x101.6">2 × 4 inch thermal label — fixed height</option>
+<option value="100x150">4 × 6 inch thermal label — fixed height</option>
+<option value="58x120">58 × 120 mm sheet/label — verify driver</option>
+<option value="80x140">80 × 140 mm sheet/label — verify driver</option>
+<option value="continuous-100">100 mm continuous receipt roll — experimental (requires printer test)</option>
 </select>
+<div class="receipt-adjustments">
+<label for="receipt-margin">Side/top margin
+<select id="receipt-margin"><option value="1">1 mm (tight)</option><option value="2" selected>2 mm (recommended)</option><option value="3">3 mm</option><option value="4">4 mm</option></select></label>
+<label for="receipt-font">Receipt font size
+<select id="receipt-font"><option value="9">Small (9 px)</option><option value="10" selected>Normal (10 px)</option><option value="12">Large (12 px)</option></select></label>
+<label for="receipt-feed">Extra end feed
+<select id="receipt-feed"><option value="0">0 mm (minimum)</option><option value="2" selected>2 mm</option><option value="5">5 mm</option></select></label>
+</div>
+<p id="paper-feedback" class="hint" role="status">Adjust settings, preview, and print a physical test before activating automatic receipts.</p>
+<button id="preview-test" type="button">Preview sample receipt (no printing)</button>
+<p class="hint">Continuous-roll mode calculates content height instead of forcing a full 4-inch label. The NELKO driver must support custom paper lengths and proper feed/calibration; browser sizing alone cannot guarantee this.</p>
 <p class="hint">One receipt per completed sale. Extra copies can be requested using a manual, verified reprint after checking what has printed. Receipts older than 24 hours remain in history but will not print automatically.</p>
 <p class="hint">Select the matching size in the NELKO Windows print driver too. The PL70E has a manual tear-off edge, not an automatic cutter.</p>
 <button id="test-print" type="button">Print test receipt</button>

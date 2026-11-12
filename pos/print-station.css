@@ -7,7 +7,7 @@
 .station-grid button{margin:4px 4px 4px 0}.station-message{color:#264976;background:#dfeaff;padding:14px;border-radius:10px}
 .station-job{display:grid;grid-template-columns:1fr 140px auto;gap:12px;padding:12px 0;align-items:center;border-top:1px solid #dfebf7}
 .station-job small{font-size:12px;color:#657991}.station-job strong{font-size:13px}
-#receipt{position:absolute;left:-10000px;top:0;width:50.8mm;min-height:90mm;padding:3mm;font:10px/1.4 monospace;color:#000;background:#fff;overflow-wrap:anywhere;text-align:center}
+#receipt{position:absolute;left:-10000px;top:0;width:50.8mm;min-height:0;box-sizing:border-box;padding:2mm;font:10px/1.4 monospace;color:#000;background:#fff;overflow-wrap:anywhere;text-align:center}
 .print-brand{font-weight:900;font-size:15px;letter-spacing:.5px}.print-small{font-size:9px}
 .print-rule{border-top:1px dashed #444;margin:8px 0}
 .print-pair{display:flex;justify-content:space-between;gap:7px;text-align:left;margin:3px 0}
@@ -36,3 +36,12 @@
 .printer-confirm label{display:flex;align-items:flex-start;gap:9px;line-height:1.5;font-size:13px;font-weight:750;color:#244f7d;margin:12px 0 9px}
 .printer-confirm input{width:20px;height:20px;flex:0 0 auto;accent-color:#1763c2}
 .printer-confirm small{display:block;color:#637f9f;line-height:1.5}
+
+/* Receipt preview is on-screen only. Test before enabling physical printing. */
+.receipt-adjustments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.receipt-adjustments label{font-size:12px;font-weight:750}
+.receipt-adjustments select{width:100%;margin-top:5px}
+#paper-feedback{padding:10px 12px;border-radius:8px;background:#fff9ea;color:#6c501b}
+body.preview-open #receipt{position:relative;left:auto;top:auto;margin:20px auto;box-shadow:0 5px 24px #2039552c;border:1px solid #cbd6e5;min-height:0}
+@media(max-width:700px){.receipt-adjustments{grid-template-columns:1fr}}
+@media print{body.preview-open #receipt{position:static!important;margin:0!important;border:0!important;box-shadow:none!important}}
