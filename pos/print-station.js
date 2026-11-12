@@ -167,7 +167,9 @@ $('preview-test').onclick=()=>{
  message('Preview only; no paper has been printed. Test physical output separately.');
  }catch(e){message('Preview unavailable: '+errorText(e));}
 };
-for(const id of ['paper','receipt-margin','receipt-font','receipt-feed'])$(id).onchange=()=>{resetPrinterVerification();applyPaper();};
+function onReceiptPaperChange(){resetPrinterVerification();applyPaper();}
+$('paper').onchange=onReceiptPaperChange;
+for(const id of ['receipt-margin','receipt-font','receipt-feed'])$(id).onchange=onReceiptPaperChange;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&armed)void processQueue()});
 window.addEventListener('beforeunload',()=>{armed=false});
 showArmed();applyPaper();void signIn(null);
