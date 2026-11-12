@@ -20,7 +20,7 @@
    if(!/^[+\d\s().-]+$/.test(s))throw Error('Enter a valid US phone number');
    let digits=s.replace(/\D/g,'');
    if(digits.length===11&&digits.startsWith('1'))digits=digits.slice(1);
-   if(digits.length!==10||!/[2-9]/.test(digits[0])||!/[2-9]/.test(digits[3]))throw Error('Enter a valid 10-digit US phone number');
+   if(digits.length!==10||!/^[2-9]/.test(digits)||!/[2-9]/.test(digits[3]))throw Error('Enter a valid 10-digit US phone number');
    return '+1'+digits;
  }
  function request(opts){
