@@ -33,7 +33,7 @@ test('unknown code does not alter cart',()=>{
 test('cashier stock shape enforces existing quantities',()=>{
  const fs=require('node:fs');
  const source=fs.readFileSync('pos/register.js','utf8');
- assert.match(source,/productId:String\\(x\\.stock_id\\),variantId:x\\.stock_id,quantity:x\\.qty/);
+ assert.ok(source.includes('productId:String(x.stock_id),variantId:x.stock_id,quantity:x.qty'));
  const cashierCart=[{stock_id:'hoodie-red-l',qty:2}];
  const normalized=cashierCart.map(x=>({productId:String(x.stock_id),variantId:x.stock_id,quantity:x.qty}));
  const testIndex=buildBarcodeIndex([{productId:'hoodie-red-l',variantId:'hoodie-red-l',label:'Red Hoodie Large',unitCents:4000,available:2,barcode:'PA-HOODIE-RED-L'}]);
