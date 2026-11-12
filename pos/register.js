@@ -564,6 +564,63 @@ by('cash-clear').addEventListener('click',resetTender);
 by('save-drawer').addEventListener('click',saveDrawer);
 
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
+// Keyboard-wedge barcode input. One inventory SKU per color/size variant;
+// no background keystroke listener so employee typing/password fields are safe.
+function scanSku(input){
+ const out=by('scan-status'),search=by('scan-search');
+ search.hidden=true;
+ if(!user||!register||document.body.classList.contains('pos-register-closed')){
+  out.textContent='Open and unlock the register before scanning.';return;
+ }
+ if(busy||checkout||pendingCash){out.textContent='Finish or cancel the current checkout first.';return;}
+ const model=window.PersenPOSBarcodeTender;
+ let code;
+ try{code=model.normalizeCode(input)}catch{
+  out.textContent='This barcode is not a supported internal SKU. Use product search.';search.hidden=false;return;
+ }
+ let index;
+ try{
+  index=model.buildBarcodeIndex(stock.filter(x=>isSalesStock(x)&&hasPrice(x)&&
+    /^[A-Z0-9_-]{3,64}$/.test(String(x.sku||'').trim().toUpperCase()))
+    .map(x=>({productId:String(x.product_name||x.sku),variantId:x.id,
+      label:[x.product_name,x.color,x.size].filter(Boolean).join(' · '),
+      unitCents:variantMeta.get(x.id).price_cents,available:x.quantity,barcode:x.sku})));
+ }catch(e){
+  out.textContent='Barcode configuration issue: '+e.message+'. Please check unique size SKUs in inventory.';
+  return;
+ }
+ const match=index.get(code);
+ if(!match){
+  out.textContent='Product Not Found: '+code+'. Try product search.';search.hidden=false;return;
+ }
+ const variant=stock.find(x=>x.id===match.variantId);
+ const event=events.find(e=>e.id===by('event-select').value);
+ if(event){
+  const profile=eventProfiles.find(p=>p.id===event.inventory_profile_id);
+  const allowed=profile&&eventQuickTiles.some(t=>t.event_id===profile.id&&
+    t.product_name.toLowerCase()===String(variant.product_name).toLowerCase());
+  if(!allowed){out.textContent='This size is not assigned to the selected event. Change event or search its products.';return;}
+ }
+ const scanCart=cart.filter(x=>x.stock_id).map(x=>({variantId:x.stock_id,quantity:x.qty}));
+ let result;
+ try{result=model.scanCart(index,scanCart,code)}catch(e){
+  out.textContent='Could not scan: '+e.message;return;
+ }
+ if(result.status==='sold-out'){
+  const alternatives=stock.filter(x=>x.product_name===variant.product_name&&isSalesStock(x)&&hasPrice(x));
+  out.textContent='Sold Out: '+match.label+'. Choose an available size.';
+  pickVariant(variant.product_name,alternatives);return;
+ }
+ if(result.status!=='added'){out.textContent='Product Not Found. Use search.';search.hidden=false;return;}
+ addVariant(variant);
+ out.textContent=match.label+' added. '+(cart.find(x=>x.stock_id===variant.id)?.qty||1)+' in cart.';
+}
+by('scan-form').addEventListener('submit',e=>{
+ e.preventDefault();const field=by('scan-code');scanSku(field.value);field.value='';field.focus();
+});
+by('scan-search').addEventListener('click',()=>{
+ const field=by('search');field.focus();by('scan-search').hidden=true;
+});
 by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
