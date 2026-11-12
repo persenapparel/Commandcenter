@@ -41,3 +41,21 @@ test('cashier stock shape enforces existing quantities',()=>{
  assert.equal(result.status,'sold-out');
  assert.deepEqual(result.cart,normalized);
 });
+
+test('inventory lookup is read only, case insensitive, and shows out-of-stock sizes',()=>{
+ const {lookupInventory}=require('../barcode-tender-model.js');
+ const inventory=[
+  {id:'r-l',sku:'PA-RED-L',product_name:'Christmas Hoodie',color:'Red',size:'L',quantity:2},
+  {id:'g-xl',sku:'PA-GREEN-XL',product_name:'Christmas Hoodie',color:'Green',size:'XL',quantity:0}
+ ];
+ const before=JSON.stringify(inventory);
+ const result=lookupInventory(inventory,'pa-red-l');
+ assert.equal(result.status,'found');
+ assert.equal(result.variant.size,'L');
+ assert.equal(result.variant.color,'Red');
+ assert.equal(result.variant.quantity,2);
+ assert.equal(lookupInventory(inventory,'PA-GREEN-XL').variant.quantity,0);
+ assert.equal(lookupInventory(inventory,'PA-MISSING').status,'not-found');
+ assert.equal(JSON.stringify(inventory),before);
+ assert.throws(()=>lookupInventory([...inventory,{...inventory[0],id:'dup'}],'PA-RED-L'),/Duplicate inventory barcode/);
+});
