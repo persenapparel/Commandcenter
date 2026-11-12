@@ -283,12 +283,12 @@ async function finish(){
  $('wizard-next').disabled=true;
  error();
  try{
-  await checked(db.rpc('pos_submit_customer',{
+  await checked(db.rpc('pos_submit_customer_v2',{
    p_secret:token,
    p_checkout:id,
    p_phone:C.phone(Wizard.formatPhone(v.phone)),
    p_email:v.email||null,
-   p_marketing_opt_in:v.marketing==='yes',
+   p_marketing_choice:v.marketing||'not_answered',
    p_rating:v.rating?Number(v.rating):null,
    p_interest:v.interest||'not_answered',
    p_payment_preference:v.payment,
