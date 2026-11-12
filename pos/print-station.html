@@ -16,7 +16,7 @@
 <div class="station-grid">
 <div class="panel">
 <h2>Automatic receipt printing</h2><p class="hint">After a confirmed cash sale, Persen POS queues a receipt. This station checks every second and submits it to the printer configured in Chrome.</p>
-<div class="station-status"><span class="station-dot" id="dot"></span><strong id="station-state">Not armed</strong></div>
+<div class="station-status"><span class="station-dot" id="dot"></span><strong id="station-state">Not armed · printer not verified</strong></div>
 <button class="primary" id="arm" type="button">Start automatic printing</button>
 <button id="disarm" type="button" disabled>Pause printing</button>
 <p class="hint"><strong>Important:</strong> Browsers normally show a print dialog. Silent printing requires a separately configured, trusted Chrome kiosk-printing shortcut and correct default printer.</p>
@@ -28,9 +28,15 @@
 <option value="50.8x101.6">2 × 4 inch direct-thermal label (test first)</option>
 <option value="58x120">58 mm × 120 mm thermal receipt (unverified)</option>
 </select>
-<p class="hint">One receipt per completed sale. Extra copies can be requested using a manual, verified reprint after checking what has printed.</p>
+<p class="hint">One receipt per completed sale. Extra copies can be requested using a manual, verified reprint after checking what has printed. Receipts older than 24 hours remain in history but will not print automatically.</p>
 <p class="hint">Select the matching size in the NELKO Windows print driver too. The PL70E has a manual tear-off edge, not an automatic cutter.</p>
 <button id="test-print" type="button">Print test receipt</button>
+<div class="printer-confirm" id="printer-check">
+ <strong>Physical printer check</strong>
+ <p class="hint">This webpage cannot detect whether your NELKO is connected or whether paper came out. First print a test receipt using Chrome and verify the paper. The print station will not automatically send paid-sale receipts until you confirm this test.</p>
+ <label><input type="checkbox" id="test-printed" disabled> I saw the test receipt print correctly on my laptop's printer.</label>
+ <small id="printer-check-message">Not verified yet — click Print test receipt first.</small>
+</div>
 </div>
 <div class="panel">
 <h2>Recent jobs</h2><p class="hint">Sent to browser does not prove paper printed. If a print failed, check the printer before manually retrying.</p>

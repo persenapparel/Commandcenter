@@ -109,6 +109,9 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');await visible(printer,'#station-panel');
   await printer.locator('#paper').selectOption('58x120');await printer.locator('#test-print').click();await txt(printer,'#station-message','Test sent to Chrome');
   assert.ok(Number(await printer.evaluate(()=>localStorage.getItem('__prints')))>0);
+  assert.equal(await printer.locator('#arm').isDisabled(),true,'Physical confirmation must gate automatic printing');
+  await printer.locator('#test-printed').check();
+  assert.equal(await printer.locator('#arm').isEnabled(),true,'Operator-confirmed paper test can arm station');
   await printer.locator('#arm').click();await txt(printer,'#station-state','Listening for paid sales');
  });
  await step('Send checkout and laptop live monitor',async()=>{

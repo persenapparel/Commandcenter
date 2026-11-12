@@ -29,3 +29,10 @@
 .print-season-heading{border-top:1px dashed #222;border-bottom:1px dashed #222;font-weight:900;font-size:9px;padding:5px 0;margin:7px 0!important;line-height:1.35;overflow-wrap:anywhere}
 .print-season-heading[hidden]{display:none!important}
 @media print{.print-logo{max-height:15mm;width:auto;margin:0 auto 5px}}
+
+/* Hardware-verified start. A browser cannot silently inspect USB pairing or paper. */
+.printer-confirm{padding:15px;margin-top:14px;border-radius:12px;background:#f3f8ff;border:1px solid #c9def5}
+.printer-confirm strong{font-size:14px;color:#173e70}
+.printer-confirm label{display:flex;align-items:flex-start;gap:9px;line-height:1.5;font-size:13px;font-weight:750;color:#244f7d;margin:12px 0 9px}
+.printer-confirm input{width:20px;height:20px;flex:0 0 auto;accent-color:#1763c2}
+.printer-confirm small{display:block;color:#637f9f;line-height:1.5}

@@ -4,11 +4,17 @@
 const $=id=>document.getElementById(id);
 const C=window.PersenPOSCore,R=window.PersenPOSReceipt;
 let db=null,user=null,armed=false,printing=false,loadError=false,timer=null;
+let testPrintRequested=false,printerConfirmed=false;
 let reviewLink='',season=null,template=null,lastReceipt=null,seenJob=null;
 const errorText=e=>String(e?.message||e||'Unknown print error').slice(0,190);
 function message(s){$('station-message').textContent=s}
 async function checked(q){const {data,error}=await q;if(error)throw error;return data}
-function showArmed(){ $('dot').classList.toggle('on',armed);$('station-state').textContent=armed?'Listening for paid sales':'Paused';$('arm').disabled=armed;$('disarm').disabled=!armed;}
+function showArmed(){
+ $('dot').classList.toggle('on',armed);
+ $('station-state').textContent=armed?'Listening for paid sales · paper verified':(printerConfirmed?'Paused · printer test verified':'Paused · printer not verified');
+ $('arm').disabled=armed||!printerConfirmed;
+ $('disarm').disabled=!armed;
+}
 const text=(el,value)=>{$(el).textContent=String(value??'')};
 function line(el,value){
  const box=document.createElement('div');box.className='print-pair';
@@ -67,7 +73,9 @@ async function recentJobs(){
  const div=document.createElement('div');div.className='station-job';
  const details=document.createElement('div');const b=document.createElement('strong');b.textContent='#'+job.sale_id.slice(0,8).toUpperCase();
  const small=document.createElement('small');small.textContent=' · '+new Date(job.created_at).toLocaleString();details.append(b,small);
- const status=document.createElement('small');status.textContent=job.state.replaceAll('_',' ');
+ const status=document.createElement('small');
+ const stale=job.state==='queued'&&Date.now()-new Date(job.created_at).getTime()>24*3600*1000;
+ status.textContent=stale?'Queued — older than 24 hours, held for manual review':job.state.replaceAll('_',' ');
  const actions=document.createElement('div');
  if(job.state!=='queued'&&job.attempts<5){
  const retry=document.createElement('button');retry.textContent='Retry';
@@ -123,9 +131,28 @@ async function signIn(e){
  }catch(e){message(errorText(e))}
 }
 $('print-login').onsubmit=signIn;
-$('arm').onclick=()=>{armed=true;showArmed();message('Automatic print station armed. Keep Chrome open and the USB printer powered on.');void processQueue();};
+$('arm').onclick=()=>{
+ if(!printerConfirmed){message('First print a test receipt and confirm the physical paper came out correctly.');return;}
+ armed=true;showArmed();message('Automatic print station armed. Keep Chrome open and the USB printer powered on. Browser printing cannot detect paper jams.');void processQueue();
+};
 $('disarm').onclick=()=>{armed=false;showArmed();message('Print station paused. Paid receipts stay queued for later printing.');};
-$('test-print').onclick=()=>{const t={is_test:true,sale_id:'TEST',created_at:new Date().toISOString(),items:[{name:'Persen Apparel test item',qty:1,unit_cents:1000,color:'',size:'M'}],subtotal_cents:1000,discount_cents:0,tax_cents:0,total_cents:1000,tendered_cents:2000,change_cents:1000};try{printReceipt(t);message('Test sent to Chrome. Confirm paper size and whether your NELKO actually printed it.')}catch(e){message(errorText(e))}};
+$('test-print').onclick=()=>{
+ const t={is_test:true,sale_id:'TEST',created_at:new Date().toISOString(),items:[{name:'Persen Apparel test item',qty:1,unit_cents:1000,color:'',size:'M'}],subtotal_cents:1000,discount_cents:0,tax_cents:0,total_cents:1000,tendered_cents:2000,change_cents:1000};
+ testPrintRequested=false;printerConfirmed=false;armed=false;
+ $('test-printed').checked=false;$('test-printed').disabled=true;showArmed();
+ try{
+  printReceipt(t);testPrintRequested=true;$('test-printed').disabled=false;
+  text('printer-check-message','Chrome was asked to print. Check that real paper came out before checking the box.');
+  message('Test sent to Chrome. Confirm the paper printed correctly, then check the verification box to enable automatic receipts.');
+ }catch(e){text('printer-check-message','Print command failed. Fix the printer before activating automatic printing.');message(errorText(e))}
+};
+$('test-printed').onchange=()=>{
+ printerConfirmed=testPrintRequested&&$('test-printed').checked;
+ if(!printerConfirmed)armed=false;
+ showArmed();
+ text('printer-check-message',printerConfirmed?'Physical test confirmed by operator for this browser session.':'Printer not verified. Automatic printing disabled.');
+ message(printerConfirmed?'Physical receipt test confirmed. You can start automatic printing.':'Printer not confirmed. Print a sample receipt before starting automatic printing.');
+};
 $('paper').onchange=applyPaper;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&armed)void processQueue()});
 window.addEventListener('beforeunload',()=>{armed=false});
