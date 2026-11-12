@@ -22,7 +22,26 @@ const checked=async query=>{
 };
 let token=new URL(location.href).searchParams.get('pair');
 let db=null,checkoutId=null,activeId=null,phoneDigits='',stepIndex=0,submitting=false,waiting=false;
-let lastStatus=null,needsHelp=false,progressQueue=Promise.resolve();
+let lastStatus=null,needsHelp=false,progressQueue=Promise.resolve(),completedSince=null;
+function showWelcome(message='Your cashier will start your order shortly.'){
+ document.body.classList.add('kiosk-idle');
+ document.body.classList.remove('kiosk-completed');
+ $('customer-welcome').hidden=false;
+ $('kiosk-shell').hidden=true;
+ $('welcome-status').textContent=message;
+ // A walk-up customer must never see the previous shopper's details.
+ form.hidden=true;
+ $('items').replaceChildren();
+ $('total').textContent=C.money(0);
+ $('waiting-payment').hidden=true;
+ $('waiting-change').hidden=true;
+ $('thanks').hidden=true;
+}
+function showCheckout(){
+ document.body.classList.remove('kiosk-idle');
+ $('customer-welcome').hidden=true;
+ $('kiosk-shell').hidden=false;
+}
 const show=text=>$('state').textContent=text;
 function chosen(name){return form.querySelector('input[name="'+name+'"]:checked')?.value||''}
 function values(){
@@ -173,21 +192,36 @@ function ensureValidWholeWizard(){
 }
 function render(session){
  const status=session?.status||'unpaired';
- if(status==='unpaired'||status==='expired'){
-  checkoutId=null;
-  form.hidden=true;
-  $('waiting-payment').hidden=true;
-  $('waiting-change').hidden=true;
-  $('thanks').hidden=true;
-  show('This iPad is not paired. Please ask the cashier to connect it.');
+ if(['unpaired','expired','idle','cancelled'].includes(status)){
+  if(activeId!==null){
+   activeId=null;checkoutId=null;completedSince=null;
+   resetWizard();
+  }
+  const message=status==='unpaired'||status==='expired'
+   ?'Please ask the cashier to connect this iPad.'
+   :status==='cancelled'?'That checkout was cancelled. Your cashier can start another order.'
+   :'Your cashier will start your order shortly.';
+  showWelcome(message);
+  lastStatus=status;
   return;
  }
  const newId=session.checkout_id||null;
  if(newId!==activeId){
   activeId=newId;
   checkoutId=newId;
+  completedSince=null;
   resetWizard();
  }else checkoutId=newId;
+ if(status==='completed'){
+  if(completedSince===null)completedSince=Date.now();
+ }else completedSince=null;
+ if(Wizard.customerStage(status,completedSince===null?0:Date.now()-completedSince)==='welcome'){
+  showWelcome('Thank you for shopping with Persen Apparel! Ready for the next customer.');
+  lastStatus=status;
+  return;
+ }
+ showCheckout();
+ document.body.classList.toggle('kiosk-completed',status==='completed');
  const orderItems=$('items');
  orderItems.replaceChildren();
  for(const item of session.items||[]){
@@ -249,12 +283,12 @@ async function finish(){
  $('wizard-next').disabled=true;
  error();
  try{
-  await checked(db.rpc('pos_submit_customer',{
+  await checked(db.rpc('pos_submit_customer_v2',{
    p_secret:token,
    p_checkout:id,
    p_phone:C.phone(Wizard.formatPhone(v.phone)),
    p_email:v.email||null,
-   p_marketing_opt_in:v.marketing==='yes',
+   p_marketing_choice:v.marketing||'not_answered',
    p_rating:v.rating?Number(v.rating):null,
    p_interest:v.interest||'not_answered',
    p_payment_preference:v.payment,
@@ -305,6 +339,7 @@ form.addEventListener('keydown',event=>{
 });
 async function start(){
  resetWizard();
+ showWelcome('Connecting to your cashier…');
  if(!window.PA?.ready){show('Register connection unavailable.');return}
  if(!token||!/^[0-9a-f-]{36}$/i.test(token)){
   show('Open the private pairing link provided by the cashier.');return;

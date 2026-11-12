@@ -26,3 +26,21 @@ footer{text-align:center;padding:0 20px 30px;color:#778ca6;font-size:11px}
 @media(max-width:950px){.two-col{grid-template-columns:1fr}.inventory-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){main{padding:22px 13px 45px}.top{align-items:flex-start;flex-direction:column;padding:14px}.fields{grid-template-columns:1fr}.size-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.stats{gap:8px}.stat{padding:12px}.intro{align-items:flex-start;flex-direction:column}.env{align-self:flex-start}.edit-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 [hidden]{display:none!important}
+/* Owner-only Square-inspired customer response desk — independently branded */
+.customer-insights{margin:0 0 20px}.insights-head{flex-wrap:wrap}.insights-actions{display:flex;gap:9px;flex-wrap:wrap}.insights-actions button{white-space:nowrap}
+.insights-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:20px 0 17px}
+.insights-stats>div{padding:16px;border:1px solid #dae6f7;border-radius:14px;background:#f6faff}
+.insights-stats strong{display:block;font-size:27px;color:#153d77}.insights-stats span{display:block;font-size:11px;color:#6781a0;font-weight:750;margin-top:4px}
+.insights-filters{display:grid;grid-template-columns:2fr 1fr;gap:13px;max-width:800px}
+.response-list{display:grid;gap:9px;max-height:580px;overflow:auto;margin:8px 0 14px}
+.response-card{border:1px solid #d8e5f6;border-radius:14px;background:#fff;display:grid;grid-template-columns:1fr auto;gap:11px;padding:16px;text-align:left;width:100%;align-items:center}
+.response-card:hover{background:#f5f9ff}.response-card strong{display:block;color:#143869;font-size:15px}.response-card small{display:block;color:#69809d;margin-top:5px;font-weight:500;overflow-wrap:anywhere}.response-card .response-summary{font-size:12px;color:#49678c}.response-total{font-weight:900;font-size:18px;color:#124c99}
+.response-detail{background:#f4f8fe;border:1px solid #cddff6;border-radius:16px;padding:20px;margin-top:14px}
+.response-detail-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.response-detail-head h3{font-size:18px;color:#123c77;margin:0 0 8px}
+.response-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:16px 0}
+.response-field{background:#fff;border:1px solid #deebfa;border-radius:11px;padding:12px;overflow-wrap:anywhere}
+.response-field small{display:block;text-transform:uppercase;letter-spacing:.09em;font-size:10px;font-weight:900;color:#6784aa}
+.response-field strong{display:block;margin-top:5px;font-size:14px;color:#15365e}
+.response-items{font-size:13px;color:#395c85;line-height:1.7}.insights-privacy{margin-top:17px}
+@media(max-width:780px){.insights-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.insights-filters{grid-template-columns:1fr}.response-grid{grid-template-columns:1fr}}
+@media(max-width:500px){.insights-head{align-items:flex-start}.insights-actions{width:100%}.insights-actions button{flex:1}.response-card{grid-template-columns:1fr}.response-total{font-size:16px}}

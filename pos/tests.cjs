@@ -237,4 +237,24 @@ test('Progress step fallback does not leak arbitrary input',()=>{
  assert.equal(progress.step_id,'phone');
  assert.equal(progress.step_number,1);
 });
+test('Cashier screen advances safely through checkout and change handoff',()=>{
+ assert.equal(Wizard.cashierStage(null),'catalog');
+ assert.equal(Wizard.cashierStage({status:'awaiting_customer'}),'customer');
+ assert.equal(Wizard.cashierStage({status:'contact_received',payment_preference:'cash'}),'payment');
+ assert.equal(Wizard.cashierStage({status:'contact_received',payment_preference:'venmo_info'}),'external');
+ assert.equal(Wizard.cashierStage({status:'completed',cash_handoff_complete:false}),'handoff');
+ assert.equal(Wizard.cashierStage({status:'completed',cash_handoff_complete:true}),'catalog');
+ assert.equal(Wizard.cashierStage({status:'cancelled'}),'catalog');
+});
+test('Customer welcome clears idle and completed orders after thank-you interval',()=>{
+ assert.equal(Wizard.customerStage('idle'),'welcome');
+ assert.equal(Wizard.customerStage('unpaired'),'welcome');
+ assert.equal(Wizard.customerStage('cancelled'),'welcome');
+ assert.equal(Wizard.customerStage('awaiting_customer'),'checkout');
+ assert.equal(Wizard.customerStage('contact_received'),'checkout');
+ assert.equal(Wizard.customerStage('paid_awaiting_change'),'checkout');
+ assert.equal(Wizard.customerStage('completed',0),'checkout');
+ assert.equal(Wizard.customerStage('completed',3999),'checkout');
+ assert.equal(Wizard.customerStage('completed',4000),'welcome');
+});
 console.log('Persen POS: '+tests.length+' tests passed: '+tests.join('; '));

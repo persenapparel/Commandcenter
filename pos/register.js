@@ -3,6 +3,27 @@ const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElemen
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 let pendingCash=null,statusRunning=false,checkoutVersion=0,handoffCheckoutId=null;
+let lastCashierStage='catalog';
+function syncCashierStage(){
+ const stage=Wizard.cashierStage(checkout);
+ if(lastCashierStage===stage)return;
+ lastCashierStage=stage;
+ document.body.dataset.cashierStage=stage;
+ if(typeof window.scrollTo==='function')window.scrollTo({top:0,behavior:'auto'});
+ const headings={
+  customer:['Customer is checking out','Their iPad shows each question. You can see their progress here without viewing their answers.'],
+  payment:['Collect the payment','The customer finished their details. Enter the amount received or tap the bills they handed you.'],
+  external:['Payment instructions only','The customer selected an external payment method. This POS cannot verify or record that payment as paid.'],
+  handoff:['Give change & finish the order','Cash was recorded. Give the customer their change and receipt before finishing.']
+ };
+ const copy=headings[stage];
+ by('cashier-stage-header').hidden=!copy;
+ if(copy){
+  by('cashier-stage-title').textContent=copy[0];
+  by('cashier-stage-description').textContent=copy[1];
+ }
+ by('checkout-cancel-quick').hidden=stage==='handoff'||stage==='catalog';
+}
 let selectedEventId=sessionStorage.getItem('pos-event')||'';
 const pendingCashKey=()=>`pos-pending-cash:${register.id}`;
 function rememberCash(id){
@@ -175,6 +196,7 @@ function showPaidAwaitingHandoff(saved,record){
  by('cash-handoff').hidden=false;by('finish-order').disabled=false;
  by('cash-handoff-change').textContent=C.money(saved.change_cents);
  draw();
+ syncCashierStage();
  notice('Cash payment saved. Hand back '+C.money(saved.change_cents)+' in change, then tap Finish Order.');
 }
 async function showCompletedSale(saved){
@@ -182,6 +204,7 @@ async function showCompletedSale(saved){
  handoffCheckoutId=null;checkout=null;cart=[];rememberCash(null);
  by('cash-handoff').hidden=true;by('finish-order').disabled=true;
  document.body.classList.remove('checkout-active');
+ syncCashierStage();
  resetTender();receipt();draw();
  const result=await Promise.allSettled([loadStock(),loadSales(),reloadDrawer()]);
  if(result.some(x=>x.status==='rejected'))return notice('Order finished. Refresh inventory and cash drawer counts before next sale.');
@@ -246,11 +269,12 @@ async function status(){
   const receiptChannels=checkout?[checkout.receipt_print?'Print':null,checkout.receipt_email?'Email (delivery pending)':null].filter(Boolean):[];
   by('receipt-request-status').textContent=receiptChannels.length?'Requested receipt: '+receiptChannels.join(' · '):'No receipt selected yet.';
   by('status').textContent=awaitingHandoff?'Cash recorded · give change, then tap Finish Order':c?({awaiting_customer:'Customer completing checkout screens',contact_received:'Customer choices saved · ready for cashier',completed:'Order finished · ready for next customer',cancelled:'Checkout cancelled'}[c.status]||c.status):'Ready for next customer';
+  syncCashierStage();
   syncCheckoutUI();renderCash();
  }catch(e){notice('Connection lost: '+e.message)}finally{statusRunning=false}
 }
-async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
-async function cancel(){if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
+async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
+async function cancel(){if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();syncCashierStage();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 async function cash(){
  if(!checkout||checkout.status!=='contact_received'||busy)return;
  if(checkout.payment_preference&&checkout.payment_preference!=='cash')return notice('This payment method only displays instructions. Do not record it as cash.');
@@ -543,7 +567,7 @@ by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.tar
 by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
-by('start').onclick=begin;by('cancel').onclick=cancel;by('cash').onclick=cash;by('finish-order').onclick=finishOrder;
+by('start').onclick=begin;by('cancel').onclick=cancel;by('checkout-cancel-quick').onclick=cancel;by('cash').onclick=cash;by('finish-order').onclick=finishOrder;
 for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo username'],['copy-apple-cash','6316440633','Apple Cash contact']]){
  by(buttonId).onclick=async()=>{try{
   await navigator.clipboard.writeText(value);
