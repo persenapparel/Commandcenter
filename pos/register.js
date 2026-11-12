@@ -568,7 +568,7 @@ by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checko
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
 by('start').onclick=begin;by('cancel').onclick=cancel;by('checkout-cancel-quick').onclick=cancel;by('cash').onclick=cash;by('finish-order').onclick=finishOrder;
-for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo username'],['copy-apple-cash','6316440633','Apple Cash contact']]){
+for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo username']]){
  by(buttonId).onclick=async()=>{try{
   await navigator.clipboard.writeText(value);
   notice(label+' copied. Verify the customer is sending to an approved account.');
