@@ -12,7 +12,7 @@
  function normalize(input={}){
   if(!input||typeof input!=='object')throw Error('Business contact settings required');
   const email=clean(input.email,255),phone=clean(input.phone,30);
-  if(email&&(!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)||email.length>254))throw Error('Invalid business support email');
+  if(email&&(!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)||email.length>254||email.includes('..')))throw Error('Invalid business support email');
   if(phone&&!/^\+?[0-9][0-9 ()+.-]{6,28}$/.test(phone))throw Error('Invalid business support phone');
   const website='https://persenapparel.com';
   return Object.freeze({email,phone,website});
