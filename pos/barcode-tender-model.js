@@ -26,11 +26,11 @@
   if(!(index instanceof Map)||!Array.isArray(cart))throw Error('Invalid cart/index');
   const code=normalizeCode(raw),variant=index.get(code);
   if(!variant)return {status:'not-found',code,action:'search',cart:cart.slice()};
-  const current=cart.find(x=>x.variantId===variant.variantId);
+  const current=cart.find(x=>x.productId===variant.productId&&x.variantId===variant.variantId);
   const next=(current?.quantity||0)+1;
   if(next>variant.available)return {status:'sold-out',code,variantId:variant.variantId,alternatives:[...index.values()].filter(v=>v.productId===variant.productId&&v.variantId!==variant.variantId&&v.available>0).map(v=>({variantId:v.variantId,label:v.label})),cart:cart.slice()};
   const line={productId:variant.productId,variantId:variant.variantId,label:variant.label,unitCents:variant.unitCents,quantity:next};
-  return {status:'added',code,cart:current?cart.map(x=>x.variantId===line.variantId?line:x):[...cart,line]};
+  return {status:'added',code,cart:current?cart.map(x=>x.productId===line.productId&&x.variantId===line.variantId?line:x):[...cart,line]};
  }
  const METHODS=Object.freeze({CASH:'cash',VENMO:'venmo'});
  function totalWithTip(subtotal,tip){if(!cents(subtotal)||!cents(tip)||!cents(subtotal+tip))throw Error('Invalid total');return subtotal+tip;}
