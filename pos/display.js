@@ -10,8 +10,7 @@ const Wizard=window.PersenPOSWizard;
 const Experience=window.PersenPOSExperience;
 const PAYMENT_INFO={
  cash:{label:'Cash',identifier:null,message:'Please pay the cashier. Your order is only recorded as paid once the cashier confirms the money received.'},
- venmo_info:{label:'Venmo instructions only',identifier:'@persenapparel',message:'Business account: @persenapparel. Ask the cashier to confirm this is an approved account before sending anything. This screen cannot verify funds or complete the payment.'},
- apple_cash_info:{label:'Apple Cash via Messages — not Apple Pay',identifier:'(631) 644-0633',message:'Contact: (631) 644-0633. Ask the cashier to confirm the number is registered for Apple Cash before sending. This screen cannot verify or complete a payment.'}
+ venmo_info:{label:'Venmo instructions only',identifier:'@persenapparel',message:'Business account: @persenapparel. Ask the cashier to confirm this is an approved account before sending anything. This screen cannot verify funds or complete the payment.'}
 };
 const form=$('contact');
 const stepSections=[...document.querySelectorAll('.wizard-step')];
@@ -115,7 +114,7 @@ function reviewSummary(){
  const target=$('wizard-review-summary');
  target.replaceChildren();
  const v=Wizard.summary(values());
- const receipt={print:'Printed',email:'Email',both:'Printed + Email'}[v.receipt.mode]||'Printed';
+ const receipt={print:'Printed',email:'Email',both:'Printed + Email',none:'No receipt'}[v.receipt.mode]||'Printed';
  const payment=PAYMENT_INFO[v.payment]?.label||'Cash';
  const rows=[
   ['Phone',v.phone],
