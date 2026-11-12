@@ -142,3 +142,27 @@
 @keyframes persen-light-twinkle{from{opacity:.78;filter:drop-shadow(0 0 3px #ffe3a6)}to{opacity:1;filter:drop-shadow(0 0 10px #ffe3a6)}}
 @media(max-width:700px){.seasonal-studio .seasonal-preview[data-theme="christmas"]{padding-top:65px}}
 @media(prefers-reduced-motion:reduce){.seasonal-studio .seasonal-preview[data-theme="christmas"]::after{animation:none}}
+
+/* Studio photo previews must show the entire garment, never crop the design. */
+.v42-photo{background:#f4f7fb}
+.v42-photo img{width:100%;height:260px;max-width:100%;object-fit:contain;object-position:center;padding:10px}
+.v54-studio-thumb{width:100%;height:auto;max-width:260px;max-height:170px;object-fit:contain;object-position:center;background:#f4f7fb}
+.seasonal-editor-merch{object-fit:contain;object-position:right bottom}
+@media(max-width:650px){.v42-photo img{height:220px;padding:8px}}
+/* Optional seasonal accents are visual only and must never block editing. */
+.seasonal-studio .seasonal-preview[data-theme="christmas"] .seasonal-preview-particles{pointer-events:none}
+@media(prefers-reduced-motion:reduce){
+ .seasonal-studio .seasonal-preview[data-theme="christmas"]::after,
+ .seasonal-studio .seasonal-preview[data-theme="christmas"] .seasonal-preview-particles::before{animation:none!important}
+}
+
+.seasonal-preview-devices{display:flex;flex-wrap:wrap;gap:8px;min-width:0;padding:4px 0 0;border:0}
+.seasonal-preview-devices legend{color:#183b63;font-size:13px;font-weight:800}
+.seasonal-preview-devices label{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1px solid #cfdceb;border-radius:10px;background:#f7faff;color:#183b63;cursor:pointer}
+.seasonal-preview-devices label:has(input:checked){border-color:#215dd8;background:#eaf1ff}
+.seasonal-preview-devices input{width:16px;height:16px;flex:none;margin:0;accent-color:#215dd8}
+.seasonal-studio form:has([name="previewDevice"][value="tablet"]:checked) .seasonal-preview{width:100%;max-width:768px;justify-self:center}
+.seasonal-studio form:has([name="previewDevice"][value="phone"]:checked) .seasonal-preview{width:100%;max-width:390px;justify-self:center;min-height:420px;padding:35px 22px 225px}
+.seasonal-studio form:has([name="previewDevice"][value="phone"]:checked) .seasonal-preview h3{font-size:clamp(24px,8vw,35px)}
+.seasonal-studio form:has([name="previewDevice"][value="phone"]:checked) .seasonal-editor-merch{right:0;bottom:-6%;width:90%;height:255px}
+.seasonal-studio form:has([name="previewDevice"][value="phone"]:checked) .seasonal-preview[data-theme="christmas"]{padding-top:65px}
