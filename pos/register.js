@@ -601,7 +601,8 @@ function scanSku(input){
     t.product_name.toLowerCase()===String(variant.product_name).toLowerCase());
   if(!allowed){out.textContent='This size is not assigned to the selected event. Change event or search its products.';return;}
  }
- const scanCart=cart.filter(x=>x.stock_id).map(x=>({variantId:x.stock_id,quantity:x.qty}));
+ // Include existing product ID for accurate repeated-scan stock checks.
+ const scanCart=cart.filter(x=>x.stock_id).map(x=>({productId:String(x.stock_id),variantId:x.stock_id,quantity:x.qty}));
  let result;
  try{result=model.scanCart(index,scanCart,code)}catch(e){
   out.textContent='Could not scan: '+e.message;return;
