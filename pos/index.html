@@ -55,27 +55,12 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 </head>
 <body>
 <header><img class="logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><strong>PERSEN <em>POS</em></strong></header>
-<main id="pin-gate" class="pin-wrap" aria-label="POS access PIN">
-  <section class="pin-card">
-   <div class="pin-badge" aria-hidden="true">🔒</div>
-   <span class="eyebrow">PERSEN APPAREL · PRIVATE POS</span>
-   <h1>Welcome to Persen POS</h1>
-   <p>Enter your four-digit access PIN to choose a device. Your account sign-in comes next.</p>
-   <form id="pin-form" autocomplete="off">
-    <label for="pin-input">Access PIN</label>
-    <input id="pin-input" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required aria-describedby="pin-error">
-    <button type="submit">Unlock POS →</button>
-    <p id="pin-error" class="pin-error" role="status" aria-live="polite"></p>
-   </form>
-   <p class="pin-foot">For authorized team devices only · Account login is still required</p>
-  </section>
-</main>
-<main id="device-dashboard" hidden>
-<button type="button" id="lock-dashboard" class="dashboard-logout">Lock dashboard</button>
+<main id="device-dashboard">
+
 <span class="eyebrow">PERSEN APPAREL · DEVICE DASHBOARD</span>
 <h1>Your checkout, all in one place.</h1>
 <p class="subtitle">Use one iPad for the cashier, a second iPad for customers, and your Dell laptop for the NELKO receipt station. Choose the device you are setting up.</p>
-<div class="test" role="status">Development test build — not approved to accept real payments. Sign-in does not replace the customer-pairing and database security checks. Use private Cloudflare Access and a separate test database.</div>
+<div class="test" role="status">Development test build — not approved to accept real payments. This dashboard has NO client-side PIN gate. Before making any staging hostname accessible, require and verify Cloudflare Access on every hostname and keep Supabase authentication/RLS enabled. Use only a separate test database.</div>
 <section class="grid" aria-label="POS work areas">
 <article class="card">
 <div class="icon" aria-hidden="true">▣</div>
@@ -110,26 +95,7 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 </main>
 <footer>© Persen Apparel · Custom apparel on Long Island</footer>
 
-<script>
-(function(){
- 'use strict';
- // This is a convenience screen only. The four digits are shipped to the browser
- // and cannot replace Cloudflare Access, account sign-in, RLS or device pairing.
- const PIN='1790',STORAGE_KEY='persen-pos-front-pin-unlocked';
- const gate=document.getElementById('pin-gate'),dashboard=document.getElementById('device-dashboard');
- const field=document.getElementById('pin-input'),error=document.getElementById('pin-error');
- function openDashboard(){gate.hidden=true;dashboard.hidden=false;dashboard.querySelector('h1')?.setAttribute('tabindex','-1');dashboard.querySelector('h1')?.focus();}
- function lockDashboard(){try{sessionStorage.removeItem(STORAGE_KEY)}catch(_){}dashboard.hidden=true;gate.hidden=false;field.value='';error.textContent='';field.focus();}
- document.getElementById('pin-form').addEventListener('submit',function(e){
-   e.preventDefault();
-   if(field.value!==PIN){error.textContent='Incorrect PIN. Please try again.';field.value='';field.focus();return}
-   try{sessionStorage.setItem(STORAGE_KEY,'yes')}catch(_){}
-   error.textContent='';field.value='';openDashboard();
- });
- document.getElementById('lock-dashboard').addEventListener('click',lockDashboard);
- try{if(sessionStorage.getItem(STORAGE_KEY)==='yes'){openDashboard();return}}catch(_){}
- field.focus();
-})();
-</script>
+<!-- Security boundary: restrict ALL staging hostnames with Cloudflare Access; 
+     owner and staff account authorization must be enforced server-side. -->
 </body>
 </html>
