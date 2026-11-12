@@ -123,7 +123,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Print station test print, paper selection, arm',async()=>{
   printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');await visible(printer,'#station-panel');
-  await printer.locator('#paper').selectOption('58x120');await printer.locator('#test-print').click();await txt(printer,'#station-message','Test sent to Chrome');
+  await printer.locator('#paper').selectOption('continuous-100');await printer.locator('#test-print').click();await txt(printer,'#station-message','Test sent to Chrome');
   assert.ok(Number(await printer.evaluate(()=>localStorage.getItem('__prints')))>0);
   assert.equal(await printer.locator('#arm').isDisabled(),true,'Physical confirmation must gate automatic printing');
   await printer.locator('#test-printed').check();
