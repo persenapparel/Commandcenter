@@ -758,3 +758,7 @@ body[data-cashier-stage="handoff"] .cash-handoff{border:0;background:#fff;paddin
 #scan-status {margin:.6rem 0; font-weight:600; color:#13345d}
 #scan-search {min-height:48px}
 @media(prefers-reduced-motion:reduce){.pos-scan-form *{animation:none!important;transition:none!important}}
+
+.pos-label-export{margin:.8rem 0 1rem;padding:.7rem 1rem;background:#fff;border:1px solid #d4e2f5;border-radius:12px}
+.pos-label-export button{min-height:48px;font-weight:700}
+.pos-label-export .hint{margin:.45rem 0 0}
