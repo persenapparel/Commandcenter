@@ -18,17 +18,15 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  await ctx.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.fulfill({status:200,contentType:'application/javascript',body:''}));
  let admin,cashier,customer,printer;
  try{
- await step('Device dashboard PIN, unlock, lock and routes',async()=>{
+ await step('Device dashboard routes without unsafe browser-stored PIN',async()=>{
   const p=await ctx.newPage();opened.push(p);assert.equal((await p.goto(url)).status(),200);
-  await visible(p,'#pin-gate');assert.equal(await p.locator('#device-dashboard').isVisible(),false);
-  await p.locator('#pin-input').fill('0000');await p.locator('#pin-form button[type=submit]').click();
-  await txt(p,'#pin-error','Incorrect PIN');assert.equal(await p.locator('#device-dashboard').isVisible(),false);
-  await p.locator('#pin-input').fill('1790');await p.locator('#pin-form button[type=submit]').click();
-  await visible(p,'#device-dashboard');assert.equal(await p.locator('#pin-gate').isVisible(),false);
-  for(const file of ['admin.html','register.html','display.html','print-station.html'])assert.equal(await p.locator('a[href="'+file+'"]').count(),1);
+  await visible(p,'#device-dashboard');
+  assert.equal(await p.locator('#pin-gate').count(),0);
+  assert.equal(await p.locator('#pin-input').count(),0);
+  assert.match(await p.locator('.test').innerText(),/Cloudflare Access/);
+  for(const file of ['admin.html','register.html','display.html','print-station.html'])
+   assert.equal(await p.locator('a[href="'+file+'"]').count(),1);
   await p.reload();await visible(p,'#device-dashboard');
-  await p.locator('#lock-dashboard').click();await visible(p,'#pin-gate');
-  assert.equal(await p.locator('#device-dashboard').isVisible(),false);
  });
  await step('Laptop owner authentication and inventory loaded',async()=>{admin=await ctx.newPage();opened.push(admin);await admin.goto(url+'admin.html');await visible(admin,'#workspace');await txt(admin,'#stat-variants','2');assert.ok(await admin.locator('a[href="inventory.html"]').count()>=1)});
  await step('Shared Sales Products grid adds multiple sizes',async()=>{
@@ -128,7 +126,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
   await customer.locator('#email-address').fill('test-pos@example.com');await customer.locator('#wizard-next').click();
   await customer.locator('input[name=payment_preference][value=venmo_info]').check();await txt(customer,'#payment-instructions','@persenapparel');
-  await customer.locator('input[name=payment_preference][value=apple_cash_info]').check();await txt(customer,'#payment-instructions','631');
+  assert.equal(await customer.locator('input[name=payment_preference][value=apple_cash_info]').count(),0);
   await customer.locator('input[name=payment_preference][value=cash]').check();await customer.locator('#wizard-next').click();await txt(customer,'#step-promos-title','offers');
  });
  await step('Live help request reaches cashier and laptop',async()=>{
