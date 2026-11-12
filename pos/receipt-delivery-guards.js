@@ -1,7 +1,7 @@
 /* Persen POS receipt delivery preparation. NO network sending, production writes or SMS integration. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else if(root)root.PersenPOSReceiptDelivery=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
-const CHANNELS=Object.freeze(['print','email','sms','none']);
+const CHANNELS=Object.freeze(['print','email','none']);
 const STATUSES=Object.freeze(['not_requested','queued','sending','sent','delivered','failed','unavailable']);
 function emailAddress(value){
  const s=String(value??'').trim();
@@ -23,8 +23,8 @@ function request({orderId,channel,address,consent=false,committed=false}={}){
  if(!/^[a-z0-9][a-z0-9_-]{3,99}$/i.test(id))throw Error('Saved order ID required');
  if(!committed)throw Error('Receipt delivery requires a committed sale');
  if(!CHANNELS.includes(channel))throw Error('Unsupported receipt channel');
- if((channel==='email'||channel==='sms')&&consent!==true)throw Error('Customer must request this receipt');
- const recipient=channel==='email'?emailAddress(address):channel==='sms'?usPhone(address):null;
+ if(channel==='email'&&consent!==true)throw Error('Customer must request this receipt');
+ const recipient=channel==='email'?emailAddress(address):null;
  // Key identifies the ONE delivery request for this order and channel. Backend must
  // enforce unique(order_id, channel) and authenticated authorization atomically.
  return Object.freeze({order_id:id,channel,recipient,idempotency_key:'receipt:'+id+':'+channel,status:channel==='none'?'not_requested':'queued'});
@@ -41,7 +41,7 @@ function safeBusinessContact({email,phone}={}){
  return Object.freeze({email:email?emailAddress(email):'',phone:phone?usPhone(phone):''});
 }
 function canSend({channel,providerReady=false,customerRequested=false,committed=false}={}){
- return (channel==='email'||channel==='sms')&&providerReady===true&&customerRequested===true&&committed===true;
+ return channel==='email'&&providerReady===true&&customerRequested===true&&committed===true;
 }
 return {CHANNELS,STATUSES,emailAddress,usPhone,request,transition,safeBusinessContact,canSend};
 });

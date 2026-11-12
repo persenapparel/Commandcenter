@@ -134,9 +134,8 @@ test('Digital email receipt escapes item HTML',()=>{
  const result=Digital.email(sale);assert.ok(result.subject.includes('abcd1234'.toUpperCase()));
  assert.ok(result.html.includes('&lt;script&gt;'));assert.ok(!result.html.includes('<script>'));
 });
-test('Text receipt is transactional, not marketing consent',()=>{
- const sale={id:'12345678',items:[],subtotal_cents:2000,discount_cents:0,tax_cents:0,total_cents:2000};
- const body=Digital.sms(sale);assert.ok(body.includes('$20.00'));assert.ok(body.includes('one-time purchase receipt'));
+test('Digital receipts do not offer SMS sending',()=>{
+ assert.equal(Digital.sms,undefined);
 });
 test('Digital receipt excludes untrusted review links',()=>{
  const sale={id:'12345678',items:[],subtotal_cents:2000,discount_cents:0,tax_cents:0,total_cents:2000};
@@ -193,7 +192,11 @@ test('Email receipt does not request SMS or paper',()=>{
 });
 test('Both receipt mode requests print and email only',()=>{
  assert.deepEqual(Wizard.receipt('both'),{mode:'both',print:true,email:true,sms:false});
- assert.equal(Wizard.receiptModes.length,3);
+ assert.equal(Wizard.receiptModes.length,4);
+});
+test('No receipt requests no sending and Apple Cash is blocked',()=>{
+ assert.deepEqual(Wizard.receipt('none'),{mode:'none',print:false,email:false,sms:false});
+ assert.ok(Wizard.checkStep('payment',{payment:'apple_cash_info'}));
 });
 test('Email is required for an emailed receipt',()=>{
  assert.ok(Wizard.checkStep('email',{receipt:'both',email:''}));

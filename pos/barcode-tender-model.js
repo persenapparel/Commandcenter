@@ -8,13 +8,14 @@
  const MAX_CENTS=100000000;
  const cents=n=>Number.isSafeInteger(n)&&n>=0&&n<=MAX_CENTS;
  const text=x=>typeof x==='string'&&x.length>0&&x.length<=120&&/^[\x20-\x7e]+$/.test(x);
+ const displayLabel=x=>typeof x==='string'&&x.trim().length>0&&x.length<=120&&!/[\x00-\x1f\x7f]/.test(x);
  const normalizeCode=x=>{if(!text(x))throw Error('Invalid barcode');const code=x.trim().toUpperCase();if(!/^[A-Z0-9_-]{3,64}$/.test(code))throw Error('Unsupported barcode characters');return code;};
  const skuFor=(productId,variantId)=>{const p=String(productId).trim().toUpperCase(),v=String(variantId).trim().toUpperCase();if(!/^[A-Z0-9_]{1,24}$/.test(p)||!/^[A-Z0-9_]{1,24}$/.test(v))throw Error('Invalid SKU component');return 'PA-'+p+'-'+v;};
  function buildBarcodeIndex(variants){
   if(!Array.isArray(variants))throw Error('Invalid variants');
   const index=new Map();
   for(const v of variants){
-   if(!v||!text(v.productId)||!text(v.variantId)||!text(v.label)||!cents(v.unitCents)||!Number.isSafeInteger(v.available)||v.available<0)throw Error('Invalid variant');
+   if(!v||!text(v.productId)||!text(v.variantId)||!displayLabel(v.label)||!cents(v.unitCents)||!Number.isSafeInteger(v.available)||v.available<0)throw Error('Invalid variant');
    const code=normalizeCode(v.barcode||skuFor(v.productId,v.variantId));
    if(index.has(code))throw Error('Duplicate barcode');
    index.set(code,{productId:v.productId,variantId:v.variantId,label:v.label,unitCents:v.unitCents,available:v.available,barcode:code});

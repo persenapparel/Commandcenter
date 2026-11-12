@@ -49,3 +49,10 @@ test('rejects unverified tender statuses, negative cents and overflow',()=>{
  assert.throws(()=>m.totalWithTip(100,-1),/Invalid/);
  assert.throws(()=>m.tenderSummary(100,[{method:'cash',amountCents:100000001,status:'received'}]),/Invalid/);
 });
+
+test('non-ASCII product display labels work with ASCII Code128 values',()=>{
+ const ix=m.buildBarcodeIndex([{productId:'id-1',variantId:'size-m',label:'Long Island · Noël Hoodie — M',barcode:'PA-HOODIE-M',unitCents:4000,available:1}]);
+ const result=m.scanCart(ix,[],'pa-hoodie-m');
+ assert.equal(result.status,'added');
+ assert.equal(result.cart[0].label,'Long Island · Noël Hoodie — M');
+});

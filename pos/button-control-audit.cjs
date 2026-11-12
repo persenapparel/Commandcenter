@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const read=f=>fs.readFileSync('pos/'+f,'utf8');
 const suites=[
- ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','pair','copy-venmo','copy-apple-cash','save-template','print','close-variant']],
+ ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','pair','copy-venmo','scan-search','barcode-csv','save-template','print','close-variant']],
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
  ['print-station.html','print-station.js',['arm','disarm','test-print']]
@@ -25,6 +25,7 @@ const expectations=[
  ['print-station.js',["$('paper').onchange","$('print-login').onsubmit","$('arm').onclick","$('disarm').onclick","$('test-print').onclick","retry.onclick="]]
 ];
 for(const [file,tokens] of expectations){const code=read(file);for(const token of tokens)assert.ok(code.includes(token),file+' is missing action '+token)}
+assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
 const build=read('build-pages.mjs');
 assert.ok(!build.includes("'test-fake-supabase.js'")&&!build.includes("'browser-full-flow-test.cjs'"),'Mock test files must not deploy');
 console.log('PASS: '+checked+' named controls, four unique-ID checks, additional forms and generated controls');

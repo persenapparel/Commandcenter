@@ -35,7 +35,7 @@
   return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6);
  }
  function validPhone(v){return digits(v).length===10&&String(v||'').replace(/\D/g,'').length===10}
- const receiptModes=Object.freeze(['print','email','both']);
+ const receiptModes=Object.freeze(['print','email','both','none']);
  function receipt(mode){
   const choice=receiptModes.includes(mode)?mode:'print';
   return {mode:choice,print:choice==='print'||choice==='both',email:choice==='email'||choice==='both',sms:false};
@@ -50,10 +50,10 @@
   const choice=receipt(values?.receipt);
   switch(stepId){
    case 'phone':return validPhone(phone)?'':'Please enter all 10 digits of your phone number.';
-   case 'receipt':return receiptModes.includes(values?.receipt)?'':'Choose Printed, Email, or Both.';
+   case 'receipt':return receiptModes.includes(values?.receipt)?'':'Choose Printed, Email, Both, or No Receipt.';
    case 'email':return choice.email&&!email?'An email address is required for an emailed receipt.':
        email&&!validEmail(email)?'Please enter a valid email address, or leave this blank for a printed receipt.':'';
-   case 'payment':return ['cash','venmo_info','apple_cash_info'].includes(values?.payment)?'':'Select a payment option.';
+   case 'payment':return ['cash','venmo_info'].includes(values?.payment)?'':'Select a payment option.';
    default:return '';
   }
  }

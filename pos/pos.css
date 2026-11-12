@@ -747,3 +747,18 @@ body[data-cashier-stage="handoff"] .cashier-payment-help{display:none}
 body[data-cashier-stage="handoff"] #cashier-stage-header .cashier-stage-cancel{display:none}
 body[data-cashier-stage="handoff"] .cash-handoff{border:0;background:#fff;padding:24px}
 @media(max-width:650px){.cashier-stage-header{padding:22px 20px;margin:-22px -22px 20px}.customer-welcome h1{letter-spacing:-.04em}}
+
+/* Staging register scanner field: original Persen UI, no required hardware. */
+.pos-scan-form {padding:1rem; margin:0 0 1rem; border:2px solid #4567a0; background:#f3f7ff; border-radius:16px}
+.pos-scan-form label {display:block; margin-bottom:.5rem; color:#163963}
+.pos-scan-form label small {display:block; font-weight:400; margin-top:.25rem}
+.pos-scan-actions {display:flex; flex-wrap:wrap; gap:.6rem; align-items:stretch}
+.pos-scan-actions input {flex:2 1 230px; min-height:52px; font-size:1.1rem}
+.pos-scan-actions button {flex:1 1 160px; min-height:52px}
+#scan-status {margin:.6rem 0; font-weight:600; color:#13345d}
+#scan-search {min-height:48px}
+@media(prefers-reduced-motion:reduce){.pos-scan-form *{animation:none!important;transition:none!important}}
+
+.pos-label-export{margin:.8rem 0 1rem;padding:.7rem 1rem;background:#fff;border:1px solid #d4e2f5;border-radius:12px}
+.pos-label-export button{min-height:48px;font-weight:700}
+.pos-label-export .hint{margin:.45rem 0 0}

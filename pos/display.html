@@ -75,11 +75,11 @@
     <section class="wizard-step" data-step="receipt" aria-labelledby="step-receipt-title" hidden>
       <span class="step-icon" aria-hidden="true">▤</span>
       <h1 id="step-receipt-title" tabindex="-1">How would you like your receipt?</h1>
-      <p class="step-subtitle">Choose one option. You can take home a printed receipt, receive an email, or both.</p>
+      <p class="step-subtitle">Choose printed, email, both, or no receipt. No text messages are sent.</p>
       <div class="wizard-choice-stack" role="radiogroup" aria-label="Receipt delivery">
         <label class="wizard-choice"><input type="radio" name="receipt_mode" value="print" checked><span class="choice-icon">🧾</span><span class="choice-copy"><strong>Printed</strong><small>Pick it up from the cashier</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
         <label class="wizard-choice"><input type="radio" name="receipt_mode" value="email"><span class="choice-icon">✉</span><span class="choice-copy"><strong>Email</strong><small>Sent to the address you enter next, after email delivery is enabled</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
-        <label class="wizard-choice"><input type="radio" name="receipt_mode" value="both"><span class="choice-icon">▤</span><span class="choice-copy"><strong>Both</strong><small>A printed copy and an emailed copy</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
+        <label class="wizard-choice"><input type="radio" name="receipt_mode" value="both"><span class="choice-icon">▤</span><span class="choice-copy"><strong>Both</strong><small>A printed copy and an emailed copy</small></span><span class="choice-tick" aria-hidden="true">✓</span></label><label class="wizard-choice"><input type="radio" name="receipt_mode" value="none"><span class="choice-icon">–</span><span class="choice-copy"><strong>No receipt</strong><small>No paper or email needed</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
       </div>
       <p class="step-helper">Email receipt delivery is still being connected. Printed receipts require the NELKO print station to be set up.</p>
     </section>
@@ -99,7 +99,6 @@
       <div class="wizard-choice-stack" role="radiogroup" aria-label="Payment method information">
         <label class="wizard-choice"><input type="radio" name="payment_preference" value="cash" checked><span class="choice-icon">💵</span><span class="choice-copy"><strong>Cash</strong><small>Pay the cashier directly</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
         <label class="wizard-choice"><input type="radio" name="payment_preference" value="venmo_info"><span class="choice-icon">V</span><span class="choice-copy"><strong>Venmo information</strong><small>Manual verification — @persenapparel</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
-        <label class="wizard-choice"><input type="radio" name="payment_preference" value="apple_cash_info"><span class="choice-icon">●</span><span class="choice-copy"><strong>Apple Cash information</strong><small>Via Messages — not Apple Pay checkout</small></span><span class="choice-tick" aria-hidden="true">✓</span></label>
       </div>
       <div id="payment-instructions" class="payment-instructions" role="status" aria-live="polite"><strong>Cash</strong><p>Pay the cashier. Selecting another option doesn't send money or complete your order.</p></div>
     </section>
@@ -142,7 +141,7 @@
       <h1 id="step-review-title" tabindex="-1">Almost done!</h1>
       <p class="step-subtitle">Review your choices. Your cashier will confirm the payment and provide your receipt.</p>
       <div id="wizard-review-summary" class="wizard-review-summary"></div>
-      <p class="step-helper">Email receipts aren't being sent in this development build. Selecting Venmo or Apple Cash only displays instructions.</p>
+      <p class="step-helper">Email delivery requires verified setup; this development build does not send live receipts. Venmo instructions are not payment confirmation.</p>
     </section>
     <div class="wizard-navigation">
       <button id="wizard-back" type="button" class="wizard-back" hidden>← Back</button>
@@ -156,7 +155,7 @@
   </button>
   <p id="wizard-help-state" class="customer-help-state" role="status" aria-live="polite">Your cashier can see which step you're on, but not what you type.</p>
 </div>
-<p id="wizard-secure-note" class="wizard-secure-note">Your phone and email are used for your order. Promotions are optional.</p>
+<p id="wizard-secure-note" class="wizard-secure-note">Your phone number is saved for order contact, not text receipts. We do not send SMS. Marketing is optional.</p>
   </form>
   <div id="waiting-payment" class="kiosk-finished" hidden><span class="finished-icon" aria-hidden="true">⌛</span><h2>Waiting for your cashier</h2><p>Your choices were saved. Please give the cashier your cash. Your order is not finished yet.</p></div>
   <div id="waiting-change" class="kiosk-finished" hidden role="status" aria-live="polite"><span class="finished-icon" aria-hidden="true">💵</span><h2>Cash received</h2><p id="customer-change-message">Please wait while your cashier prepares your change.</p><strong id="customer-change" class="customer-change-amount">$0.00</strong><p>Please collect your change and receipt. Your cashier will finish the order.</p></div>

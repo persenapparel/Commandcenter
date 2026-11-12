@@ -38,10 +38,5 @@ function email(s,extras={}){
  const html='<html><body style="margin:0;padding:22px;background:#f3f7fc;font:15px Arial,sans-serif;color:#1b3354"><div style="max-width:580px;margin:auto;background:#fff;padding:25px;border-radius:15px">'+logoHTML+'<h2 style="color:'+brand+';margin-top:0">PERSEN APPAREL</h2><h3>Thank you for your order!</h3><p>Receipt #'+short+'</p>'+holiday+'<table style="width:100%;border-collapse:collapse">'+lines+'</table><p>Subtotal: '+escape(money(s.subtotal_cents))+' | Discount: '+escape(money(s.discount_cents))+' | Tax: '+escape(money(s.tax_cents))+'</p><h2>Total paid: '+escape(money(s.total_cents))+'</h2>'+review+'<p>Need custom apparel? Visit <a href="https://persenapparel.com">persenapparel.com</a>.</p><p>Thank you for supporting a Long Island business!</p></div></body></html>';
  return {subject:'Your Persen Apparel receipt #'+String(s.id||'').slice(0,8).toUpperCase(),html};
 }
-function sms(s){
- validateSale(s);
- const id=String(s.id||'').slice(0,8).toUpperCase();
- return 'Persen Apparel: Thank you for your order! Receipt #'+id+', total '+money(s.total_cents)+'. Questions or custom apparel? persenapparel.com. This is a one-time purchase receipt.';
-}
-return {escape,validateSale,verifiedBrandImage,verifiedAccent,email,sms};
+return {escape,validateSale,verifiedBrandImage,verifiedAccent,email};
 });

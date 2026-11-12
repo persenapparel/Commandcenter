@@ -19,10 +19,7 @@ test('requires committed sale and explicit receipt request',()=>{
  assert.throws(()=>D.request({...base,channel:'none',orderId:'invalid id'}));
 });
 test('stable per-order per-channel deduplication keys',()=>{
- const a=D.request({...base,channel:'sms',address:'6315550199',consent:true});
- const b=D.request({...base,channel:'sms',address:'(631) 555-0199',consent:true});
- assert.equal(a.idempotency_key,b.idempotency_key);
- assert.equal(a.recipient,'+16315550199');
+ assert.throws(()=>D.request({...base,channel:'sms',address:'6315550199',consent:true}),/Unsupported/);
  assert.equal(D.request({...base,channel:'email',address:'a@b.com',consent:true}).idempotency_key,'receipt:sale_1234:email');
  assert.equal(D.request({...base,channel:'none'}).status,'not_requested');
 });
@@ -36,8 +33,8 @@ test('cannot claim provider success without provider confirmation',()=>{
  assert.equal(D.transition('failed','queued'),'queued');
 });
 test('delivery requires provider readiness and customer choice',()=>{
- assert.equal(D.canSend({channel:'sms',providerReady:true,customerRequested:true,committed:true}),true);
- assert.equal(D.canSend({channel:'sms',providerReady:false,customerRequested:true,committed:true}),false);
+ assert.equal(D.canSend({channel:'sms',providerReady:true,customerRequested:true,committed:true}),false);
+ assert.equal(D.canSend({channel:'email',providerReady:true,customerRequested:true,committed:true}),true);
  assert.equal(D.canSend({channel:'print',providerReady:true,customerRequested:true,committed:true}),false);
  assert.deepEqual(D.safeBusinessContact({}),{email:'',phone:''});
 });
