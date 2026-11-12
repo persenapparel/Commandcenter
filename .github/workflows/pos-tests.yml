@@ -57,6 +57,8 @@ jobs:
           node --check pos/print-station.js
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Verify paired live cart, tiles and scanner integrations
+        run: node pos/live-cart-structure-test.cjs
       - name: Run connected barcode and receipt-safety tests (offline)
         run: node --test pos/tests/*.test.cjs
       - name: Fail if a browser PIN is embedded in the staging home
@@ -84,6 +86,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f inventory/inventory-hub-2026.sql
           psql -v ON_ERROR_STOP=1 -f pos/pos-schema-review.sql
           psql -v ON_ERROR_STOP=1 -f pos/STAGING-DISPLAY-PAIRING.sql
+          psql -v ON_ERROR_STOP=1 -f pos/square-live-cart-staging.sql
           psql -v ON_ERROR_STOP=1 -f pos/pos-customer-answers-v2.sql
           psql -v ON_ERROR_STOP=1 -f pos/pos-customer-answers-tests.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql-integration-test.sql
