@@ -455,15 +455,14 @@ begin
   jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,
    'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,
    'rating',c.rating,'custom_interest',c.custom_interest,
-   'receipt_print',c.receipt_print,'receipt_email',c.receipt_email,
+   'receipt_print',true,'receipt_email',c.receipt_email,
    'payment_preference',c.payment_preference),
   c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,
   'cash',p_tender_cents,change_due,payout
  ) returning id into sid;
- if c.receipt_print then
-  insert into public.pos_print_jobs(sale_id,owner_id,register_id)
-  values(sid,(select auth.uid()),c.register_id);
- end if;
+ -- Epson vendor-show policy: one print job (two cut copies) for each saved cash sale.
+ insert into public.pos_print_jobs(sale_id,owner_id,register_id)
+ values(sid,(select auth.uid()),c.register_id);
  if c.receipt_email and nullif(trim(coalesce(c.email,'')),'') is not null then
   insert into public.pos_receipt_delivery_jobs(sale_id,owner_id,channel)
   values(sid,(select auth.uid()),'email');
