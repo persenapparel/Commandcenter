@@ -1,0 +1,91 @@
+name: Donna native compile check
+
+# This check never deploys, signs an app, or touches a business service.
+# Only the isolated Donna branch can trigger it automatically.
+on:
+  push:
+    branches: [codex/project-donna-free-v1]
+    paths:
+      - native/Donna/**
+      - .github/workflows/donna-native-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: donna-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    # Standard public-repository hosted runners are free. Never run if made private.
+    if: github.repository == 'persenapparel/Commandcenter' && github.event.repository.private == false
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      XCODEGEN_VERSION: 2.46.0
+      XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out Donna source
+        # actions/checkout v4.2.2, pinned to the reviewed immutable revision.
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          sparse-checkout: native/Donna
+
+      - name: Verify the preinstalled baseline Apple SDK
+        run: |
+          set -euo pipefail
+          test -d "$DEVELOPER_DIR"
+          xcodebuild -version
+          xcodebuild -showsdks
+          test "$(xcrun --sdk iphonesimulator --show-sdk-version | cut -d. -f1)" -ge 26
+
+      - name: Download and verify pinned XcodeGen
+        run: |
+          set -euo pipefail
+          tool_dir="$RUNNER_TEMP/donna-xcodegen"
+          mkdir -p "$tool_dir"
+          curl --fail --location --retry 2 \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip" \
+            --output "$tool_dir/xcodegen.zip"
+          printf '%s  %s\n' "$XCODEGEN_SHA256" "$tool_dir/xcodegen.zip" | shasum --algorithm 256 --check
+          ditto -x -k "$tool_dir/xcodegen.zip" "$tool_dir"
+          chmod +x "$tool_dir/xcodegen/bin/xcodegen"
+          "$tool_dir/xcodegen/bin/xcodegen" --version
+
+      - name: Generate Donna's Xcode project
+        working-directory: native/Donna
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/donna-xcodegen/xcodegen/bin/xcodegen" generate --spec project.yml
+
+      - name: Compile for iOS Simulator without signing
+        working-directory: native/Donna
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project Donna.xcodeproj \
+            -scheme Donna \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DonnaDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Describe verification scope
+        run: |
+          printf '%s\n' \
+            '## Donna native compilation' \
+            'Unsigned iOS Simulator compilation passed on the standard macOS runner.' \
+            'This does not test Apple Intelligence, Siri, Speech, physical iPhone installation, or lock-screen behavior.' \
+            'No app, artifact, cache, signed package, database change, or hosting deployment was published.' \
+            >> "$GITHUB_STEP_SUMMARY"
