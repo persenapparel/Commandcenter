@@ -59,13 +59,13 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 
 <span class="eyebrow">PERSEN APPAREL · DEVICE DASHBOARD</span>
 <h1>Your checkout, all in one place.</h1>
-<p class="subtitle">Recommended: one swivel iPad for cashier and customer checkout. Your Windows laptop still runs the Epson TM-T20IV print service out of sight. Two-iPad mode remains optional.</p>
+<p class="subtitle">Recommended: one swivel iPad for cashier and customer checkout. Your Windows laptop still runs the Epson TM-T20IV print service out of sight. There is no separate customer-facing iPad checkout mode.</p>
 <div class="test" role="status">Development test build — not approved to accept real payments. This dashboard has NO client-side PIN gate. Before making any staging hostname accessible, require and verify Cloudflare Access on every hostname and keep Supabase authentication/RLS enabled. Use only a separate test database.</div>
 <section class="grid" aria-label="POS work areas">
 <article class="card">
 <div class="icon" aria-hidden="true">▣</div>
 <h2>Swivel iPad Register</h2>
-<p>Build the cart, then tap Hand to Customer and swivel the same iPad around. Cashier return requires owner authentication. The separate customer display is still available.</p>
+<p>Build the cart, then tap Hand to Customer and swivel the same iPad around. Cashier return requires owner authentication. The customer-facing checkout runs on this same iPad.</p>
 <a href="register.html">Open Fast Register</a>
 <span class="small">Use on your cashier iPad, laptop or phone · Owner sign-in required</span>
 </article>
@@ -78,20 +78,13 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 </article>
 <article class="card">
 <div class="icon" aria-hidden="true">▤</div>
-<h2>Optional Second iPad</h2>
-<p>Guided checkout with a touch phone dialer, printed/email/both receipt choices, optional questions, and a help button.</p>
-<a href="display.html">Open Customer Display</a>
-<span class="small">Only needed in two-iPad mode. Pair from the cashier; this general link is intentionally unpaired</span>
-</article>
-<article class="card">
-<div class="icon" aria-hidden="true">▤</div>
 <h2>Epson Print Center</h2>
 <p>Monitor print and drawer queues in Laptop Back Office. The secure Epson service runs separately on the Windows laptop after setup and physical verification.</p>
 <a href="admin.html#print-center">Open Epson Print Center</a>
 <span class="small">Read-only owner queue monitor · Windows Node agent required for actual printing</span>
 </article>
 </section>
-<section class="note"><h3>Before taking real orders</h3><p>Finish staged Supabase integration, secure short-lived customer pairing, test actual purchases without money, configure email delivery, and confirm that the Epson can print, cut and open the compatible drawer through the Windows station. The existing Persen Apparel website is separate from this POS preview.</p></section>
+<section class="note"><h3>Before taking real orders</h3><p>Finish staged Supabase integration, secure same-iPad customer handoff and cashier reauthentication, test actual purchases without money, configure email delivery, and confirm that the Epson can print, cut and open the compatible drawer through the Windows station. The existing Persen Apparel website is separate from this POS preview.</p></section>
 </main>
 <footer>© Persen Apparel · Custom apparel on Long Island</footer>
 
