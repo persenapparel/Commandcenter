@@ -12,5 +12,7 @@ const finish=source.match(/async function finishOrder\(\)\{([\s\S]*?)\n\}/);
 assert.ok(finish, 'Finish Order exists');
 assert.match(finish[1],/await check\(db\.rpc\('pos_finish_order'/,'authoritative server closeout');
 assert.match(finish[1],/await showCompletedSale\(saved\)/,'return home only after server closeout');
-assert.ok(finish[1].indexOf('await check(db.rpc(\'pos_finish_order\'')<finish[1].indexOf('await showCompletedSale(saved)'),'finish RPC precedes home');
+const closeIndex=finish[1].indexOf("await check(db.rpc('pos_finish_order'");
+const homeIndex=finish[1].indexOf('await showCompletedSale(saved)');
+assert.ok(closeIndex>=0&&homeIndex>closeIndex,'finish RPC precedes home');
 console.log('PASS: successful finish transitions to home (static only; browser/DB not tested)');
