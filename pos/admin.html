@@ -3,13 +3,13 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Persen POS | Laptop Back Office</title>
-<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="epson-center.css">
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="../config.js"></script><script defer src="../backend.js"></script>
-<script defer src="admin.js"></script>
+<script defer src="epson-center.js"></script><script defer src="admin.js"></script>
 </head><body>
 <header class="top"><div class="brand"><img src="assets/persen-logo.png" alt="" onerror="this.hidden=true">PERSEN <span>POS</span><small>BACK OFFICE</small></div>
-<nav><a href="index.html">Dashboard</a><a href="inventory.html">Sales Products &amp; Inventory</a><a href="register.html">Open Cashier</a><a href="#customer-insights">Customer Responses</a><a href="print-station.html">Print Station</a></nav></header>
+<nav><a href="index.html">Dashboard</a><a href="inventory.html">Sales Products &amp; Inventory</a><a href="register.html">Open Cashier</a><a href="#customer-insights">Customer Responses</a><a href="#print-center">Epson Print Center</a></nav></header>
 <main>
 <div class="eyebrow">LAPTOP CONTROL CENTER · DEVELOPMENT</div>
 <div class="intro"><div><h1>Manage your store.</h1><p>Add all your apparel before an event, change prices and sizes, and keep an eye on checkouts from your laptop.</p></div><div class="env">TEST STAGING · NOT LIVE SALES</div></div>
@@ -43,6 +43,19 @@
 </div>
 <div class="surface launch"><div><span class="eyebrow">READY TO OPEN?</span><h2>Let the cashier iPad do the selling.</h2><p>Products save directly to the protected staging inventory. Open the cashier site on your iPad, tap <strong>Open Register</strong>, and use the big product tiles.</p></div><a class="primary" href="register.html">Open cashier register</a></div>
 </section></div>
+<section class="surface printer-center" id="print-center" aria-labelledby="printer-center-title">
+  <div class="section-head"><div><span class="eyebrow">04 · EPSON PRINT CENTER · STAGING</span><h2 id="printer-center-title">Receipts &amp; cash drawer</h2></div><button id="epson-refresh" type="button">↻ Refresh queues</button></div>
+  <p class="muted">Monitor recent receipt and cash-drawer commands directly in your laptop back office. This page never prints a receipt or opens the cash drawer. The separate Windows Epson station service must be installed, signed in, and running while the laptop is awake.</p>
+  <p class="epson-guard"><strong>Hardware not yet verified.</strong> Use the Epson TM-T20IV RAW Windows station, not the old NELKO browser Print Station. The printer must be physically connected and compatible with the cash drawer. Do not start both print services. Queue status does not prove paper printed, that the cutter ran, or that a drawer opened.</p>
+  <div class="epson-overview">
+   <div class="epson-metric"><span>Receipt jobs</span><strong id="epson-receipt-queue">Checking…</strong></div>
+   <div class="epson-metric"><span>Drawer commands</span><strong id="epson-drawer-queue">Checking…</strong></div>
+  </div>
+  <p class="muted" id="epson-monitor-status" role="status">Sign in to view staging queue history.</p>
+  <p class="muted" id="epson-last-checked"></p>
+  <div class="epson-queues"><div><h3>Recent receipts</h3><div id="epson-receipt-list" aria-live="polite"></div></div><div><h3>Recent drawer commands</h3><div id="epson-drawer-list" aria-live="polite"></div></div></div>
+  <div class="epson-actions"><a href="https://github.com/persenapparel/Commandcenter/blob/feature/pos-epson-t20iv-staging-20261113/pos/epson-station/START-HERE.md" target="_blank" rel="noopener noreferrer">Windows Epson station setup guide ↗</a><a href="register.html">Open cashier register ↗</a></div>
+ </section>
 <section class="surface customer-insights" id="customer-insights" aria-labelledby="customer-insights-title">
  <div class="section-head insights-head">
   <div><span class="eyebrow">05 · CUSTOMER RESPONSES</span><h2 id="customer-insights-title">Checkout Insights</h2></div>
