@@ -199,7 +199,7 @@ create policy pos_template_owner on public.pos_receipt_templates for all to auth
 -- Activate a saved receipt campaign for this owner; only one may be active.
 -- Atomic owner-scoped switch prevents two cashier tabs from producing a unique-index conflict.
 create or replace function public.pos_activate_receipt_template(p_template uuid)
-returns boolean language plpgsql security definer set search_path='' as $
+returns boolean language plpgsql security definer set search_path='' as $$
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then raise exception 'Unauthorized'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('pos.receipt.'||(select auth.uid())::text));
@@ -210,7 +210,7 @@ begin
  update public.pos_receipt_templates set active=false where owner_id=(select auth.uid()) and active;
  update public.pos_receipt_templates set active=true,updated_at=now() where id=p_template and owner_id=(select auth.uid());
  return found;
-end $;
+end $$;
 revoke all on function public.pos_activate_receipt_template(uuid) from public,anon;
 grant execute on function public.pos_activate_receipt_template(uuid) to authenticated;
 
