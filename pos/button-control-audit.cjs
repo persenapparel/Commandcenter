@@ -6,7 +6,7 @@ const suites=[
  ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','pair','copy-venmo','scan-search','barcode-csv','save-template','print','close-variant']],
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
- ['print-station.html','print-station.js',['arm','disarm','test-print']]
+ ['admin.html','epson-center.js',['epson-refresh']]
 ];
 let checked=0;
 for(const [page,script,buttons] of suites){
@@ -22,7 +22,7 @@ const expectations=[
  ['admin.js',["$('create-products').onsubmit","$('event-form').onsubmit","$('login').onsubmit","$('refresh').onclick"]],
  ['register.js',["by('new-event').addEventListener","by('new-product').addEventListener","by('edit-event').addEventListener","by('custom').onsubmit","by('login').onsubmit","[data-discount]","button.onclick="]],
  ['display.js',["[data-digit]","receipt_mode","wizard-next","wizard-finish","wizard-help"]],
- ['print-station.js',["$('paper').onchange","$('print-login').onsubmit","$('arm').onclick","$('disarm').onclick","$('test-print').onclick","retry.onclick="]]
+ ['epson-center.js',["'epson-refresh'","pos_print_jobs","pos_drawer_open_jobs","Promise.allSettled"]]
 ];
 for(const [file,tokens] of expectations){const code=read(file);for(const token of tokens)assert.ok(code.includes(token),file+' is missing action '+token)}
 assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
