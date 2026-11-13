@@ -79,13 +79,39 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY='' \
-            build
+            build 2>&1 | tee "$RUNNER_TEMP/donna-native-build.log"
+
+      - name: Check App Intents packaging diagnostics
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          scratch = Path(os.environ['RUNNER_TEMP'])
+          metadata = scratch / 'DonnaDerivedData/Build/Products/Debug-iphonesimulator/Donna.app/Metadata.appintents'
+          files = sorted(path for path in metadata.rglob('*') if path.is_file())
+          for path in files[:50]:
+              print(f'App Intents package: {path.relative_to(metadata)} ({path.stat().st_size} bytes)')
+          if not files:
+              raise SystemExit('App Intents metadata package is missing or empty.')
+          # Xcode can exit zero despite a nonfatal tool diagnostic about SSU archiving.
+          # Treat such errors as a failed check instead of claiming Siri packaging passed.
+          log = (scratch / 'donna-native-build.log').read_text(errors='replace')
+          errors = [line for line in log.splitlines() if re.search(r'(^|\s)error:', line)]
+          if errors:
+              for line in errors:
+                  print(line)
+              raise SystemExit('Xcode emitted an error diagnostic; inspect App Intents packaging before acceptance.')
+          print('Metadata exists and the build emitted no error diagnostics. Siri still needs physical-device testing.')
+          PY
 
       - name: Describe verification scope
         run: |
           printf '%s\n' \
             '## Donna native compilation' \
             'Unsigned iOS Simulator compilation passed on the standard macOS runner.' \
+            'App Intents metadata exists and emitted-error checks passed.' \
             'This does not test Apple Intelligence, Siri, Speech, physical iPhone installation, or lock-screen behavior.' \
             'No app, artifact, cache, signed package, database change, or hosting deployment was published.' \
             >> "$GITHUB_STEP_SUMMARY"

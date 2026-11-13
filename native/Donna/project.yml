@@ -1,6 +1,7 @@
 name: Donna
 options:
   bundleIdPrefix: com.persenapparel
+  developmentLanguage: en
   deploymentTarget:
     iOS: "26.0"
 settings:
