@@ -375,3 +375,11 @@ test('compose microphone has an accessible start label and links to voice status
     }finally{a.close();}
   }
 });
+
+test('voice recognition updates microphone accessible state at start and end',async()=>{
+  const source=await readFile(path.join(project,'donna/app.js'),'utf8');
+  assert.match(source,/recognition\.onend=\(\)=>\{[\s\S]*?setAttribute\('aria-pressed','false'\)/);
+  assert.match(source,/recognition\.onend=\(\)=>\{[\s\S]*?setAttribute\('aria-label','Start voice input'\)/);
+  assert.match(source,/recognition\.start\(\);state\.listening=true;[\s\S]*?setAttribute\('aria-pressed','true'\)/);
+  assert.match(source,/recognition\.start\(\);state\.listening=true;[\s\S]*?setAttribute\('aria-label','Finish voice input'\)/);
+});
