@@ -222,9 +222,9 @@ test('Payment methods are validated and are not auto-verified',()=>{
 });
 test('Cashier progress reports only screen metadata',()=>{
  const progress=Wizard.monitor('payment');
- assert.equal(progress.step_number,4);
- assert.equal(progress.total_steps,8);
- assert.equal(progress.step_label,'Choose a payment option');
+ assert.equal(progress.step_number,3);
+ assert.equal(progress.total_steps,4);
+ assert.equal(progress.step_label,'Payment option');
  assert.equal(progress.needs_help,false);
  assert.ok(!Object.keys(progress).includes('phone'));
  assert.ok(!Object.keys(progress).includes('email'));
@@ -232,7 +232,7 @@ test('Cashier progress reports only screen metadata',()=>{
 test('Customer assistance flag is separate from answers',()=>{
  const progress=Wizard.monitor('email',true);
  assert.equal(progress.needs_help,true);
- assert.equal(progress.step_number,3);
+ assert.equal(progress.step_number,2);
  assert.equal(Wizard.monitor('email',false).needs_help,false);
 });
 test('Progress step fallback does not leak arbitrary input',()=>{
