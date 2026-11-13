@@ -60,6 +60,8 @@ jobs:
           node --check pos/epson-station/agent.cjs
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Guard no-tax staging checkout
+        run: node pos/no-tax-checkout-regression.cjs
       - name: Verify paired live cart, tiles and scanner integrations
         run: node pos/live-cart-structure-test.cjs
       - name: Run connected barcode and receipt-safety tests (offline)
