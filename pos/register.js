@@ -1,5 +1,5 @@
 'use strict';
-const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map(),inventoryCatalog=new Map(),eventProfiles=[],eventQuickTiles=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
+const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElementById(id);let db,user,register,checkout=null,stock=[],cart=[],templates=[],lastSale=null,season=null;let busy=false,poll;let events=[],sales=[],variantMeta=new Map(),inventoryCatalog=new Map(),eventProfiles=[],eventQuickTiles=[];let reviewLink='';const EV=window.PersenPOSEvents,CASH=window.PersenPOSCash,Experience=window.PersenPOSExperience;const Wizard=window.PersenPOSWizard;const drawerKickGate=window.PersenDrawerOpenGate?.createGate();let drawer={},drawerConfigured=false,drawerVersion=0,tenderBills={},manualTender=false;
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 let pendingCash=null,statusRunning=false,checkoutVersion=0,handoffCheckoutId=null;
@@ -289,9 +289,33 @@ async function cash(){
   const saved=await saleForCheckout(id);
   if(!saved)throw Error('Checking whether this sale was recorded. Keep this checkout open.');
   showPaidAwaitingHandoff(saved,{...checkout,status:'completed',cash_handoff_complete:false});
+  // Electronic drawer request is staging-only; no physical adapter is configured.
+  // Never request on a cash entry, cancelled sale or after Finish Order/reload.
+  void requestCashDrawerAfterSavedSale(saved);
  }catch(e){
   notice('Cash payment could not be confirmed: '+e.message+'. Do not start another order until status is checked.');
  }finally{busy=false;await status()}
+}
+async function requestCashDrawerAfterSavedSale(saved){
+ const status=by('drawer-open-status');
+ if(!status)return;
+ status.textContent='Checking electronic cash drawer setup…';
+ if(!drawerKickGate){
+  status.textContent='Electronic drawer unavailable; use the drawer key.';
+  return;
+ }
+ const result=await drawerKickGate.requestCashOpen({
+  saleId:saved.id,serverSaved:true,paymentMethod:'cash',
+  bridge:window.PersenPOSDrawerBridge
+ });
+ const messages={
+  'not-configured':'Electronic drawer not connected. Use its key; your cash sale is saved.',
+  'command-accepted':'Drawer-open command accepted. Physically check the drawer before giving change.',
+  'unconfirmed':'Drawer command outcome unknown. Check the drawer before using its key; do not retry automatically.',
+  'already-attempted':'Drawer command already attempted for this sale; check the drawer.',
+  'blocked':'Drawer command blocked; use the key if necessary.'
+ };
+ status.textContent=messages[result.status]||'Drawer state could not be verified; check it physically.';
 }
 function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-tax').textContent=C.money(lastSale.totals.tax_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
 async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
@@ -562,6 +586,23 @@ by('cash-received').addEventListener('input',()=>{tenderBills={};manualTender=fa
 by('cash-exact').addEventListener('click',()=>{tenderBills={};manualTender=false;const due=checkout?.total_cents??current().total_cents;by('cash-received').value=(due/100).toFixed(2);renderCash()});
 by('cash-clear').addEventListener('click',resetTender);
 by('save-drawer').addEventListener('click',saveDrawer);
+
+by('manual-drawer-open').addEventListener('click',async()=>{
+ const button=by('manual-drawer-open');
+ if(button.disabled)return;
+ button.disabled=true;
+ try{
+  const result=drawerKickGate
+   ? await drawerKickGate.requestOwnerOpen({
+      reason:by('manual-drawer-reason').value,
+      bridge:window.PersenPOSDrawerBridge
+     })
+   : {message:'Secure owner drawer opening is not configured. Use the drawer key.'};
+  by('drawer-status').textContent=result.message;
+ }finally{
+  button.disabled=false;
+ }
+});
 
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
 by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
