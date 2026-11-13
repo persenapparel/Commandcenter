@@ -1,7 +1,7 @@
 'use strict';
 
 /* Persen POS customer iPad — one page/question at a time.
-   No browser keypad is used for phone entry. Receipt choices: print/email/both.
+   No browser keypad is used for phone entry. Receipt choices: printed customer + merchant copies, optional email.
    Payments other than cash show INFORMATION ONLY, never a paid confirmation.
  */
 const $=id=>document.getElementById(id);
