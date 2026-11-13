@@ -28,4 +28,8 @@ for(const [file,tokens] of expectations){const code=read(file);for(const token o
 assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
 const build=read('build-pages.mjs');
 assert.ok(!build.includes("'test-fake-supabase.js'")&&!build.includes("'browser-full-flow-test.cjs'"),'Mock test files must not deploy');
+const epsonCenter=read('epson-center.js');
+assert.ok(!/\.rpc\(|\.insert\(|\.update\(|\.delete\(/.test(epsonCenter),'Epson browser center must be read-only');
+assert.ok(!build.includes("'print-station.js'")&&!build.includes("'print-station.css'"),'Legacy NELKO printing worker must not ship');
+assert.ok(read('print-station.html').includes('old NELKO browser print worker is disabled'),'Legacy route must be inert');
 console.log('PASS: '+checked+' named controls, four unique-ID checks, additional forms and generated controls');
