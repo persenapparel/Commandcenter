@@ -112,13 +112,13 @@ function emailContext(){
  $('email-explanation').textContent=needsEmail
   ?'Enter your email address for your selected receipt. Email delivery will be available after setup is complete.'
   :'You can leave an email for order contact, or skip this step. This does not subscribe you to promotions.';
- $('email-helper').textContent=needsEmail?'Required for Email or Both receipt preferences.':'Optional — skip if you prefer not to share an email.';
+ $('email-helper').textContent=needsEmail?'Required only when requesting Printed + Email.':'Optional — skip if you prefer not to share an email.';
 }
 function reviewSummary(){
  const target=$('wizard-review-summary');
  target.replaceChildren();
  const v=Wizard.summary(values());
- const receipt={print:'Printed',email:'Email',both:'Printed + Email',none:'No receipt'}[v.receipt.mode]||'Printed';
+ const receipt={print:'Printed (customer + merchant)',both:'Printed (customer + merchant) + Email'}[v.receipt.mode]||'Printed (customer + merchant)';
  const payment=PAYMENT_INFO[v.payment]?.label||'Cash';
  const rows=[
   ['Phone',v.phone],
