@@ -55,6 +55,7 @@ jobs:
           node --check pos/checkout-flow.js
           node --check pos/display.js
           node --check pos/print-station.js
+          node --check pos/epson-station/agent.cjs
       - name: Run POS unit tests
         run: node pos/tests.cjs
       - name: Verify paired live cart, tiles and scanner integrations
@@ -90,6 +91,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f pos/pos-customer-answers-v2.sql
           psql -v ON_ERROR_STOP=1 -f pos/pos-customer-answers-tests.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql-integration-test.sql
+          psql -v ON_ERROR_STOP=1 -f pos/epson-t20iv-staging.sql
+          psql -v ON_ERROR_STOP=1 -f pos/tests/epson-staging-schema-test.sql
       - name: Build separate static POS project
         run: |
           node pos/build-pages.mjs

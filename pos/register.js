@@ -232,6 +232,7 @@ function showPaidAwaitingHandoff(saved,record){
  document.body.classList.remove('pos-register-closed');
  by('cash-handoff').hidden=false;by('finish-order').disabled=false;
  by('cash-handoff-change').textContent=C.money(saved.change_cents);
+ void updateEpsonDrawerStatus(saved.id);
  draw();
  syncCashierStage();
  notice('Cash payment saved. Hand back '+C.money(saved.change_cents)+' in change, then tap Finish Order.');
@@ -598,7 +599,76 @@ function createBillButtons(){
 by('cash-received').addEventListener('input',()=>{tenderBills={};manualTender=false;renderCash()});
 by('cash-exact').addEventListener('click',()=>{tenderBills={};manualTender=false;const due=checkout?.total_cents??current().total_cents;by('cash-received').value=(due/100).toFixed(2);renderCash()});
 by('cash-clear').addEventListener('click',resetTender);
+
+async function updateEpsonDrawerStatus(saleId){
+ const field=by('epson-drawer-status');if(!field)return;
+ field.textContent='Epson drawer queue not yet confirmed. Use the key if the drawer stays shut.';
+ try{
+  const job=await check(db.from('pos_drawer_open_jobs').select('id,state').eq('sale_id',saleId).maybeSingle());
+  field.textContent=job
+   ? 'Cash drawer command '+(job.state==='queued'?'queued for Windows Epson station':job.state.replaceAll('-',' '))+'. Check the drawer physically.'
+   : 'No Epson drawer command exists for this sale. Use the key and check the station.';
+ }catch(_){
+  field.textContent='Epson drawer station has not been installed/configured. Use the key.';
+ }
+}
+async function requestOwnerDrawer(){
+ const btn=by('epson-owner-open'),feedback=by('epson-owner-message');
+ if(btn.disabled||!user||!register)return;
+ const value=by('epson-owner-value').value.trim();
+ const method=by('epson-owner-method').value;
+ by('epson-owner-value').value=''; // Never retain a scanned badge or owner PIN.
+ if(!value){feedback.textContent='Enter the owner PIN or scan the enrolled owner badge.';return;}
+ btn.disabled=true;
+ try{
+  const id=await check(db.rpc('pos_authorize_manual_drawer',{
+   p_register:register.id,p_reason:by('epson-owner-reason').value,
+   p_method:method,p_value:value
+  }));
+  feedback.textContent=id
+   ? 'Owner verified. Opening request queued to your Windows Epson station. Check the drawer physically.'
+   : 'Owner verification failed or temporarily locked. Drawer stays closed.';
+ }catch(_){
+  feedback.textContent='Owner drawer authorization unavailable. This staging integration may not be installed. Use the key.';
+ }finally{btn.disabled=false;}
+}
+async function saveOwnerDrawerCredential(){
+ const btn=by('epson-enroll-save'),field=by('epson-enroll-value'),status=by('epson-enroll-result');
+ const value=field.value.trim(),method=by('epson-enroll-method').value;
+ field.value='';
+ if(!value){status.textContent='Enter a new PIN or generate a random badge code first.';return;}
+ btn.disabled=true;
+ try{
+  const ok=await check(db.rpc('pos_set_owner_drawer_credential',{p_method:method,p_value:value}));
+  status.textContent=ok?'Owner credential saved as a protected server-side hash. Keep the original badge code secure.':'Credential not saved.';
+ }catch(_){
+  status.textContent='Could not save owner credential. Confirm signed-in owner account and staging migration.';
+ }finally{btn.disabled=false;}
+}
+
 by('save-drawer').addEventListener('click',saveDrawer);
+
+by('epson-owner-open').addEventListener('click',()=>void requestOwnerDrawer());
+by('epson-owner-value').addEventListener('keydown',e=>{
+ if(e.key==='Enter'){e.preventDefault();void requestOwnerDrawer();}
+});
+by('epson-enroll-save').addEventListener('click',()=>void saveOwnerDrawerCredential());
+by('epson-enroll-random').addEventListener('click',()=>{
+ if(by('epson-enroll-method').value!=='badge'){
+  by('epson-enroll-result').textContent='Select Private owner badge first.';return;
+ }
+ if(!globalThis.crypto?.getRandomValues){
+  by('epson-enroll-result').textContent='Secure random generator unavailable; do not create a guessable barcode.';return;
+ }
+ const bytes=new Uint8Array(20);crypto.getRandomValues(bytes);
+ const value=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+ const input=by('epson-enroll-value');input.type='text';input.value=value;input.focus();input.select();
+ by('epson-enroll-result').textContent='Copy this private code and print as Code 128 before saving; the POS cannot reveal it later. Treat this badge as a secret.';
+});
+by('epson-enroll-method').addEventListener('change',()=>{
+ by('epson-enroll-value').value='';by('epson-enroll-value').type='password';
+});
+
 
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
 // Keyboard-wedge barcode input. One inventory SKU per color/size variant;
