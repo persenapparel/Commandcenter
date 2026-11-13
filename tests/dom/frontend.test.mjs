@@ -363,3 +363,15 @@ test('voice mute is accessible, persists, and suppresses automatic playback with
     assert.deepEqual(a.errors,[]);
   }finally{a.close();}
 });
+
+test('compose microphone has an accessible start label and links to voice status only in voice view',async()=>{
+  for(const view of ['voice','chat']){
+    const a=await app({view});try{
+      const composeMic=a.q('#chat-form [data-action="mic"]');
+      assert.ok(composeMic);
+      assert.equal(composeMic.getAttribute('aria-label'),'Start voice input');
+      assert.equal(composeMic.getAttribute('aria-controls'),view==='voice'?'voice-status':null);
+      assert.deepEqual(a.errors,[]);
+    }finally{a.close();}
+  }
+});
