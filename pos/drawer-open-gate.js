@@ -39,7 +39,36 @@
         return {status:'unconfirmed',message:'Command outcome unknown; open with key if needed'};
       }
     }
-    return Object.freeze({requestCashOpen});
+
+    let manualInFlight=false;
+    const manualReasons=Object.freeze(['cash-count','change-float','drawer-reconcile','supervisor-access']);
+    async function requestOwnerOpen({reason='cash-count',bridge}={}){
+      // Client-side UI only. The hardware bridge MUST independently verify
+      // an authenticated owner and a server-issued single-use approval.
+      // A copied barcode or a browser-supplied owner flag is NOT authorization.
+      // Never send/store PINs or raw owner badge contents in this request.
+      if(!manualReasons.includes(reason))
+        return {status:'blocked',message:'Choose a valid owner access reason'};
+      if(manualInFlight)
+        return {status:'already-attempted',message:'Another owner drawer request is pending'};
+      if(!bridge||typeof bridge.openForOwner!=='function')
+        return {status:'not-configured',message:'Secure owner drawer opening is not yet configured'};
+      manualInFlight=true;
+      try{
+        // The server/hardware bridge must authorize, log and dedupe the kick.
+        const result=await bridge.openForOwner({purpose:'owner-manual-open',reason});
+        if(result?.requiresApproval===true)
+          return {status:'owner-approval-required',message:'Owner verification required on the secure approval screen'};
+        return result?.accepted===true
+          ? {status:'command-accepted',message:'Owner open command accepted; verify drawer physically'}
+          : {status:'unconfirmed',message:'No drawer opening confirmed; contact owner or use key'};
+      }catch(_err){
+        return {status:'unconfirmed',message:'Drawer request outcome unknown; do not retry automatically'};
+      }finally{
+        manualInFlight=false;
+      }
+    }
+    return Object.freeze({requestCashOpen,requestOwnerOpen});
   }
   return Object.freeze({createGate});
 });
