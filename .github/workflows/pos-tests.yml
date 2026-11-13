@@ -51,6 +51,7 @@ jobs:
           node --check pos/pos-experience.js
           node --check pos/pos-cash.js
           node --check pos/register.js
+          node --check pos/swivel-mode.js
           node --check pos/admin.js
           node --check pos/epson-center.js
           node --check pos/checkout-flow.js
@@ -109,6 +110,8 @@ jobs:
           test ! -e pos-dist/test-fake-supabase.js
           test ! -e pos-dist/browser-full-flow-test.cjs
           test -f pos-dist/register.html
+          test -f pos-dist/swivel-mode.js
+          test -f pos-dist/swivel-mode.css
           test -f pos-dist/display.html
           test -f pos-dist/checkout-flow.js
           test -f pos-dist/print-station.html
