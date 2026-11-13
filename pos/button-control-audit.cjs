@@ -5,7 +5,7 @@ const read=f=>fs.readFileSync('pos/'+f,'utf8');
 const suites=[
  ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','pair','copy-venmo','scan-search','barcode-csv','save-template','print','close-variant']],
  ['admin.html','admin.js',['save-products','refresh']],
- ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
+ ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish']],
  ['admin.html','epson-center.js',['epson-refresh']]
 ];
 let checked=0;
