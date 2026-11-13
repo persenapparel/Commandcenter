@@ -244,6 +244,11 @@ async function showCompletedSale(saved){
  document.body.classList.remove('checkout-active');
  syncCashierStage();
  resetTender();receipt();draw();
+ // A sale returns to the home/launch view ONLY after the authoritative Finish Order RPC succeeds.
+ // Do not reopen a cashier automatically on refresh; a staff badge gate will replace owner-only launch later.
+ setRegisterOpen(false);
+ by('receipt').hidden=true;
+ by('receipt-items').replaceChildren();
  const result=await Promise.allSettled([loadStock(),loadSales(),reloadDrawer()]);
  if(result.some(x=>x.status==='rejected'))return notice('Order finished. Refresh inventory and cash drawer counts before next sale.');
  notice('Order finished. Ready for the next customer.');
