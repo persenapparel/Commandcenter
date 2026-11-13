@@ -455,15 +455,14 @@ begin
   jsonb_build_object('items',c.items,'phone',c.phone,'email',c.email,
    'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,
    'rating',c.rating,'custom_interest',c.custom_interest,
-   'receipt_print',c.receipt_print,'receipt_email',c.receipt_email,
+   'receipt_print',true,'receipt_email',c.receipt_email,
    'payment_preference',c.payment_preference),
   c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,
   'cash',p_tender_cents,change_due,payout
  ) returning id into sid;
- if c.receipt_print then
-  insert into public.pos_print_jobs(sale_id,owner_id,register_id)
-  values(sid,(select auth.uid()),c.register_id);
- end if;
+ -- Epson vendor-show policy: one print job (two cut copies) for each saved cash sale.
+ insert into public.pos_print_jobs(sale_id,owner_id,register_id)
+ values(sid,(select auth.uid()),c.register_id);
  if c.receipt_email and nullif(trim(coalesce(c.email,'')),'') is not null then
   insert into public.pos_receipt_delivery_jobs(sale_id,owner_id,channel)
   values(sid,(select auth.uid()),'email');
@@ -498,7 +497,7 @@ grant execute on function public.pos_finish_order(uuid) to authenticated;
 -- This RPC returns only receipt data, never phone/email or survey details.
 create or replace function public.pos_claim_print_job(p_job uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare j public.pos_print_jobs; sale public.pos_sales;
+declare j public.pos_print_jobs; sale public.pos_sales; event_name text;
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then
    raise exception 'Unauthorized';
@@ -511,8 +510,9 @@ begin
  if not found then return null; end if;
  select * into sale from public.pos_sales where id=j.sale_id and owner_id=(select auth.uid());
  if not found then raise exception 'Sale no longer available'; end if;
+ select name into event_name from public.pos_events where id=sale.event_id and owner_id=(select auth.uid());
  return jsonb_build_object(
-    'job_id',j.id,'sale_id',sale.id,
+    'job_id',j.id,'sale_id',sale.id,'event_name',event_name,
     'items',sale.snapshot->'items',
     'subtotal_cents',sale.subtotal_cents,
     'discount_cents',sale.discount_cents,

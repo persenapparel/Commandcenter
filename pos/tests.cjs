@@ -187,15 +187,15 @@ test('Phone number input cannot exceed ten digits',()=>{
 test('Printed receipt is the default',()=>{
  assert.deepEqual(Wizard.receipt(),{mode:'print',print:true,email:false,sms:false});
 });
-test('Email receipt does not request SMS or paper',()=>{
- assert.deepEqual(Wizard.receipt('email'),{mode:'email',print:false,email:true,sms:false});
+test('Legacy email-only mode falls back to printed copies',()=>{
+ assert.deepEqual(Wizard.receipt('email'),{mode:'print',print:true,email:false,sms:false});
 });
 test('Both receipt mode requests print and email only',()=>{
  assert.deepEqual(Wizard.receipt('both'),{mode:'both',print:true,email:true,sms:false});
- assert.equal(Wizard.receiptModes.length,4);
+ assert.equal(Wizard.receiptModes.length,2);
 });
-test('No receipt requests no sending and Apple Cash is blocked',()=>{
- assert.deepEqual(Wizard.receipt('none'),{mode:'none',print:false,email:false,sms:false});
+test('Legacy no-receipt mode falls back to printed copies and Apple Cash blocked',()=>{
+ assert.deepEqual(Wizard.receipt('none'),{mode:'print',print:true,email:false,sms:false});
  assert.ok(Wizard.checkStep('payment',{payment:'apple_cash_info'}));
 });
 test('Email is required for an emailed receipt',()=>{

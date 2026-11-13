@@ -13,6 +13,19 @@ test('Epson receipt prints totals and cuts, without a drawer-open command',()=>{
  assert.ok(buf.subarray(-3).equals(Buffer.from([0x1d,0x56,0])));
  assert.equal(buf.includes(drawerKick()),false);
 });
+test('Every Epson job contains exactly two cut receipts with distinct roles',()=>{
+ const buf=escposReceipt(sample),raw=buf.toString('latin1');
+ assert.equal((raw.match(/CUSTOMER COPY/g)||[]).length,1);
+ assert.equal((raw.match(/MERCHANT COPY/g)||[]).length,1);
+ assert.equal((raw.match(/PERSEN APPAREL/g)||[]).length,2);
+ assert.equal((raw.match(/SALE 00000000/g)||[]).length,2);
+ let cuts=0;for(let i=0;i<buf.length-2;i++)if(buf[i]===0x1d&&buf[i+1]===0x56&&buf[i+2]===0x00)cuts++;
+ assert.equal(cuts,2,'Customer and merchant copy must be individually cut');
+ assert.equal(buf.includes(drawerKick()),false,'Copies must never open the drawer');
+});
+test('Bad sale payload never produces two copies',()=>{
+ assert.throws(()=>escposReceipt({...sample,items:[{name:'Invalid',qty:0,unit_cents:300}]}),/Invalid item/);
+});
 test('Epson cash kick is a separate validated ESC/POS pulse',()=>{
  assert.deepEqual([...drawerKick()],[0x1b,0x70,0,50,250]);
  assert.throws(()=>drawerKick({on:100,off:20}),/pulse/i);
