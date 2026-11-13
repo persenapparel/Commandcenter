@@ -32,7 +32,7 @@ function rememberCash(id){
  else sessionStorage.removeItem(pendingCashKey());
 }
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
-function current(){return C.totals(cart,Number(by('discount').value),C.taxMilli(by('tax').value));}
+function current(){return C.totals(cart,Number(by('discount').value),0);}
 /* Paired iPad shows a read-only draft as the cashier builds the cart.
    This is presentation only: the checkout RPC still validates prices and stock. */
 let draftTimer=null,draftDirty=false,draftSending=false,draftFailureShown=false;
@@ -316,7 +316,7 @@ async function status(){
   syncCheckoutUI();renderCash();
  }catch(e){notice('Connection lost: '+e.message)}finally{statusRunning=false}
 }
-async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
+async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=0;const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
 async function cancel(){if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();syncCashierStage();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 async function cash(){
  if(!checkout||checkout.status!=='contact_received'||busy)return;
@@ -381,7 +381,7 @@ function drawReport(){
  stat('Collected',fmt(summary.collected_cents));
  stat('Gross merchandise',fmt(summary.gross_cents));
  stat('Discounts',fmt(summary.discount_cents));
- stat('Sales tax',fmt(summary.tax_cents));
+ // Historical tax amounts are preserved in saved records, but POS does not compute or display new tax.
  stat('Average rating',summary.rating_average===null?'—':summary.rating_average.toFixed(1)+'/5');
  stat('Promo opt-ins',summary.promo_opt_ins);
  stat('Custom apparel leads',summary.custom_leads);
