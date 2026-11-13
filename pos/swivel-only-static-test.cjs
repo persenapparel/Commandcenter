@@ -9,4 +9,8 @@ assert.match(swivel,/el\.hidden=true/);
 assert.match(swivel,/db\.auth\.signInWithPassword/);
 assert.match(swivel,/PA\.isAdmin\(user\)/);
 assert.match(swivel,/pos_issue_display_pairing/,'Existing server token still required internally until secure single-screen protocol is reviewed');
+const dashboard=fs.readFileSync('pos/index.html','utf8');
+assert.doesNotMatch(dashboard,/Optional Second iPad|Open Customer Display|Two-iPad mode remains optional|The separate customer display is still available/);
+assert.match(dashboard,/href="register.html"/);
+assert.match(dashboard,/href="admin.html#print-center"/);
 console.log('PASS: swivel-only UI static checks (not an authentication or device security test)');
