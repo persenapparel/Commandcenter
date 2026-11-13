@@ -219,6 +219,7 @@ async function loadStock(){
 async function loadTemplates(selectedId=''){
  templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));
  by('templates').replaceChildren();
+ const fresh=document.createElement('option');fresh.value='';fresh.textContent='+ Create new receipt design';by('templates').append(fresh);
  for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name+(t.active?' · ACTIVE':'');by('templates').append(opt)}
  const t=templates.find(x=>x.id===selectedId)||templates.find(x=>x.active)||templates[0];
  if(t){by('templates').value=t.id;showTemplate(t)}
@@ -934,7 +935,7 @@ by('pair').onclick=async()=>{
   notice('Could not create a private pairing link: '+e.message+'. Check the POS connection and owner access.');
  }finally{button.disabled=false}
 };
-by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t)};
+by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t);else{by('template-name').value='';by('headline').value=R.DEFAULTS.headline;by('promotion').value='';by('footer').value=R.DEFAULTS.footer;by('review-message').value=R.DEFAULTS.review;by('template-active-status').textContent='New design: fill in the fields, then choose Save & Use on Epson.'}};
 by('save-template').onclick=()=>void saveTemplate(false);
 by('activate-template').onclick=()=>void saveTemplate(true);
 by('promotion-preset').onchange=()=>{const choice=by('promotion-preset').value;if(Object.hasOwn(RECEIPT_PROMOS,choice))by('promotion').value=RECEIPT_PROMOS[choice]};
