@@ -58,6 +58,8 @@ jobs:
           node --check pos/display.js
           node --check pos/print-station.js
           node --check pos/epson-station/agent.cjs
+      - name: Guard swivel cash drawer permissions (structural only)
+        run: node pos/swivel-cash-drawer-policy-test.cjs
       - name: Run POS unit tests
         run: node pos/tests.cjs
       - name: Verify paired live cart, tiles and scanner integrations
