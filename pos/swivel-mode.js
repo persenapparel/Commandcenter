@@ -76,6 +76,7 @@
     update();notice('Finish or cancel the current checkout before changing device mode.');return;
    }
    mode=input.value==='dual'?'dual':'swivel';
+   privatePairingUrl='';issuedAt=0; // A new device-mode pairing must not reuse an invalidated link.
    localStorage.setItem(key,mode);
    update();notice(mode==='swivel'?'Single swivel iPad mode selected.':'Two-iPad customer display mode selected.');
   });
