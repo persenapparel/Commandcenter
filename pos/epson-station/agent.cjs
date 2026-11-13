@@ -38,7 +38,7 @@ function escposReceipt(sale){
  }
  const hr='-'.repeat(printColumns);
  const date=typeof sale.created_at==='string'&&Number.isFinite(Date.parse(sale.created_at))
-  ?new Date(sale.created_at).toISOString().replace('T',' ').slice(0,16)+' UTC'
+  ?new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(sale.created_at))+' ET'
   :'';
  const id=String(sale.sale_id).slice(0,8).toUpperCase();
  const line=value=>Buffer.from(ascii(value).slice(0,printColumns)+'\n','ascii');
@@ -62,6 +62,7 @@ function escposReceipt(sale){
    cmd(ESC,0x61,0x00),line(hr),
    line('SALE '+id),
    ...(date?[line(date)]:[]),
+   ...(sale.event_name?[line('Event: '+ascii(sale.event_name).slice(0,34))]:[]),
    line(hr),
    ...items.map(line),
    line(hr),
