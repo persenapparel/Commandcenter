@@ -158,7 +158,7 @@ function rpc(name,p={}){
   for(const item of match.items){if(item.stock_id){const row=t.stock_items.find(x=>x.id===item.stock_id);if(row)row.quantity-=item.qty}}
   const sale={id:newid(state),checkout_id:match.id,owner_id:USER,event_id:match.event_id,snapshot:{items:match.items,receipt_print:match.receipt_print},subtotal_cents:match.subtotal_cents,discount_cents:match.discount_cents,tax_cents:match.tax_cents,total_cents:match.total_cents,tendered_cents:p.p_tender_cents,change_cents:p.p_tender_cents-match.total_cents,change_breakdown:p.p_change_breakdown||{},created_at:new Date().toISOString()};
   t.pos_sales.push(sale);
-  if(match.receipt_print)t.pos_print_jobs.push({id:newid(state),sale_id:sale.id,owner_id:USER,register_id:REG,state:'queued',created_at:new Date().toISOString(),attempts:0});
+  t.pos_print_jobs.push({id:newid(state),sale_id:sale.id,owner_id:USER,register_id:REG,state:'queued',created_at:new Date().toISOString(),attempts:0});
    t.pos_drawer_open_jobs.push({id:newid(state),sale_id:sale.id,owner_id:USER,register_id:REG,kind:'cash-sale',reason:'completed-cash-sale',state:'queued',created_at:new Date().toISOString()});
   if(sessionStorage.getItem('mock-lose-cash-response')){
    sessionStorage.removeItem('mock-lose-cash-response');
