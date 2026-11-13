@@ -130,3 +130,20 @@ The POS GitHub Actions checks cover static builds and unit tests only. No real i
 - The current anonymous customer pairing secret is persistent and exposes checkout metadata. **Block public staging/production until short-lived token pairing and abuse controls are implemented**. Protect any staging site with Cloudflare Access and test accounts; do not publish real customer information.
 - Print jobs are marked submitted to Chrome, **not physically printed**. Verify NELKO paper, Windows driver, Chrome printing, and recovery/retry on the actual Dell before using at an event. Printed/Email/Both are the supported receipt preferences, not SMS; email delivery needs a tested sender integration.
 - Safe next step: deploy a separate access-restricted Cloudflare Pages preview with build command `node pos/build-pages.mjs`, output `pos-dist`, and a staging database. Do not map `pos.persenapparel.com` until all blocking security and hardware tests pass.
+
+
+## Single swivel iPad mode (November 13, 2026 staging proposal)
+
+**Staging PR only. Not merged, deployed or authorized for customer sales.**
+
+The default cashier layout is now **one iPad on a swivel stand**. A two-iPad pairing mode is retained as an optional backup. The register builds and validates the cart as before; the `Hand to Customer` action creates a 2-hour pairing token via the existing staging RPC, begins the existing pending checkout, and opens the existing limited-access customer wizard in a full-screen same-origin iframe. The customer's phone, receipt preference, email and optional questions use the unchanged backend. If pairing fails, no checkout is started. The full-screen overlay makes the underlying cashier controls inert; returning to owner mode requires **online Supabase owner email/password authentication** and an admin check, not merely tapping Back.
+
+1. On iPad: open the protected staging site, sign into the register, pick **One swivel iPad**, and open the register. Scan/select your merchandise; check sizes and totals.
+2. Tap **Hand to Customer**, rotate the iPad toward the shopper, have them complete the guided questions and return the iPad to you.
+3. Tap **Cashier only · Return to register**, enter the **Command Center account password** and verify. This is slower than a dedicated server-verified cashier PIN but is a safer interim test approach than an unprotected exit.
+4. Confirm cash physically received, check change, save the sale, give change and receipt, then **Finish Order**. Epson print/drawer processing remains on the separate Windows agent and must be verified on the hardware.
+5. If the browser is refreshed during a pending customer checkout, sign back in and use **Return to Customer Checkout** to issue a new short-lived pairing token and resume the open checkout. Do not begin a duplicate sale.
+
+**Security boundaries:** The overlay is **not a hardened OS-level kiosk**. Browser navigation, device multitasking, same-origin access, iframe isolation, session sharing and lost/stolen iPad scenarios still require a threat model and physical testing. Use iPad Guided Access as an additional operational guard, and never leave the signed-in iPad unattended with customers. The customer iframe shares the browser origin with the cashier login. Cloudflare access controls, owner authentication, proper RLS, rate-limited pairing, access reviews and server-side totals remain necessary.
+
+**Not included:** no physical iPad, scanner, drawer or Epson validation; no fresh deployment; no changed receipt count, signature capture, customer email delivery, tax policy or payment processor. The existing Epson station draft is still text-oriented and requires printer/dual-receipt and rich-logo acceptance tests. Don't run the retired NELKO worker alongside Epson. No production Supabase keys or schema changes are part of this swivel PR.
