@@ -2,6 +2,9 @@
 
 **Status: development branch only. Not deployed, not approved for real customer checkout.**
 
+> **November 13, 2026 Epson staging direction:** PR #45 supplies an isolated Windows Epson TM-T20IV ESC/POS service and drawer queue. PR #46 replaces the active NELKO browser station UI with an owner-only **read-only Epson Print Center** in Laptop Back Office (`admin.html#print-center`). Legacy NELKO explanations below describe historical development, **not the Epson staging print path**. The back-office webpage cannot run the Windows service, confirm printing, or open a physical drawer. See `pos/epson-station/START-HERE.md`. Neither staging PR is production-deployed or hardware-verified.
+
+
 Architecture: reuse the existing `persenapparel/Commandcenter` GitHub repository, deploy its POS module as a **separate Cloudflare Pages project**, and reuse the existing Supabase database. No new GitHub repository is necessary.
 
 - `pos/register.html`: responsive mobile/laptop owner cashier login, actual inventory search by size/color, quick-add, service classification, discounts, tax setting, cash confirmation, receipt template editor, live customer status, and event manager.
