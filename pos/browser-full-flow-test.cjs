@@ -255,7 +255,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await frame.locator('#phone-display').waitFor({state:'visible'});
   await cashier.locator('#swivel-lock').click();
   await visible(cashier,'#swivel-unlock-form');
-  assert.equal(await cashier.locator('#workspace').isVisible(),false);
+  assert.equal(await cashier.evaluate(()=>document.querySelector('main').inert),true,'Cashier workspace must remain noninteractive');
   await cashier.locator('#swivel-password').fill('test-cashier-password');
   await cashier.locator('#swivel-unlock-submit').click();
   await cashier.waitForFunction(()=>document.querySelector('#swivel-overlay').hidden,{timeout:11000});
