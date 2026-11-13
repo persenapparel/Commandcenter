@@ -1,0 +1,1 @@
+{"name":"donna-local-sql-qa","private":true,"type":"module","scripts":{"test":"node rls.mjs"},"devDependencies":{"@electric-sql/pglite":"0.5.16"}}

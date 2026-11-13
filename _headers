@@ -4,3 +4,9 @@
   Referrer-Policy: no-referrer
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+/donna/*
+  ! Permissions-Policy
+  Permissions-Policy: camera=(), microphone=(self), geolocation=(), payment=()
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://icxeuhkqxxhdkfdappio.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'

@@ -1,0 +1,1619 @@
+{
+  "auditedBaseCommit": "65a2be00d18426cf2ab14c5c18fc5dbac50c252e",
+  "date": "2026-11-12 America/New_York",
+  "notes": "Metadata only. No hosted mutations. No business/customer rows.",
+  "main": {
+    "projectRef": "icxeuhkqxxhdkfdappio",
+    "tables": [
+      {
+        "table_name": "admin_users",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "business_invoices",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "business_tasks",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "customer_activities",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "customer_contacts",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "customer_order_payments",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "customer_orders",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "inventory_catalog",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "inventory_event_profiles",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "inventory_event_quick_products",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "invoice_agreement_events",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "invoice_agreements",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "invoice_payments",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "manual_business_orders",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "marketing_campaigns",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "marketing_contacts",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "marketing_events",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "marketing_settings",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "marketing_visits",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "organization_stores",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "payment_receipts",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "products",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "quote_requests",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "saved_designs",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "site_analytics_events",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "site_content",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "stock_items",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "support_messages",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      }
+    ],
+    "columns": [
+      {
+        "table_name": "admin_users",
+        "column_name": "user_id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "admin_users",
+        "column_name": "added_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "invoice_number",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "customer_name",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "customer_email",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "customer_organization",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "line_items",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "subtotal",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "shipping",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "tax_amount",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "total",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "due_date",
+        "data_type": "date",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "public_notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "internal_notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "document_type",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "contact_id",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "source_estimate_id",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "discount_type",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "discount_value",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "discount_amount",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_invoices",
+        "column_name": "source_jersey_quote_id",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "title",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "customer_name",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "priority",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "due_date",
+        "data_type": "date",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "business_tasks",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_activities",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_activities",
+        "column_name": "contact_id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_activities",
+        "column_name": "channel",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_activities",
+        "column_name": "summary",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_activities",
+        "column_name": "occurred_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_activities",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "full_name",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "email",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "phone",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "organization",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "tags",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "internal_notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_contacts",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "column_name": "order_id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "column_name": "amount",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "column_name": "method",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "column_name": "received_on",
+        "data_type": "date",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "column_name": "notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "user_id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "quote_id",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "title",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "fulfillment",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "tracking_reference",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "internal_notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "order_source",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "limited_item_id",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "limited_item_title",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "collection_name",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "item_size",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "item_quantity",
+        "data_type": "integer",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "unit_price",
+        "data_type": "numeric",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "item_subtotal",
+        "data_type": "numeric",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "customer_name",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "customer_email",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "customer_phone",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "customer_notes",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "sms_consent",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "payment_status",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "customer_orders",
+        "column_name": "checkout_token",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "invoice_id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "customer_email",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "snapshot",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "snapshot_sha256",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "agreement_terms",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "created_by",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "owner_signed_by",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "owner_name",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "owner_signed_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "customer_signed_by",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "customer_name",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "customer_signed_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "voided_by",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "voided_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "column_name": "void_reason",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "invoice_payments",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_payments",
+        "column_name": "invoice_id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_payments",
+        "column_name": "amount",
+        "data_type": "numeric",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_payments",
+        "column_name": "method",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_payments",
+        "column_name": "received_on",
+        "data_type": "date",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_payments",
+        "column_name": "notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "invoice_payments",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "contact_id",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "customer_name",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "title",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "quantity",
+        "data_type": "integer",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "due_date",
+        "data_type": "date",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "internal_notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "user_id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "name",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "email",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "category",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "quantity",
+        "data_type": "integer",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "details",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "design_summary",
+        "data_type": "jsonb",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "contact_phone",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "sms_consent",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "quote_requests",
+        "column_name": "jersey_submission_token",
+        "data_type": "uuid",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "product_id",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "sku",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "color",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "size",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "quantity",
+        "data_type": "integer",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "reorder_at",
+        "data_type": "integer",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "supplier",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "internal_notes",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "table_name": "stock_items",
+        "column_name": "product_name",
+        "data_type": "text",
+        "is_nullable": "NO"
+      }
+    ],
+    "policies": [
+      {
+        "tablename": "admin_users",
+        "policyname": "only members can check own admin status",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+        "with_check": null
+      },
+      {
+        "tablename": "business_invoices",
+        "policyname": "admin invoices delete",
+        "roles": "{authenticated}",
+        "cmd": "DELETE",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "business_invoices",
+        "policyname": "admin invoices create",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "business_invoices",
+        "policyname": "admin invoices read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "business_invoices",
+        "policyname": "admin invoices update",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "business_tasks",
+        "policyname": "admin tasks delete",
+        "roles": "{authenticated}",
+        "cmd": "DELETE",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "business_tasks",
+        "policyname": "admin tasks create",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "business_tasks",
+        "policyname": "admin tasks read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "business_tasks",
+        "policyname": "admin tasks update",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "customer_activities",
+        "policyname": "v4 owner activities add",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "customer_activities",
+        "policyname": "v4 owner activities read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "customer_contacts",
+        "policyname": "admin contacts delete",
+        "roles": "{authenticated}",
+        "cmd": "DELETE",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "customer_contacts",
+        "policyname": "admin contacts create",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "customer_contacts",
+        "policyname": "admin contacts read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "customer_contacts",
+        "policyname": "admin contacts update",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "customer_order_payments",
+        "policyname": "v56 admin order payment add",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "customer_order_payments",
+        "policyname": "v56 admin order payment read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "customer_orders",
+        "policyname": "admin creates orders",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "customer_orders",
+        "policyname": "customers and admin see their orders",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR is_persen_admin())",
+        "with_check": null
+      },
+      {
+        "tablename": "customer_orders",
+        "policyname": "admin updates orders",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "invoice_agreements",
+        "policyname": "v5 agreement read owner or verified customer",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "(is_persen_admin() OR persen_verified_invoice_customer(customer_email))",
+        "with_check": null
+      },
+      {
+        "tablename": "invoice_payments",
+        "policyname": "v4 owner payments add",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "invoice_payments",
+        "policyname": "v4 owner payments read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "manual_business_orders",
+        "policyname": "v4 owner manual orders add",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "manual_business_orders",
+        "policyname": "v4 owner manual orders read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "manual_business_orders",
+        "policyname": "v4 owner manual orders update",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "quote_requests",
+        "policyname": "customers can send their own quotes",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "((user_id = ( SELECT auth.uid() AS uid)) AND (status = 'New'::text))"
+      },
+      {
+        "tablename": "quote_requests",
+        "policyname": "customers and admin see their quotes",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR is_persen_admin())",
+        "with_check": null
+      },
+      {
+        "tablename": "quote_requests",
+        "policyname": "admin manages quote statuses",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "admin stock delete",
+        "roles": "{authenticated}",
+        "cmd": "DELETE",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "admin stock create",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "admin stock read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "admin stock update",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      }
+    ],
+    "grants": [
+      {
+        "table_name": "admin_users",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "admin_users",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "business_invoices",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "business_invoices",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "business_tasks",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "business_tasks",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "customer_activities",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "customer_activities",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "customer_contacts",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "customer_contacts",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "customer_order_payments",
+        "grantee": "authenticated",
+        "privileges": "INSERT, SELECT"
+      },
+      {
+        "table_name": "customer_orders",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "customer_orders",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "invoice_agreements",
+        "grantee": "authenticated",
+        "privileges": "SELECT"
+      },
+      {
+        "table_name": "invoice_payments",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "invoice_payments",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "manual_business_orders",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "quote_requests",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "quote_requests",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "stock_items",
+        "grantee": "anon",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      },
+      {
+        "table_name": "stock_items",
+        "grantee": "authenticated",
+        "privileges": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+      }
+    ]
+  },
+  "posStaging": {
+    "projectRef": "naaqcspvbntzdtwuchrr",
+    "tables": [
+      {
+        "table_name": "admin_users",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "inventory_catalog",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "inventory_event_profiles",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "inventory_event_quick_products",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_checkouts",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_drawer_recounts",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_events",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_print_jobs",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_receipt_delivery_jobs",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_receipt_templates",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_registers",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_sales",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "pos_variant_details",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "site_content",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      },
+      {
+        "table_name": "stock_items",
+        "relkind": "r",
+        "rls": true,
+        "force_rls": false
+      }
+    ],
+    "columns": [
+      {
+        "table_name": "admin_users",
+        "columns": "user_id:uuid, added_at:timestamp with time zone"
+      },
+      {
+        "table_name": "inventory_catalog",
+        "columns": "name:text, inventory_type:text, price_cents:integer, is_active:boolean, updated_at:timestamp with time zone"
+      },
+      {
+        "table_name": "inventory_event_profiles",
+        "columns": "id:uuid, name:text, event_date:date, active:boolean, created_at:timestamp with time zone, updated_at:timestamp with time zone"
+      },
+      {
+        "table_name": "pos_checkouts",
+        "columns": "id:uuid, register_id:uuid, owner_id:uuid, status:text, customer_step:text, help_requested:boolean, progress_updated_at:timestamp with time zone, items:jsonb, discount_bps:integer, tax_milli:integer, subtotal_cents:integer, discount_cents:integer, tax_cents:integer, total_cents:integer, phone:text, email:text, marketing_opt_in:boolean, payment_preference:text, receipt_print:boolean, receipt_email:boolean, created_at:timestamp with time zone, updated_at:timestamp with time zone, event_id:uuid, rating:smallint, custom_interest:text, consent_updated_at:timestamp with time zone, cash_handoff_complete:boolean, marketing_response:text"
+      },
+      {
+        "table_name": "pos_events",
+        "columns": "id:uuid, owner_id:uuid, name:text, event_date:date, venue:text, status:text, created_at:timestamp with time zone, inventory_profile_id:uuid"
+      },
+      {
+        "table_name": "pos_sales",
+        "columns": "id:uuid, checkout_id:uuid, owner_id:uuid, snapshot:jsonb, subtotal_cents:integer, discount_cents:integer, tax_cents:integer, total_cents:integer, payment_method:text, tendered_cents:integer, change_cents:integer, change_breakdown:jsonb, created_at:timestamp with time zone, event_id:uuid"
+      },
+      {
+        "table_name": "stock_items",
+        "columns": "id:uuid, sku:text, product_name:text, color:text, size:text, quantity:integer, reorder_at:integer, supplier:text, internal_notes:text, updated_at:timestamp with time zone"
+      }
+    ],
+    "policies": [
+      {
+        "tablename": "inventory_catalog",
+        "policyname": "persen owners manage inventory catalog",
+        "roles": "{authenticated}",
+        "cmd": "ALL",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "inventory_event_profiles",
+        "policyname": "persen owners manage inventory event profiles",
+        "roles": "{authenticated}",
+        "cmd": "ALL",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "pos_checkouts",
+        "policyname": "pos_checkout_owner_select",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "((owner_id = ( SELECT auth.uid() AS uid)) AND is_persen_admin())",
+        "with_check": null
+      },
+      {
+        "tablename": "pos_events",
+        "policyname": "pos_event_admin_add",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "((owner_id = ( SELECT auth.uid() AS uid)) AND is_persen_admin())"
+      },
+      {
+        "tablename": "pos_events",
+        "policyname": "pos_event_admin_read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "pos_events",
+        "policyname": "pos_event_admin_edit",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "((owner_id = ( SELECT auth.uid() AS uid)) AND is_persen_admin())",
+        "with_check": "((owner_id = ( SELECT auth.uid() AS uid)) AND is_persen_admin())"
+      },
+      {
+        "tablename": "pos_sales",
+        "policyname": "pos_sale_owner_select",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "((owner_id = ( SELECT auth.uid() AS uid)) AND is_persen_admin())",
+        "with_check": null
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "stock_items_owner_delete",
+        "roles": "{authenticated}",
+        "cmd": "DELETE",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "stock_items_owner_insert",
+        "roles": "{authenticated}",
+        "cmd": "INSERT",
+        "qual": null,
+        "with_check": "is_persen_admin()"
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "stock_items_owner_read",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "is_persen_admin()",
+        "with_check": null
+      },
+      {
+        "tablename": "stock_items",
+        "policyname": "stock_items_owner_update",
+        "roles": "{authenticated}",
+        "cmd": "UPDATE",
+        "qual": "is_persen_admin()",
+        "with_check": "is_persen_admin()"
+      }
+    ]
+  }
+}

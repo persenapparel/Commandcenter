@@ -1,0 +1,8 @@
+**/node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+native/Donna/Donna.xcodeproj/
+native/Donna/build/
+native/Donna/DerivedData/

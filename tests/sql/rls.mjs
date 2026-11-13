@@ -1,0 +1,21 @@
+import {PGlite} from '@electric-sql/pglite';
+import {readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const db=new PGlite();
+await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;create table public.admin_users(user_id uuid primary key);alter table public.admin_users enable row level security;create policy own_allowlist on public.admin_users for select to authenticated using(user_id=(select auth.uid()));grant select on public.admin_users to authenticated;insert into auth.users values('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222'),('33333333-3333-4333-8333-333333333333');insert into public.admin_users values('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222');`);
+await db.exec(await readFile(new URL('../../donna/setup.sql',import.meta.url),'utf8'));
+const owner='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222',customer='33333333-3333-4333-8333-333333333333';
+async function as(uid,fn) {await db.exec(`begin;set local role authenticated;select set_config('request.jwt.claim.sub','${uid}',true);`);try {const r=await fn();await db.exec('commit');return r;}catch(e){await db.exec('rollback');throw e;}}
+const inserted=await as(owner,async()=>db.query(`insert into public.donna_memories(owner_id,title,content,source,status,version,history) values($1,'Quote process','Collect sizes and artwork','Owner teaching','confirmed',80,'[{"fake":true}]') returning *`,[owner]));
+const memory=inserted.rows[0]; assert.equal(memory.status,'pending'); assert.equal(memory.version,1);assert.deepEqual(memory.history,[]);
+await as(owner,async()=>{const {rows}=await db.query(`update public.donna_memories set status='confirmed' where id=$1 returning *`,[memory.id]);assert.equal(rows[0].version,2);assert.equal(rows[0].status,'confirmed');assert.equal(rows[0].history[0].status,'pending');});
+await as(owner,async()=>{const {rows}=await db.query(`update public.donna_memories set content='Collect garment colors too',status='confirmed',version=99,history='[]' where id=$1 returning *`,[memory.id]);assert.equal(rows[0].version,3);assert.equal(rows[0].status,'pending');assert.equal(rows[0].history.length,2);});
+await as(other,async()=>{assert.equal((await db.query('select * from public.donna_memories')).rows.length,0);assert.equal((await db.query('update public.donna_memories set title=\'Stolen\' where id=$1 returning *',[memory.id])).rows.length,0);});
+await assert.rejects(()=>as(customer,()=>db.query(`insert into public.donna_memories(owner_id,title,content,source) values($1,'Bad','No access','Customer')`,[customer])),/row-level security/);
+await assert.rejects(()=>as(owner,()=>db.query('update public.donna_memories set owner_id=$1 where id=$2',[other,memory.id])),/immutable/);
+await db.exec('begin;set local role anon;');await assert.rejects(()=>db.query('select * from public.donna_memories'),/permission denied/);await db.exec('rollback');
+await as(owner,async()=>{const {rows}=await db.query(`insert into public.donna_conversations(owner_id,title,messages) values($1,'Conversation','[{"role":"user","text":"Hello"}]') returning *`,[owner]);assert.ok(rows[0].created_at);});
+await as(other,async()=>assert.equal((await db.query('select * from public.donna_conversations')).rows.length,0));
+await as(owner,async()=>{await db.query('delete from public.donna_memories where id=$1',[memory.id]);assert.equal((await db.query('select * from public.donna_memories')).rows.length,0);});
+console.log('SQL QA PASS: complete setup executed; anonymous and nonadmin denied; second admin isolated; version history enforced; edited facts require renewed approval; ownership immutable; conversation isolation; deletion. Local PGlite PostgreSQL, no hosted changes.');
+await db.close();

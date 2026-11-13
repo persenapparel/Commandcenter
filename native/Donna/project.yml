@@ -1,0 +1,24 @@
+name: Donna
+options:
+  bundleIdPrefix: com.persenapparel
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_STYLE: Automatic
+targets:
+  Donna:
+    type: application
+    platform: iOS
+    sources: [Donna]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.persenapparel.donna.personal
+        INFOPLIST_FILE: Donna/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+    scheme:
+      testTargets: []
