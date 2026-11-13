@@ -37,3 +37,12 @@
 - `register.js`: on completed sale, calls `setRegisterOpen(false)` after the successful save/Finish Order path and hides the old receipt preview. The existing owner-authenticated `Open Register` control is **not an employee badge login** and must be replaced before staff rollout.
 - Existing Epson manual owner drawer badge is unrelated to secure staff login and **must not be reused as a general owner override bypass**.
 - No production data, hosted staging database, Cloudflare environment or hardware changed.
+
+## Approved initial badge roster and NFC/print requirements (2026-11-13)
+- **Luke** — owner; privileged actions still require secure step-up and explicit request confirmation.
+- **Colleen** — employee/cashier initially (mother); owner can grant manager role later after authorization review.
+- **Logan** — employee/cashier initially.
+- The front of EACH physical employee card shows Persen Apparel logo and the employee's first name, printed clearly. Back shows THEIR OWN scannable register Code 128 or QR, distinct from all product SKUs.
+- The card's NFC chip is a PUBLIC marketing link to `https://persenapparel.com/`, so a visitor tapping a compatible phone opens the store website. **Never program a login URL, staff badge credential, token, or private endpoint in NFC**. The NFC URL and the back barcode are independent functions.
+- Employee badge code should be issued only after secure server-side enrollment, safely encrypted/hash-verified and revocable. Never commit or publicly print test codes as if active credentials. Use separate test-only labels, and protect against photographed/copied bearer barcodes with short server-issued sessions, rate limits, and least privileges.
+- Confirm print material / NFC card antenna compatibility and scan quality physically before batch printing. Card design artifacts are NOT generated in this PR; secure badge issuance and NFC programming are NOT implemented.
