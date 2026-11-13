@@ -15,3 +15,10 @@
 .printer-center .epson-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .printer-center .epson-actions a{font-size:13px;font-weight:700}
 @media(max-width:760px){.epson-queues{grid-template-columns:1fr}}
+
+.epson-promo-editor{border:1px solid #d7e5f5;border-radius:14px;padding:15px;background:#f7faff;margin:17px 0}
+.epson-promo-editor h3{font-size:15px;margin:0 0 8px}
+.epson-promo-editor label{margin:10px 0 12px;display:block}
+.epson-promo-editor select,.epson-promo-editor textarea{display:block;width:100%;padding:11px;border:1px solid #c8dbef;border-radius:10px;background:#fff;color:#18365e;margin-top:6px;font:inherit}
+.epson-promo-editor textarea{resize:vertical;min-height:76px}
+.epson-promo-editor button:disabled{opacity:.6;cursor:not-allowed}
