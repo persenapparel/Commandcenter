@@ -389,7 +389,7 @@ returns uuid language plpgsql security definer set search_path='' as $$
 declare
  c public.pos_checkouts;
  r public.pos_registers;
- line jsonb; sid uuid; regid uuid;
+ line jsonb; sid uuid; regid uuid; receipt_design jsonb:='{}'::jsonb;
  received jsonb; payout jsonb; counted jsonb; available jsonb; adjusted jsonb;
  denom integer; qty integer; affected integer;
  incoming_total bigint:=0; payout_total bigint:=0; change_due integer;
@@ -448,6 +448,15 @@ begin
    if affected<>1 then raise exception 'Stock changed; cancel and rebuild checkout'; end if;
   end if;
  end loop;
+ -- Freeze current promotion at sale completion, not when the queued print is sent.
+ select jsonb_build_object(
+  'headline',left(t.headline,100),'promotion',left(t.promotion,300),
+  'footer',left(t.footer,120),'review_message',left(t.review_message,130),
+  'show_review',t.show_review
+ ) into receipt_design
+ from public.pos_receipt_templates t
+ where t.owner_id=(select auth.uid()) and t.active=true
+ limit 1;
  insert into public.pos_sales(
   checkout_id,owner_id,event_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,
   payment_method,tendered_cents,change_cents,change_breakdown
@@ -456,6 +465,7 @@ begin
    'marketing_opt_in',c.marketing_opt_in,'consent_updated_at',c.consent_updated_at,
    'rating',c.rating,'custom_interest',c.custom_interest,
    'receipt_print',true,'receipt_email',c.receipt_email,
+    'receipt_design',coalesce(receipt_design,'{}'::jsonb),
    'payment_preference',c.payment_preference),
   c.subtotal_cents,c.discount_cents,c.tax_cents,c.total_cents,
   'cash',p_tender_cents,change_due,payout
@@ -494,7 +504,8 @@ grant execute on function public.pos_finish_order(uuid) to authenticated;
 
 -- Print station authenticated with an authorized owner account.
 -- Atomic claim stops two devices printing the same queued receipt simultaneously.
--- This RPC returns only receipt data, never phone/email or survey details.
+-- Only the authenticated POS owner/Windows Epson agent receives receipt contact details.
+-- No survey data or marketing consent is sent to the printer.
 create or replace function public.pos_claim_print_job(p_job uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare j public.pos_print_jobs; sale public.pos_sales; event_name text;
@@ -514,6 +525,12 @@ begin
  return jsonb_build_object(
     'job_id',j.id,'sale_id',sale.id,'event_name',event_name,
     'items',sale.snapshot->'items',
+    'phone',sale.snapshot->>'phone',
+    'email',sale.snapshot->>'email',
+    'headline',sale.snapshot->'receipt_design'->>'headline',
+    'promotion',sale.snapshot->'receipt_design'->>'promotion',
+    'footer',sale.snapshot->'receipt_design'->>'footer',
+    'review_message',case when coalesce((sale.snapshot->'receipt_design'->>'show_review')::boolean,false) then sale.snapshot->'receipt_design'->>'review_message' else null end,
     'subtotal_cents',sale.subtotal_cents,
     'discount_cents',sale.discount_cents,
     'tax_cents',sale.tax_cents,
