@@ -191,7 +191,7 @@ function rpc(name,p={}){
 }
 const db={auth:{
  getUser:()=>result({user:get().signedOut?null:{id:USER,email:'service@persenapparel.com'}}),
- signInWithPassword:()=>{const s=get();s.signedOut=false;save(s);return result({user:{id:USER}})},
+ signInWithPassword:({password}={})=>{if(password==='wrong')return fail('Invalid credentials');const s=get();s.signedOut=false;save(s);return result({user:{id:USER}})},
  signOut:()=>{const s=get();s.signedOut=true;save(s);return result(null)}
 },from:query,rpc,channel:()=>({on(){return this},subscribe(){return this}})};
 window.supabase={createClient:()=>db};

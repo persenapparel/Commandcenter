@@ -6,7 +6,8 @@ const suites=[
  ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','pair','copy-venmo','scan-search','barcode-csv','save-template','print','close-variant']],
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
- ['admin.html','epson-center.js',['epson-refresh']]
+ ['admin.html','epson-center.js',['epson-refresh']],
+ ['register.html','swivel-mode.js',['swivel-resume','swivel-lock','swivel-unlock-submit','swivel-keep-customer']]
 ];
 let checked=0;
 for(const [page,script,buttons] of suites){

@@ -7,5 +7,6 @@ assert.match(page, /Cloudflare Access/, 'Staging security requirement must be vi
 assert.match(page, /href="register\.html"/, 'Cashier route must remain available');
 assert.match(page, /href="admin\.html"/, 'Owner route must remain available');
 assert.match(page, /href="display\.html"/, 'Customer route must remain available');
-assert.match(page, /href="print-station\.html"/, 'Print route must remain available');
+assert.match(page, /href="admin\.html#print-center"/, 'Epson Print Center must be reachable from the POS dashboard');
+assert.match(fs.readFileSync('pos/print-station.html', 'utf8'), /old NELKO browser print worker is disabled/, 'Retired print route must be inert');
 console.log('Staging access guard passed (static only; Cloudflare Access must still be verified separately)');
