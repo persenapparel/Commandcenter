@@ -53,9 +53,9 @@ function values(){
   email:$('email-address').value.trim(),
   receipt:chosen('receipt_mode')||'print',
   payment:chosen('payment_preference')||'cash',
-  marketing:chosen('marketing'),
-  rating:chosen('rating'),
-  interest:chosen('interest')
+  marketing:'not_answered',
+  rating:null,
+  interest:'not_answered'
  };
 }
 function error(message=''){
@@ -118,16 +118,13 @@ function reviewSummary(){
  const target=$('wizard-review-summary');
  target.replaceChildren();
  const v=Wizard.summary(values());
- const receipt={print:'Printed (customer + merchant)',both:'Printed (customer + merchant) + Email'}[v.receipt.mode]||'Printed (customer + merchant)';
+ const receipt={print:'Customer + merchant paper copies',both:'Two paper copies + email (when enabled)'}[v.receipt.mode]||'Two paper copies';
  const payment=PAYMENT_INFO[v.payment]?.label||'Cash';
  const rows=[
   ['Phone',v.phone],
   ['Receipt',receipt],
   ['Email',v.email||'Not provided'],
-  ['Payment',payment],
-  ['Promotions',v.promo?'Opted in':'Not subscribed'],
-  ['Rating',v.rating?v.rating+' / 5 stars':'Skipped'],
-  ['Custom apparel',v.interest==='yes'?'Interested':v.interest==='maybe'?'Maybe later':v.interest==='no'?'Not right now':'Skipped']
+  ['Payment',payment]
  ];
  for(const [label,value] of rows){
   const row=document.createElement('div');
@@ -151,9 +148,7 @@ function showStep(next,focus=false){
  $('wizard-back').hidden=stepIndex===0;
  $('wizard-next').hidden=stepIndex===Wizard.steps.length-1;
  $('wizard-finish').hidden=stepIndex!==Wizard.steps.length-1;
- $('wizard-skip-optional').hidden=!['promos','rating','custom'].includes(selected.id);
- $('wizard-next').textContent=selected.id==='rating'||selected.id==='custom'||selected.id==='promos'
-  ?'Continue or skip →':'Continue →';
+ $('wizard-next').textContent='Continue →';
  error();
  if(selected.id==='email')emailContext();
  if(selected.id==='review')reviewSummary();
@@ -358,7 +353,6 @@ for(const input of form.querySelectorAll('input[name="receipt_mode"]')){
 $('wizard-next').addEventListener('click',navigateNext);
 $('wizard-back').addEventListener('click',navigateBack);
 $('wizard-help').addEventListener('click',()=>{if(!checkoutId||submitting)return;needsHelp=!needsHelp;showHelpState();queueProgress();});
-$('wizard-skip-optional').addEventListener('click',()=>{if(!submitting)showStep(Wizard.steps.findIndex(x=>x.id==='review'),true)});
 $('wizard-finish').addEventListener('click',finish);
 form.addEventListener('submit',event=>event.preventDefault());
 form.addEventListener('keydown',event=>{
