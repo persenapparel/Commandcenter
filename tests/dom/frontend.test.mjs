@@ -342,3 +342,24 @@ test('private-chat setup is readable in app and copies the researched prompt wit
     assert.deepEqual(a.errors,[]);
   }finally{a.close();}
 });
+
+
+test('voice mute is accessible, persists, and suppresses automatic playback without blocking manual replay',async()=>{
+  const a=await app({view:'voice'});try{
+    assert.equal(a.q('[data-action="toggle-voice-mute"]').getAttribute('aria-pressed'),'false');
+    await a.click('[data-action="toggle-voice-mute"]');
+    assert.equal(a.q('[data-action="toggle-voice-mute"]').getAttribute('aria-pressed'),'true');
+    assert.match(a.q('#voice-status').textContent,/muted/i);
+    assert.equal(JSON.parse(a.w.localStorage.getItem('donna.settings')).voiceMuted,true);
+    await a.submit('#chat-form',{message:'Hello Donna'});
+    await until(()=>a.q('.message.assistant'),'Donna response');
+    assert.equal(a.spoken.length,0,'muted automatic voice never plays');
+    await a.click('[data-action="speak-last"]');
+    assert.equal(a.spoken.length,1,'manual Play reply remains available');
+    await a.click('[data-action="toggle-voice-mute"]');
+    assert.equal(a.q('[data-action="toggle-voice-mute"]').getAttribute('aria-pressed'),'false');
+    await a.submit('#chat-form',{message:'What are my priorities?'});
+    await until(()=>a.spoken.length===2,'automatic voice resumed');
+    assert.deepEqual(a.errors,[]);
+  }finally{a.close();}
+});
