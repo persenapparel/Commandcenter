@@ -196,6 +196,24 @@ create policy pos_register_owner_update on public.pos_registers for update to au
 create policy pos_checkout_owner_select on public.pos_checkouts for select to authenticated using(owner_id=(select auth.uid()) and public.is_persen_admin());
 create policy pos_sale_owner_select on public.pos_sales for select to authenticated using(owner_id=(select auth.uid()) and public.is_persen_admin());
 create policy pos_template_owner on public.pos_receipt_templates for all to authenticated using(owner_id=(select auth.uid()) and public.is_persen_admin()) with check(owner_id=(select auth.uid()) and public.is_persen_admin());
+-- Activate a saved receipt campaign for this owner; only one may be active.
+-- Atomic owner-scoped switch prevents two cashier tabs from producing a unique-index conflict.
+create or replace function public.pos_activate_receipt_template(p_template uuid)
+returns boolean language plpgsql security definer set search_path='' as $
+begin
+ if (select auth.uid()) is null or not public.is_persen_admin() then raise exception 'Unauthorized'; end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('pos.receipt.'||(select auth.uid())::text));
+ if not exists (
+   select 1 from public.pos_receipt_templates
+   where id=p_template and owner_id=(select auth.uid())
+ ) then raise exception 'Saved receipt template not found'; end if;
+ update public.pos_receipt_templates set active=false where owner_id=(select auth.uid()) and active;
+ update public.pos_receipt_templates set active=true,updated_at=now() where id=p_template and owner_id=(select auth.uid());
+ return found;
+end $;
+revoke all on function public.pos_activate_receipt_template(uuid) from public,anon;
+grant execute on function public.pos_activate_receipt_template(uuid) to authenticated;
+
 -- All sensitive mutations run in carefully scoped RPCs; clients cannot edit checkout totals, status, or sales directly.
 create or replace function public.pos_begin_checkout(p_register uuid,p_items jsonb,p_discount_bps integer default 0,p_tax_milli integer default 0,p_event uuid default null)
 returns uuid language plpgsql security definer set search_path='' as $$
