@@ -22,6 +22,12 @@ const ascii=value=>String(value??'').normalize('NFKD')
 const cents=n=>Number.isSafeInteger(n)&&n>=0&&n<=100000000?n:0;
 const money=n=>'$'+(cents(n)/100).toFixed(2);
 const printColumns=42;
+const cleanReceiptField=(value,max=250)=>String(value??'').normalize('NFKD')
+ .replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7e]/g,' ').trim().slice(0,max);
+function wrapReceiptField(label,value,max=250){
+ const raw=cleanReceiptField(value,max)||'Not provided',text=label+raw;
+ return Array.from({length:Math.ceil(text.length/printColumns)},(_,i)=>text.slice(i*printColumns,(i+1)*printColumns));
+}
 function padAmount(label,amount){
  const a=ascii(label).slice(0,printColumns-12),b=ascii(amount).slice(0,11);
  return a.padEnd(Math.max(a.length,printColumns-b.length),' ')+b;
@@ -37,6 +43,11 @@ function escposReceipt(sale){
   if(variation)items.push('  '+variation.slice(0,printColumns-2));
  }
  const hr='-'.repeat(printColumns);
+ const contact=[...wrapReceiptField('Phone: ',sale.phone,24),...wrapReceiptField('Email: ',sale.email,250)];
+ const promo=cleanReceiptField(sale.promotion,300);
+ const headline=cleanReceiptField(sale.headline,100)||'THANK YOU FOR YOUR PURCHASE!';
+ const footer=cleanReceiptField(sale.footer,120);
+ const review=cleanReceiptField(sale.review_message,130);
  const date=typeof sale.created_at==='string'&&Number.isFinite(Date.parse(sale.created_at))
   ?new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(sale.created_at))+' ET'
   :'';
@@ -64,6 +75,8 @@ function escposReceipt(sale){
    ...(date?[line(date)]:[]),
    ...(sale.event_name?[line('Event: '+ascii(sale.event_name).slice(0,34))]:[]),
    line(hr),
+   ...contact.map(line),
+   line(hr),
    ...items.map(line),
    line(hr),
    line(padAmount('Subtotal',money(sale.subtotal_cents))),
@@ -76,8 +89,11 @@ function escposReceipt(sale){
    line(padAmount('Change',money(sale.change_cents))),
    line(hr),
    cmd(ESC,0x61,0x01),
-   line(merchant?'MERCHANT RECORD - RETAIN':'THANK YOU FOR YOUR PURCHASE!'),
-   ...(!merchant?[line('Thanks for shopping small!'),line('Hope to see you again!')]:[line('Owner copy - same sale, not a new charge')]),
+   line(merchant?'MERCHANT RECORD - RETAIN':headline),
+   ...(!merchant?[line('Thanks for shopping small!')]:[line('Owner copy - same sale, not a new charge')]),
+   ...(promo?[line(hr),...wrapReceiptField('PROMO: ',promo,300).map(line)]:[]),
+   ...(footer?wrapReceiptField('',footer,120).map(line):[]),
+   ...(review?wrapReceiptField('',review,130).map(line):[]),
    line(''),
    // Print a centered, high-contrast monochrome logo on BOTH copies by
    // configuring Epson receipt enhancement / NV graphics once per printer.
