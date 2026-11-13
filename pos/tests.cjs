@@ -165,8 +165,8 @@ test('Invalid seasonal email color defaults to navy',()=>{
  assert.equal(Digital.verifiedAccent('pink'),'#123466');
  assert.equal(Digital.verifiedAccent('#a32736'),'#a32736');
 });
-test('Checkout wizard contains eight separate pages',()=>{
- assert.deepEqual(Wizard.steps.map(x=>x.id),['phone','receipt','email','payment','promos','rating','custom','review']);
+test('Show checkout has four focused steps',()=>{
+ assert.deepEqual(Wizard.steps.map(x=>x.id),['phone','email','payment','review']);
 });
 test('Ten-digit phone entry uses on-screen digits only',()=>{
  let input='';for(const digit of '6316440633')input=Wizard.dial(input,digit);
