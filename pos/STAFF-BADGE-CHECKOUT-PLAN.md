@@ -40,9 +40,20 @@
 
 ## Approved initial badge roster and NFC/print requirements (2026-11-13)
 - **Luke** — owner; privileged actions still require secure step-up and explicit request confirmation.
-- **Colleen** — employee/cashier initially (mother); owner can grant manager role later after authorization review.
-- **Logan** — employee/cashier initially.
+- **Colleen** — cashier only; may complete cash sales, but cannot approve overrides, refunds, discounts outside policy, or open the drawer manually.
+- **Logan** — cashier only; may complete cash sales, but cannot approve overrides, refunds, discounts outside policy, or open the drawer manually.
 - The front of EACH physical employee card shows Persen Apparel logo and the employee's first name, printed clearly. Back shows THEIR OWN scannable register Code 128 or QR, distinct from all product SKUs.
 - The card's NFC chip is a PUBLIC marketing link to `https://persenapparel.com/`, so a visitor tapping a compatible phone opens the store website. **Never program a login URL, staff badge credential, token, or private endpoint in NFC**. The NFC URL and the back barcode are independent functions.
 - Employee badge code should be issued only after secure server-side enrollment, safely encrypted/hash-verified and revocable. Never commit or publicly print test codes as if active credentials. Use separate test-only labels, and protect against photographed/copied bearer barcodes with short server-issued sessions, rate limits, and least privileges.
 - Confirm print material / NFC card antenna compatibility and scan quality physically before batch printing. Card design artifacts are NOT generated in this PR; secure badge issuance and NFC programming are NOT implemented.
+
+## Owner-only approvals and cash-sale drawer policy — confirmed by owner (2026-11-13)
+
+- **Luke only** has the manager/owner approval privilege. Neither Colleen nor Logan may approve their own or another staff member's override, refunds, unusual discounts, voids, inventory exceptions, or manual drawer opens.
+- **Colleen and Logan MAY accept and record cash for ordinary sales** after their individual employee badge sessions have been verified on the server. Both should be able to give change and finish the sale.
+- When a verified cashier confirms cash received **and the backend atomically saves exactly one successful cash sale**, the Epson Windows agent may open the attached cash drawer automatically once for that sale. This is the permitted employee drawer access; no owner scan needed for each normal cash transaction.
+- Do **not** make 'Open Drawer' available as a staff button and do not open on badge login, cart changes, entering a tender amount, retrying an unknown cash save, non-cash orders, refunds or failed/rejected checkout. Manual/open-without-sale remains **Luke-only** with owner step-up and logged reason.
+- Repeated payment callbacks, reloads, receipt reprints and retries cannot create another automatic drawer-open job for the same saved cash sale. Existing draft `pos_saved_sale_drawer_job` filters `payment_method='cash'` and uses `pos_drawer_open_cash_once` uniqueness, but employee session attribution and actual Windows printer/drawer behavior are NOT yet integrated/verified.
+- Audit must link each cash-sale drawer job to its immutable sale ID and employee ID/name snapshot; privileged manual opens log Luke's approved action. The public customer screen never sees these privileged controls or credentials.
+- Add PostgreSQL/browser tests proving Colleen and Logan can process cash only under valid cashier sessions, cannot call manual-open RPC or owner approval, no open on noncash/uncommitted payment, and exactly one cash-sale drawer job on idempotent checkout retries.
+- **This is a staging requirements update only.** The draft backend currently requires owner auth for POS operations and the staff badge login/role enforcement is unfinished; do not tell Colleen or Logan they can use their badges or that the drawer is verified until server changes, CI and hardware acceptance tests pass.
