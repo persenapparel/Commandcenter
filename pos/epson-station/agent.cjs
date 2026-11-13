@@ -37,21 +37,56 @@ function escposReceipt(sale){
   if(variation)items.push('  '+variation.slice(0,printColumns-2));
  }
  const hr='-'.repeat(printColumns);
- const lines=[
-  'PERSEN APPAREL','persenapparel.com','',
-  'SALE '+String(sale.sale_id).slice(0,8).toUpperCase(),
-  hr,...items,hr,
-  padAmount('Subtotal',money(sale.subtotal_cents)),
-  padAmount('Discount','-'+money(sale.discount_cents)),
-  padAmount('Tax',money(sale.tax_cents)),
-  padAmount('TOTAL',money(sale.total_cents)),
-  padAmount('Cash received',money(sale.tendered_cents)),
-  padAmount('Change',money(sale.change_cents)),
-  hr,'Thank you for shopping small!',''
- ];
- const body=Buffer.from(lines.map(x=>ascii(x).slice(0,printColumns)).join('\n')+'\n','ascii');
- // Printer reset, no automatic drawer pulse, feed, cut.
- return Buffer.concat([Buffer.from([ESC,0x40]),body,Buffer.from([0x0a,0x0a,GS,0x56,0x00])]);
+ const date=typeof sale.created_at==='string'&&Number.isFinite(Date.parse(sale.created_at))
+  ?new Date(sale.created_at).toISOString().replace('T',' ').slice(0,16)+' UTC'
+  :'';
+ const id=String(sale.sale_id).slice(0,8).toUpperCase();
+ const line=value=>Buffer.from(ascii(value).slice(0,printColumns)+'\n','ascii');
+ const cmd=(...bytes)=>Buffer.from(bytes);
+ // Each copy has a separate, complete ESC/POS paper cut. One server-claimed
+ // queue job contains both copies and requires just ONE Windows RAW spool call.
+ // No cash-drawer pulse is ever part of a receipt payload.
+ function copy(kind){
+  const merchant=kind==='MERCHANT COPY';
+  const chunks=[
+   cmd(ESC,0x40),               // Reset before each copy.
+   cmd(ESC,0x61,0x01),          // Center.
+   cmd(ESC,0x45,0x01,GS,0x21,0x11), // Bold 2x logo-style title.
+   line('PERSEN APPAREL'),
+   cmd(GS,0x21,0x00,ESC,0x45,0x00),
+   line('CUSTOM APPAREL'),
+   line('persenapparel.com'),
+   line('@persenapparel'),
+   line(''),
+   cmd(ESC,0x45,0x01),line(kind),cmd(ESC,0x45,0x00),
+   cmd(ESC,0x61,0x00),line(hr),
+   line('SALE '+id),
+   ...(date?[line(date)]:[]),
+   line(hr),
+   ...items.map(line),
+   line(hr),
+   line(padAmount('Subtotal',money(sale.subtotal_cents))),
+   line(padAmount('Discount','-'+money(sale.discount_cents))),
+   line(padAmount('Tax',money(sale.tax_cents))),
+   cmd(ESC,0x45,0x01,GS,0x21,0x01),
+   line(padAmount('TOTAL',money(sale.total_cents))),
+   cmd(GS,0x21,0x00,ESC,0x45,0x00),
+   line(padAmount('Cash received',money(sale.tendered_cents))),
+   line(padAmount('Change',money(sale.change_cents))),
+   line(hr),
+   cmd(ESC,0x61,0x01),
+   line(merchant?'MERCHANT RECORD - RETAIN':'THANK YOU FOR YOUR PURCHASE!'),
+   ...(!merchant?[line('Thanks for shopping small!'),line('Hope to see you again!')]:[line('Owner copy - same sale, not a new charge')]),
+   line(''),
+   // Print a centered, high-contrast monochrome logo on BOTH copies by
+   // configuring Epson receipt enhancement / NV graphics once per printer.
+   // This payload uses text branding as a safe default until that device
+   // setting is physically verified. Never assume the logo is installed.
+   cmd(ESC,0x61,0x00,0x0a,0x0a,GS,0x56,0x00) // Feed + full cut.
+  ];
+  return Buffer.concat(chunks);
+ }
+ return Buffer.concat([copy('CUSTOMER COPY'),copy('MERCHANT COPY')]);
 }
 function drawerKick(opts={}){
  const pin=opts.pin??0, on=opts.on??50, off=opts.off??250;
