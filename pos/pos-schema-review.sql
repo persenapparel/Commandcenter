@@ -497,7 +497,7 @@ grant execute on function public.pos_finish_order(uuid) to authenticated;
 -- This RPC returns only receipt data, never phone/email or survey details.
 create or replace function public.pos_claim_print_job(p_job uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare j public.pos_print_jobs; sale public.pos_sales;
+declare j public.pos_print_jobs; sale public.pos_sales; event_name text;
 begin
  if (select auth.uid()) is null or not public.is_persen_admin() then
    raise exception 'Unauthorized';
@@ -510,8 +510,9 @@ begin
  if not found then return null; end if;
  select * into sale from public.pos_sales where id=j.sale_id and owner_id=(select auth.uid());
  if not found then raise exception 'Sale no longer available'; end if;
+ select name into event_name from public.pos_events where id=sale.event_id and owner_id=(select auth.uid());
  return jsonb_build_object(
-    'job_id',j.id,'sale_id',sale.id,
+    'job_id',j.id,'sale_id',sale.id,'event_name',event_name,
     'items',sale.snapshot->'items',
     'subtotal_cents',sale.subtotal_cents,
     'discount_cents',sale.discount_cents,
