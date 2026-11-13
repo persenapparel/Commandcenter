@@ -587,6 +587,23 @@ by('cash-exact').addEventListener('click',()=>{tenderBills={};manualTender=false
 by('cash-clear').addEventListener('click',resetTender);
 by('save-drawer').addEventListener('click',saveDrawer);
 
+by('manual-drawer-open').addEventListener('click',async()=>{
+ const button=by('manual-drawer-open');
+ if(button.disabled)return;
+ button.disabled=true;
+ try{
+  const result=drawerKickGate
+   ? await drawerKickGate.requestOwnerOpen({
+      reason:by('manual-drawer-reason').value,
+      bridge:window.PersenPOSDrawerBridge
+     })
+   : {message:'Secure owner drawer opening is not configured. Use the drawer key.'};
+  by('drawer-status').textContent=result.message;
+ }finally{
+  button.disabled=false;
+ }
+});
+
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
 by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
