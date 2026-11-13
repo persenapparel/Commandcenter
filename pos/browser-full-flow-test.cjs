@@ -24,8 +24,9 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(await p.locator('#pin-gate').count(),0);
   assert.equal(await p.locator('#pin-input').count(),0);
   assert.match(await p.locator('.test').innerText(),/Cloudflare Access/);
-  for(const file of ['admin.html','register.html','display.html','print-station.html'])
+  for(const file of ['admin.html','register.html','display.html'])
    assert.equal(await p.locator('a[href="'+file+'"]').count(),1);
+   assert.equal(await p.locator('a[href="admin.html#print-center"]').count(),1,'Epson Print Center must be on the dashboard');
   await p.reload();await visible(p,'#device-dashboard');
  });
  await step('Laptop owner authentication and inventory loaded',async()=>{admin=await ctx.newPage();opened.push(admin);await admin.goto(url+'admin.html');await visible(admin,'#workspace');await txt(admin,'#stat-variants','2');assert.ok(await admin.locator('a[href="inventory.html"]').count()>=1)});
