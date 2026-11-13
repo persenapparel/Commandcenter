@@ -179,6 +179,7 @@ async function boot(){
   $('auth').hidden=true;$('workspace').hidden=false;
   await Promise.all([loadInventory(),loadEvents(),live()]);
   window.PersenEpsonCenter?.attach({db,owner});
+   window.PersenEpsonPromotions?.attach({db,owner});
    await loadResponses();
   if(liveTimer)clearInterval(liveTimer);liveTimer=setInterval(live,4000);
   say('Back office connected to staging. Add products, edit your inventory, and watch live checkouts here.');
