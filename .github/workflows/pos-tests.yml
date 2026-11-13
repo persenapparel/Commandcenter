@@ -52,6 +52,7 @@ jobs:
           node --check pos/pos-cash.js
           node --check pos/register.js
           node --check pos/admin.js
+          node --check pos/epson-center.js
           node --check pos/checkout-flow.js
           node --check pos/display.js
           node --check pos/print-station.js
@@ -68,8 +69,6 @@ jobs:
         run: node pos/experience-tests.cjs
       - name: Test Resend receipt worker with offline mock provider
         run: node pos/receipt-worker-smoke.cjs
-      - name: Simulate Dell automatic receipt queue to browser print
-        run: node pos/print-station-smoke.cjs
       - name: Validate customer iPad wizard flow and no-SMS receipt policy
         run: node pos/wizard-dom-check.cjs
       - name: Validate unapplied SQL draft structure
@@ -103,6 +102,10 @@ jobs:
           test -f pos-dist/admin.html
           test -f pos-dist/admin.css
           test -f pos-dist/admin.js
+          test -f pos-dist/epson-center.js
+          test -f pos-dist/epson-center.css
+          test ! -e pos-dist/print-station.js
+          test ! -e pos-dist/print-station.css
           test ! -e pos-dist/test-fake-supabase.js
           test ! -e pos-dist/browser-full-flow-test.cjs
           test -f pos-dist/register.html
