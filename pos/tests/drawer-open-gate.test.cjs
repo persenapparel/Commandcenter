@@ -49,3 +49,34 @@ test('unacknowledged or failed transport never falsely claims drawer opened',asy
  assert.equal((await b.requestCashOpen({...ready,bridge})).status,'unconfirmed');
  assert.equal((await b.requestCashOpen({...ready,bridge})).status,'already-attempted');
 });
+
+test('owner manual opening is disabled without a verified controller',async()=>{
+ const gate=createGate();
+ assert.equal((await gate.requestOwnerOpen({reason:'cash-count',isOwner:true,ownerPin:'UNTRUSTED'})).status,'not-configured');
+ let calls=0;
+ const bridge={openForOwner:async()=>{calls++;return {accepted:true}}};
+ assert.equal((await gate.requestOwnerOpen({reason:'not-valid',bridge})).status,'blocked');
+ assert.equal(calls,0);
+});
+test('manual opening forwards reason only, no PIN or scanned barcode',async()=>{
+ let request;
+ const bridge={openForOwner:async x=>{request=x;return {requiresApproval:true}}};
+ const result=await createGate().requestOwnerOpen({reason:'drawer-reconcile',isOwner:true,ownerPin:'UNTRUSTED',ownerBarcode:'UNTRUSTED',bridge});
+ assert.deepEqual(request,{purpose:'owner-manual-open',reason:'drawer-reconcile'});
+ assert.equal(result.status,'owner-approval-required');
+});
+test('manual opening rejects unknown hardware and never claims physically opened',async()=>{
+ const gate=createGate();
+ assert.equal((await gate.requestOwnerOpen({bridge:{openForOwner:async()=>({accepted:false})}})).status,'unconfirmed');
+ assert.equal((await gate.requestOwnerOpen({bridge:{openForOwner:async()=>{throw Error('device off')}}})).status,'unconfirmed');
+ assert.equal((await gate.requestOwnerOpen({bridge:{openForOwner:async()=>({accepted:true})}})).status,'command-accepted');
+});
+test('manual opening prevents concurrent double requests',async()=>{
+ const gate=createGate();let count=0;let complete;
+ const bridge={openForOwner:async()=>{count++;return new Promise(resolve=>{complete=resolve})}};
+ const first=gate.requestOwnerOpen({bridge});
+ assert.equal((await gate.requestOwnerOpen({bridge})).status,'already-attempted');
+ complete({accepted:true});
+ assert.equal((await first).status,'command-accepted');
+ assert.equal(count,1);
+});
