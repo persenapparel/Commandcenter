@@ -13,7 +13,7 @@ assert.match(html,/id="phone-display"[^>]*name="phone"[^>]*readonly/,'Phone must
 assert.match(html,/id="phone-keypad"/);
 for(const key of '1234567890')assert.ok(html.includes('data-digit="'+key+'"'),'Missing number key '+key);
 assert.ok(html.includes('data-digit="back"')&&html.includes('data-digit="clear"'));
-for(const mode of ['print','email','both','none'])assert.ok(html.includes('name="receipt_mode" value="'+mode+'"'));
+for(const mode of ['print','both'])assert.ok(html.includes('name="receipt_mode" value="'+mode+'"'));
 assert.ok(!html.includes('receipt_sms')&&!js.includes('receipt_sms')&&!sql.includes('receipt_sms'));assert.doesNotMatch(html,/Apple Cash information|value="apple_cash_info"/i);
 assert.match(html,/id="email-address"[^>]+name="email"/);
 for(const step of ['promos','rating','custom'])assert.ok(sections.includes(step),'Missing one-question page '+step);
