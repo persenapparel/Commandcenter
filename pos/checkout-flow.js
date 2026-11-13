@@ -9,14 +9,10 @@
 })(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
  const steps=Object.freeze([
-  {id:'phone',title:'Your phone number',kicker:'Step 1 of 8'},
-  {id:'receipt',title:'Choose your receipt',kicker:'Step 2 of 8'},
-  {id:'email',title:'Your email address',kicker:'Step 3 of 8'},
-  {id:'payment',title:'Choose a payment option',kicker:'Step 4 of 8'},
-  {id:'promos',title:'Stay in the loop?',kicker:'Step 5 of 8'},
-  {id:'rating',title:'How was your experience?',kicker:'Step 6 of 8'},
-  {id:'custom',title:'Need custom apparel?',kicker:'Step 7 of 8'},
-  {id:'review',title:'Review and continue',kicker:'Step 8 of 8'}
+  {id:'phone',title:'Phone number',kicker:'Step 1 of 4'},
+  {id:'email',title:'Email and receipts',kicker:'Step 2 of 4'},
+  {id:'payment',title:'Payment option',kicker:'Step 3 of 4'},
+  {id:'review',title:'Review and continue',kicker:'Step 4 of 4'}
  ]);
  const digits=v=>String(v||'').replace(/\D/g,'').slice(0,10);
  function dial(digitString,key){
