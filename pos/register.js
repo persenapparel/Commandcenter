@@ -190,7 +190,6 @@ function syncCheckoutUI(){
  by('start').disabled=!!checkout||!!pendingCash||!cart.length;
  by('cancel').disabled=!checkout||checkout.status==='completed';
  by('discount').disabled=!!checkout;
- by('tax').disabled=!!checkout;
  by('event-select').disabled=!!checkout||!!cart.length;
 }
 async function loadStock(){
