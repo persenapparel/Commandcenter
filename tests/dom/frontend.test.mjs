@@ -383,3 +383,10 @@ test('voice recognition updates microphone accessible state at start and end',as
   assert.match(source,/recognition\.start\(\);state\.listening=true;[\s\S]*?setAttribute\('aria-pressed','true'\)/);
   assert.match(source,/recognition\.start\(\);state\.listening=true;[\s\S]*?setAttribute\('aria-label','Finish voice input'\)/);
 });
+
+test('voice recognition ignores empty or malformed Safari transcripts without sending',async()=>{
+  const source=await readFile(path.join(project,'donna/app.js'),'utf8');
+  assert.match(source,/String\(e\.results\?\.\[0\]\?\.\[0\]\?\.transcript\|\|''\)\.trim\(\)/);
+  assert.match(source,/if\(!text\)\{const label=\$\('#voice-status'\);if\(label\)label\.textContent='No words recognized\./);
+  assert.match(source,/if\(!text\)[\s\S]*?return;\}const input=\$\('#chat-form textarea'\)/);
+});
