@@ -38,7 +38,8 @@ export function buildBriefing(data = {}, now = new Date()) {
   for (const key of ['tasks','orders','invoices','payments','inventory','events']) if (missing(data, key)) incomplete.push(key);
   for (const t of rows(data.tasks)) if (!closed(t.status)) {
     const overdue = t.due_date && t.due_date < today;
-    if (overdue || t.due_date === today || String(t.priority).toLowerCase() === 'high') items.push({ priority:overdue ? 3 : 2, kind:'task', id:t.id, title:t.title, detail:overdue ? `Overdue since ${t.due_date}` : t.due_date ? `Due ${t.due_date}` : 'High priority; no due date recorded' });
+    const priority = String(t.priority).toLowerCase();
+    if (overdue || t.due_date === today || ['high','urgent'].includes(priority)) items.push({ priority:overdue || priority==='urgent' ? 3 : 2, kind:'task', id:t.id, title:t.title, detail:overdue ? `Overdue since ${t.due_date}` : t.due_date ? `Due ${t.due_date}` : `${priority==='urgent'?'Urgent':'High priority'}; no due date recorded` });
   }
   for (const o of rows(data.orders)) if (!closed(o.status) && o.due_date && o.due_date <= today) items.push({ priority:o.due_date < today ? 3 : 2, kind:'order', id:o.id, title:o.title, detail:`Production ${o.due_date < today ? 'overdue' : 'due today'} · ${o.due_date}` });
   if (!missing(data, 'invoices') && !missing(data, 'payments')) for (const inv of rows(data.invoices)) {
@@ -46,7 +47,7 @@ export function buildBriefing(data = {}, now = new Date()) {
     try { const balance = invoiceBalanceCents(inv, rows(data.payments)); if (balance > 0) items.push({ priority:3, kind:'invoice',id:inv.id,title:`Invoice ${inv.invoice_number} is overdue`,detail:`${usd(balance)} outstanding · due ${inv.due_date}` }); } catch { incomplete.push('invalid invoice or payment amount'); }
   }
   for (const item of rows(data.inventory)) if (Number.isFinite(Number(item.quantity)) && Number.isFinite(Number(item.reorder_at)) && Number(item.quantity) <= Number(item.reorder_at)) items.push({priority:1,kind:'inventory',id:item.id,title:`Low stock · ${item.sku}`,detail:`${item.quantity} on hand · reorder level ${item.reorder_at}`});
-  for (const event of rows(data.events)) if (event.event_date && event.event_date >= today) items.push({ priority:1,kind:'event',id:event.id,title:event.name,detail:`Event · ${event.event_date}` });
+  for (const event of rows(data.events)) if (event.active!==false && event.event_date && event.event_date >= today) items.push({ priority:1,kind:'event',id:event.id,title:event.name,detail:`Event · ${event.event_date}` });
   items.sort((a,b) => b.priority-a.priority || a.title.localeCompare(b.title));
   return { items, urgent:items.filter(x => x.priority===3).length, incomplete:[...new Set(incomplete)], computedAt:new Date(now).toISOString() };
 }
@@ -67,9 +68,15 @@ export function answerMessage(message, { data = {}, memories = [], now = new Dat
   }
   if (/\b(inventory|stock|hoodies|garments|blanks)\b/.test(normalized)) {
     const required = need('inventory', 'Stock quantities must come from actual inventory.'); if (required.text) return required;
-    const stop = new Set(['donna','how','many','do','i','have','in','my','inventory','stock','are','there','what','is','the','can','you','check','please']);
-    const terms = normalized.replace(/[?.,]/g,'').split(/\s+/).filter(w=>w&&!stop.has(w)).map(w=>w.replace(/ies$/,'y').replace(/s$/,''));
-    const matching = rows(data.inventory).filter(i=>terms.every(w=>`${i.sku} ${i.product_name||''} ${i.color||''} ${i.size||''}`.toLowerCase().includes(w)));
+    const stop = new Set(['donna','how','many','do','i','we','have','in','my','our','inventory','stock','are','there','what','is','the','can','you','check','please','size','sizes','any','left','on','hand']);
+    const sizes = {small:'s',medium:'m',large:'l',xl:'xl',xxl:'xxl',xxxl:'xxxl',s:'s',m:'m',l:'l',xs:'xs',xxs:'xxs'};
+    const normalizeProduct = value => String(value||'').toLowerCase().replace(/\b(?:extra[ -]?large|x-large)\b/g,'xl').replace(/\bhoodies\b/g,'hoodie').replace(/\bt-shirts\b/g,'t-shirt');
+    const terms = normalizeProduct(normalized).replace(/[?.,]/g,'').split(/\s+/).filter(w=>w&&!stop.has(w));
+    const matching = rows(data.inventory).filter(i=>terms.every(term=> {
+      if(Object.hasOwn(sizes,term)) return String(i.size||'').toLowerCase()===sizes[term];
+      const haystack = normalizeProduct(`${i.sku} ${i.product_name||''} ${i.color||''}`);
+      return haystack.includes(term) || term.length>3 && term.endsWith('s') && haystack.includes(term.slice(0,-1));
+    }));
     return {intent:'inventory',tool:'inventory',text:matching.length ? `Here's the current stock from the loaded Command Center records:\n${matching.slice(0,20).map(i=>`• ${i.sku} · ${i.product_name||''} ${i.color||''} ${i.size||''}: ${i.quantity} on hand`).join('\n')}${matching.length>20?'\nSee Inventory for the remaining records.':''}` : 'I did not find a matching stock record. Please check the exact product name, SKU, color, and size in Inventory. Missing stock is not proof of zero stock.'};
   }
   if (/\b(tasks?|follow.ups?|deadlines?|orders?|customers?|agreements?|events?|calendar)\b/.test(normalized)) {

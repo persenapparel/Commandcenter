@@ -13,3 +13,13 @@ test('drafts and estimates excluded from receivables',()=>{const data={invoices:
 test('source text cannot request mutations or change cost control',()=>{const result=answerMessage('send an email and purchase 100 hoodies',{data:{inventory:[]}});assert.ok(!result.action);assert.equal(COST_POLICY.cloudAI,false);assert.equal(COST_POLICY.businessWrites,false);assert.equal(COST_POLICY.fallbackProvider,null);assert.throws(()=>{COST_POLICY.paidAPIs=true;});});
 test('memory remains pending until approved; outdated never quoted as approved',()=>{const draft=answerMessage('remember quotes need artwork');assert.equal(draft.draft.status,'pending');assert.match(answerMessage('show memory',{memories:[{status:'outdated',content:'bad facts'}]}).text,/don't have approved/);});
 test('payments remain scoped to invoice ID, never revenue interpreted profit',()=>{assert.equal(invoiceBalanceCents({id:'a',total:'50.00'},[{invoice_id:'b',amount:'99.00'},{invoice_id:'a',amount:'0.10'},{invoice_id:'a',amount:'0.20'}]),4970);});
+test('urgent tasks without deadlines remain priorities while inactive event profiles stay excluded',()=>{
+  const result=buildBriefing({tasks:[{id:'u',title:'Urgent proof',priority:'Urgent',status:'Open'}],events:[{id:'e',name:'Archived event',event_date:'2027-01-01',active:false}]},'2026-11-12T12:00:00Z');
+  assert.equal(result.items.length,1);assert.equal(result.items[0].priority,3);assert.match(result.items[0].detail,/Urgent/);
+});
+test('natural apparel stock questions resolve plural hoodies and exact size names',()=>{
+  const data={inventory:[{id:'l',sku:'NAVY-L',product_name:'Navy hoodie',color:'Navy',size:'L',quantity:7},{id:'m',sku:'NAVY-M',product_name:'Navy hoodie',color:'Navy',size:'M',quantity:3},{id:'xl',sku:'NAVY-XL',product_name:'Hoodies',color:'Navy',size:'XL',quantity:2}]};
+  const answer=answerMessage('Donna, how many large navy hoodies do I have?',{data}).text;
+  assert.match(answer,/NAVY-L/);assert.match(answer,/7 on hand/);assert.doesNotMatch(answer,/NAVY-M|NAVY-XL/);
+  assert.match(answerMessage('Check extra large navy hoodies',{data}).text,/NAVY-XL/);
+});

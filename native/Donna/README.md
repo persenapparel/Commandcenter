@@ -1,6 +1,6 @@
 # Donna for iPhone — source implementation
 
-**Status: implemented but unverified.** This Linux workspace has neither Xcode nor an iPhone. The Swift source has not been compiled, signed or tested on a device. Do not treat this as a tested iOS release.
+**Status: baseline simulator compilation and Siri metadata packaging pass; physical-device behavior remains unverified.** The [free public-repository macOS check](https://github.com/persenapparel/Commandcenter/actions/runs/43358668136) built this source with Xcode 26.6/iOS 26.5 Simulator SDK and archived its English App Intents metadata without error diagnostics. No app was signed, distributed, or installed. The owner’s iOS 27.0.1 phone still requires a compatible Mac/Xcode and device acceptance testing.
 
 The app targets **iOS 26.0+** with Swift 6 and Apple's Foundation Models SDK. The owner reports **iOS 27.0.1 on iPhone 16**; no phone OS upgrade is needed solely for this app. It provides on-device conversation, an authenticated read-only business tool, local-only push-to-talk, system speech playback, a voice selector, Keychain session storage, a local-device unlock gate, and six foreground App Intents. No cloud AI fallback, telephone service or notification scheduling is present.
 

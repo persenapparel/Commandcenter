@@ -12,7 +12,7 @@ Development branch: `codex/project-donna-free-v1`.
 - Read security advisor findings for the main project.
 - Confirmed the separate POS staging project's public table names, key columns, RLS state, and relevant SELECT policies.
 - No customer, order, invoice, payment, contact, session, or auth-user records were read.
-- No hosted database, configuration, Cloudflare deployment, GitHub main branch, or active POS checkout was changed.
+- During the audit, no hosted database, configuration, Cloudflare deployment, GitHub main branch, or active POS checkout was changed. Subsequent Donna branch pushes triggered the repository’s pre-existing Cloudflare preview integration; production/main remained unchanged.
 
 This is a source and metadata audit, not a claim that owner sign-in, production integrations, hardware, or iPhone behavior passed an end-to-end test.
 

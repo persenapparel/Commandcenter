@@ -1,6 +1,6 @@
 # Donna: iPhone setup, verified limits, and costs
 
-Research checked November 12, 2026 (America/New_York). The owner confirmed an iPhone 16 running iOS 27.0.1. Public provider limits below do not establish the owner's billing plan, remaining allowances, or Apple Intelligence readiness. No paid service, deployment, notification schedule, email, or calling integration was activated.
+Research checked November 12, 2026 (America/New_York). The owner confirmed an iPhone 16 running iOS 27.0.1. Public provider limits below do not establish the owner's billing plan, remaining allowances, or Apple Intelligence readiness. No paid service, production rollout, notification schedule, email, or calling integration was activated. The existing Cloudflare integration automatically created a Donna branch preview.
 
 ## First launch and Siri
 
@@ -25,6 +25,8 @@ Donna's additive web route is `/donna/`. Before using shortcuts, deploy and vali
 The shortcut opens Donna. It does not replace Siri, register a permanently listening custom wake word, unlock business access, or guarantee that Safari starts the microphone or speech playback automatically. Tap the microphone or playback control when prompted. Apple documents that a shortcut opening an app on a locked device requests unlocking. Business APIs must still enforce their own authentication and owner authorization. [Apple: run shortcuts with Siri](https://support.apple.com/guide/shortcuts/run-shortcuts-with-siri-apd07c25bb38/ios)
 
 Do not put a password, session, API key, bearer token, customer identifier, or business notes in a shortcut URL. Do not enable locked-device spoken summaries. Native App Intents should explicitly require authentication because their default policy allows locked-device execution. On iOS 26+, `supportedModes = .foreground` brings the app forward; use this instead of relying on deprecated `openAppWhenRun`. [Apple: authentication policy](https://developer.apple.com/documentation/appintents/appintent/authenticationpolicy), [foreground mode](https://developer.apple.com/documentation/appintents/intentmodes/foreground)
+
+For optional on-device AI using only the iPhone’s Shortcuts app, see [Donna Private Chat](ON-DEVICE-SHORTCUT.md). This separate recipe has no business-record connection or lasting memory and remains untested on the phone.
 
 ## Native on-device intelligence
 

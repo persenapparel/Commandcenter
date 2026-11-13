@@ -4,12 +4,12 @@
 
 | Component | Status | Evidence or limit |
 | --- | --- | --- |
-| SwiftUI app and XcodeGen specification | Implemented but unverified | Source under `native/Donna`; no Xcode or iPhone in this workspace |
+| SwiftUI app and XcodeGen specification | Implemented and compile-tested | [Unsigned baseline simulator build](https://github.com/persenapparel/Commandcenter/actions/runs/43358668136) passes on the free macOS runner; no signed device build |
 | Foundation Models conversation and fixed read-only Tool | Implemented but unverified | Runtime availability gate; no paid model fallback; model restricted to fixed read tools |
 | Speech input | Implemented but unverified | Explicit permission, `supportsOnDeviceRecognition` gate and `requiresOnDeviceRecognition = true`; rejects unsupported language/device |
 | Spoken replies and voice choice | Implemented but unverified | Installed AVSpeechSynthesis voices; preference stored locally; speaking defaults off |
 | Supabase password sign-in and Keychain access token | Implemented but unverified | Existing public project configuration; token stored when-unlocked, this-device-only; administrator verified by backend |
-| Six App Intents | Implemented but unverified | Foreground-only, requires local device authentication; opens a route without reading records aloud |
+| Six App Intents | Implemented and package-tested; Siri unverified | English metadata generation/archive passes; foreground-only, local-device authentication; actual Siri phrases need device testing |
 | Native teaching and pricing UI | Not started | Opens the corresponding authenticated web workspace instead |
 | iPhone 16, Siri phrase, microphone, model quality | Blocked | Owner reports iOS 27.0.1; still requires the owner's Mac/Xcode and unlocked iPhone for execution |
 | App Store distribution and autonomous client calls | Not started | No enrollment, purchase or telephone integration activated |
@@ -18,7 +18,7 @@
 
 The Foundation Models baseline API is available from iOS 26. It is a native Swift framework, not a browser API. The owner reports **iPhone 16 running iOS 27.0.1**. The hardware is Apple Intelligence eligible, but region/language, Apple Intelligence setting and model download readiness remain unverified. No phone OS update is required solely for Donna. The app evaluates `SystemLanguageModel.default.availability` before every request rather than inferring readiness from the hardware. See [Foundation Models](https://developer.apple.com/documentation/foundationmodels), [SystemLanguageModel availability](https://developer.apple.com/documentation/foundationmodels/systemlanguagemodel/availability-swift.property), and [Apple Intelligence requirements](https://support.apple.com/en-us/121115).
 
-For the reported iOS 27.0.1 phone, use a stable **Xcode 27.x with an iOS 27 SDK**. Apple's current [Xcode support table](https://developer.apple.com/xcode/system-requirements/) lists Xcode 27, 27.1 and 27.2 with **macOS Tahoe 26.6 or later**. Recheck the selected release's supported Mac and device software before installing. The source uses the iOS 26 API baseline and minimum deployment target, while validation should run on the actual iOS 27.0.1 model. No Mac, provisioning profile or Apple account has been verified here.
+For the reported iOS 27.0.1 phone, use a stable **Xcode 27.x with an iOS 27 SDK**. Apple's current [Xcode support table](https://developer.apple.com/xcode/system-requirements/) lists Xcode 27, 27.1 and 27.2 with **macOS Tahoe 26.6 or later**. Recheck the selected release's supported Mac and device software before installing. The source uses the iOS 26 API baseline and minimum deployment target, while validation should run on the actual iOS 27.0.1 model. The baseline macOS CI toolchain was verified. No personal Mac, provisioning profile, Apple account, or physical device has been verified.
 
 The app uses a stateful [LanguageModelSession](https://developer.apple.com/documentation/foundationmodels/languagemodelsession) and a [Tool](https://developer.apple.com/documentation/foundationmodels/tool) with generated arguments. Tool arguments are still checked against a hard allowlist. Financial calculations are routed to deterministic web tools; model answers are not treated as verified ledgers. Short bounded model sessions reset after six answers, and the user is told when context resets. Long-term knowledge storage is separate from the language model.
 
@@ -58,7 +58,7 @@ The current native briefing is a direct task-record view, not a complete automat
 
 These tests have **not been run**. Before using native Donna with confidential data:
 
-- Build with Xcode and resolve all Swift 6 diagnostics. Run first with read tools disabled. Verify a short conversation works with network disabled when Apple's local model is ready, and verify lack of model readiness has an honest fallback message.
+- Build and sign for the actual iOS 27.0.1 phone with compatible Xcode, checking its diagnostics beyond the passed baseline simulator check. Run first with read tools disabled. Verify a short conversation works with network disabled when Apple's local model is ready, and verify lack of model readiness has an honest fallback message.
 - Check each availability state supported by the actual OS. Test regional/language support, long requests and six-turn context reset. Compare real business-advice answers with expected answers; do not assume cloud-model reasoning quality.
 - Deny microphone and speech permissions. Confirm typed chat works. Test a language without local recognition and verify recording is refused. Use network instrumentation to confirm local speech and conversation do not transmit audio/prompts. No paid-provider endpoint exists in this source.
 - Test installed voices and spoken greeting. Verify audio stops on inactive/background transitions, stop tap and sign-out. Open Control Center and the app switcher while a response, read or permission prompt is pending. Confirm no stale transcript/record repopulates, no late tool request starts while locked, and no spoken response begins after deactivation.
@@ -70,4 +70,4 @@ These tests have **not been run**. Before using native Donna with confidential d
 
 ## Remaining work
 
-Compile and run on the owner's Mac and iPhone, measure actual response quality/latency, perform the tests above, and decide whether a native memory editor, deterministic native finance view or securely refreshing session is worthwhile. Investigate newer Apple Speech APIs only after verifying the installed OS; the current implementation uses the established local-recognition path. Public App Store distribution and paid telephony remain separate future proposals requiring explicit authorization.
+Sign, install, and run on the owner's Mac and iPhone, measure actual response quality/latency, perform the tests above, and decide whether a native memory editor, deterministic native finance view or securely refreshing session is worthwhile. Investigate newer Apple Speech APIs only after verifying the installed OS; the current implementation uses the established local-recognition path. Public App Store distribution and paid telephony remain separate future proposals requiring explicit authorization.

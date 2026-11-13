@@ -101,6 +101,20 @@ export function createDonnaAPI(config = {}, options = {}) {
   function memoryDraft(input) {
     return {title:bounded(input.title,160,'Memory title'),content:bounded(input.content,6000,'Memory content'),category:categories.includes(input.category)?input.category:'Business information',source:bounded(input.source||'Owner teaching session',500,'Source')};
   }
+  function conversationMetadata(row) {
+    if (!row || typeof row!=='object' || typeof row.title!=='string' || !row.title.trim() || row.title.length>160) throw Error('This saved conversation has invalid metadata.');
+    validID(row.id);
+    for(const field of ['created_at','updated_at']) if(typeof row[field]!=='string'||!Number.isFinite(Date.parse(row[field]))) throw Error('This saved conversation has an invalid timestamp.');
+    return {id:row.id,title:row.title,created_at:row.created_at,updated_at:row.updated_at};
+  }
+  function savedMessages(messages) {
+    if(!Array.isArray(messages)||messages.length>200||JSON.stringify(messages).length>100000) throw Error('This saved conversation exceeds the supported transcript limit.');
+    return messages.map(message=>{
+      if(!message||!['user','assistant'].includes(message.role)||typeof message.text!=='string'||!message.text.trim()||message.text.length>6000||typeof message.at!=='string'||!Number.isFinite(Date.parse(message.at))) throw Error('This saved conversation contains an invalid message.');
+      // Only transcript text is returned: stored objects cannot become tool calls or instructions.
+      return {role:message.role,text:message.text,at:message.at};
+    });
+  }
   const api = {
     diagnostics() {return {...usage};},
     async status() { if (!configured) return {configured:false,authenticated:false,admin:false}; if (!session?.access_token) return {configured:true,authenticated:false,admin:false}; try {const user=await authorize();return {configured:true,authenticated:true,admin:true,user:{id:user.id,email:user.email}};} catch(error) { if(error.status===401) persist(null);return {configured:true,authenticated:false,admin:false,error:error.message};} },
@@ -124,7 +138,18 @@ export function createDonnaAPI(config = {}, options = {}) {
       async history(id) {const result=await ownRead('donna_memories',{id:`eq.${validID(id)}`},'id,history');return result.rows[0]?.history||[];}
     },
     conversations: {
-      async list() {return ownRead('donna_conversations');},
+      async list() {
+        const result=await ownRead('donna_conversations',{},'id,title,created_at,updated_at',COST_POLICY.requestPageSize);
+        return {...result,rows:result.rows.map(conversationMetadata)};
+      },
+      async get(id) {
+        validID(id);
+        const user=await authorize();
+        const result=await readTable('donna_conversations','id,owner_id,title,messages,created_at,updated_at',{owner_id:`eq.${user.id}`,id:`eq.${id}`},1,1);
+        if(result.rows.length!==1||result.rows[0].id!==id||result.rows[0].owner_id!==user.id) throw Error('This conversation is no longer available to your account.');
+        const row=result.rows[0];
+        return {...conversationMetadata(row),messages:savedMessages(row.messages)};
+      },
       async save(input) {
         const title=bounded(input.title||'Conversation',160,'Conversation title');
         if(!Array.isArray(input.messages)||input.messages.length>200) throw Error('A conversation may contain at most 200 messages. Export or start a new conversation.');

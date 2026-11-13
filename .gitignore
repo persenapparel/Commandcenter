@@ -6,3 +6,6 @@
 native/Donna/Donna.xcodeproj/
 native/Donna/build/
 native/Donna/DerivedData/
+
+**/__pycache__/
+*.pyc

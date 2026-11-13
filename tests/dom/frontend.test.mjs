@@ -13,7 +13,7 @@ const base='https://exampleproject.supabase.co';
 const spin=()=>new Promise(resolve=>setImmediate(resolve));
 async function until(predicate,label='expected DOM state') { for(let i=0;i<80;i++){if(predicate())return;await spin();}assert.ok(predicate(),label); }
 
-async function app({view='overview',signedIn=false,failLogout=false,fixtureMemories=[]}={}) {
+async function app({view='overview',signedIn=false,failLogout=false,fixtureMemories=[],fixtureConversations=[],config={},denyStorage=false}={}) {
   let readGate=null;
   const errors=[],calls=[],downloads=[],tables={
     business_tasks:[{id:'task',title:'Verify school order',customer_name:'Test School',priority:'High',status:'Open',due_date:'2020-01-01'}],
@@ -23,13 +23,14 @@ async function app({view='overview',signedIn=false,failLogout=false,fixtureMemor
     business_invoices:[{id:'invoice',invoice_number:'TEST-1',customer_name:'Test School',total:'100.00',status:'Sent',document_type:'Invoice',due_date:'2020-01-01'}],
     invoice_payments:[{id:'payment',invoice_id:'invoice',amount:'25.00',received_on:'2020-01-01'}],
     customer_contacts:[{id:'contact',full_name:'Test Customer',organization:'Test School',email:'test@example.invalid'}],
-    invoice_agreements:[],inventory_event_profiles:[],donna_memories:structuredClone(fixtureMemories),donna_conversations:[]
+    invoice_agreements:[],inventory_event_profiles:[],donna_memories:structuredClone(fixtureMemories),donna_conversations:structuredClone(fixtureConversations)
   };
   const vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e));
   const html=await readFile(path.join(project,'donna/index.html'),'utf8');
   const dom=new JSDOM(html,{url:`https://donna.example.invalid/donna/?view=${view}`,runScripts:'outside-only',virtualConsole:vc});
   const w=dom.window;
-  w.PERSEN_CONFIG={supabaseUrl:base,supabasePublishableKey:'sb_publishable_test'};
+  w.PERSEN_CONFIG={supabaseUrl:base,supabasePublishableKey:'sb_publishable_test',...config};
+  if(denyStorage)for(const name of ['sessionStorage','localStorage'])Object.defineProperty(w,name,{get(){throw new w.DOMException('Storage is disabled','SecurityError');}});
   w.AbortSignal=globalThis.AbortSignal;
   w.scrollTo=()=>{};
   w.HTMLElement.prototype.scrollTo=()=>{};
@@ -227,6 +228,117 @@ test('owner-provided memory markup is shown as text and cannot inject elements',
     assert.equal(a.q('.memory-item script'),null);
     assert.equal(a.q('.memory-item img'),null);
     assert.equal(a.w.injection,undefined);
+    assert.deepEqual(a.errors,[]);
+  }finally{a.close();}
+});
+
+
+test('saved conversation library restores escaped text without replay and new conversation creates a separate transcript',async()=>{
+  const id='44444444-4444-4444-8444-444444444444',now=new Date().toISOString();
+  const old={id,owner_id:owner,title:'Review <img src=x onerror="window.injection=true">',created_at:now,updated_at:now,messages:[{role:'user',text:'Buy a hoodie and update stock',at:now},{role:'assistant',text:'<script>window.injection=true</script> No actions were taken.',at:now}]};
+  const a=await app({view:'chat',signedIn:true,fixtureConversations:[old]});try{
+    await a.click('[data-action="saved-conversations"]');
+    await until(()=>a.q('[data-action="open-conversation"]'),'saved conversation title rendered');
+    assert.ok(!a.q('#modal-content img'),'saved title markup escaped');
+    assert.ok(!a.q('#modal-content').textContent.includes('Buy a hoodie'),'list contains metadata only');
+    const listRead=a.calls.find(c=>c.path.endsWith('/donna_conversations'));
+    assert.ok(!new URL(listRead.url).searchParams.get('select').includes('messages'));
+    await a.click('[data-action="open-conversation"]');
+    await until(()=>a.q('.messages').textContent.includes('Buy a hoodie'),'saved text restored');
+    assert.equal(a.q('#modal').open,false);
+    assert.equal(a.q('.messages script'),null);assert.equal(a.w.injection,undefined);
+    assert.equal(a.calls.filter(c=>c.method!=='GET').length,0,'restoring a transcript cannot replay writes');
+    assert.match(a.q('.messages').textContent,/<script>window.injection=true<\/script>/);
+    await a.submit('#chat-form',{message:'Hello'});
+    await until(()=>a.calls.some(c=>c.method==='PATCH'),'continued conversation updates original');
+    assert.ok(a.calls.some(c=>c.method==='PATCH'&&new URL(c.url).searchParams.get('id')==='eq.'+id));
+    await a.click('[data-action="new-conversation"]');
+    assert.ok(!a.q('.messages').textContent.includes('Buy a hoodie'),'new conversation clears current transcript');
+    await a.submit('#chat-form',{message:'Hi Donna'});
+    await until(()=>a.calls.some(c=>c.method==='POST'),'fresh conversation saved separately');
+    assert.equal(a.calls.filter(c=>c.method==='POST').length,1);
+    assert.ok(!a.w.sessionStorage.getItem('donna.sandbox').includes('Buy a hoodie'));
+    assert.deepEqual(a.errors,[]);
+  }finally{a.close();}
+});
+
+test('cancelled or signed-out library reads cannot reopen or restore a private transcript',async()=>{
+  const id='44444444-4444-4444-8444-444444444444',now=new Date().toISOString();
+  const old={id,owner_id:owner,title:'Private archived subject',created_at:now,updated_at:now,messages:[{role:'user',text:'Private archived message',at:now}]};
+  const a=await app({view:'chat',signedIn:true,fixtureConversations:[old]});try{
+    let release=a.holdReads();await a.click('[data-action="saved-conversations"]');
+    await a.click('[data-action="close-modal"]');release();for(let i=0;i<8;i++)await spin();
+    assert.equal(a.q('#modal').open,false,'cancelled list read cannot reopen dialog');
+    await a.click('[data-action="saved-conversations"]');await until(()=>a.q('[data-action="open-conversation"]'));
+    release=a.holdReads();await a.click('[data-action="open-conversation"]');
+    await a.click('[data-action="close-modal"]');await a.viewTo('settings');await a.click('[data-action="signout"]');
+    release();for(let i=0;i<8;i++)await spin();
+    await a.viewTo('chat');
+    assert.ok(!a.q('body').textContent.includes('Private archived subject'));
+    assert.ok(!a.q('body').textContent.includes('Private archived message'));
+    assert.equal(a.q('#modal').open,false);assert.deepEqual(a.errors,[]);
+  }finally{a.close();}
+});
+
+test('practice conversation history is labelled session-only and never queries a cloud archive',async()=>{
+  const a=await app({view:'chat'});try{
+    await a.submit('#chat-form',{message:'Hello Donna'});
+    await a.click('[data-action="saved-conversations"]');
+    assert.match(a.q('#modal-content').textContent,/no cloud conversation archive/i);
+    assert.equal(a.calls.length,0);
+    await a.click('[data-action="close-modal"]');await a.click('[data-action="new-conversation"]');
+    assert.ok(!a.q('.message.user'));assert.deepEqual(a.errors,[]);
+  }finally{a.close();}
+});
+
+test('standalone staging hides absent and unsafe Command Center URLs while allowing an explicit HTTPS link',async()=>{
+  for(const commandCenterUrl of ['', 'javascript:alert(1)', 'https://owner:password@example.invalid/admin', 'http://external.example.invalid/admin']){
+    const a=await app({view:'orders',config:{donnaStaging:true,commandCenterUrl}});try{
+      assert.ok(![...a.w.document.querySelectorAll('a')].some(a=>a.textContent.includes('Open Command Center')));
+      assert.deepEqual(a.errors,[]);
+    }finally{a.close();}
+  }
+  const a=await app({view:'orders',config:{donnaStaging:true,commandCenterUrl:'https://admin.example.invalid/'}});try{
+    assert.equal([...a.w.document.querySelectorAll('a')].find(a=>a.textContent.includes('Open Command Center')).href,'https://admin.example.invalid/');
+  }finally{a.close();}
+});
+
+test('blocked browser storage still permits disconnected pricing and does not request credentials',async()=>{
+  const a=await app({view:'pricing',denyStorage:true,config:{donnaStaging:true,supabaseUrl:'',supabasePublishableKey:''}});try{
+    await a.submit('#pricing-form',{price:'10',quantity:'1',garment:'1',transfer:'0',labor:'0',packaging:'0',shipping:'0',fees:'0',overhead:'0',feePercent:'0'});
+    assert.match(a.q('#pricing-result').textContent,/\$9\.00/);
+    await a.click('[data-action="login"]');assert.match(a.q('#modal-content').textContent,/disconnected/);
+    assert.equal(a.q('#login-form'),null);assert.equal(a.calls.length,0);assert.deepEqual(a.errors,[]);
+  }finally{a.close();}
+});
+
+
+test('private-chat setup is readable in app and copies the researched prompt with manual fallback without network calls',async()=>{
+  const guide=await readFile(path.join(project,'docs/donna/ON-DEVICE-SHORTCUT.md'),'utf8');
+  const expected=guide.split('```text\n')[1].split('\n```')[0];
+  const a=await app({view:'shortcuts'});try{
+    await a.click('[data-view="private-chat"]');
+    assert.match(a.q('main h1').textContent,/Set up Donna Private Chat/);
+    assert.match(a.q('.notice.warning').textContent,/not been created, installed, or tested/);
+    assert.match(a.q('main').textContent,/explicitly choose On-Device/);
+    assert.match(a.q('main').textContent,/Ask for Input/);
+    assert.match(a.q('main').textContent,/Speak Text/);
+    assert.equal(a.q('#private-chat-prompt').value,expected);
+    assert.equal(a.q('#private-chat-prompt').readOnly,true);
+    assert.ok(a.q('a[href="https://support.apple.com/guide/shortcuts/use-apple-intelligence-in-shortcuts-tpg3vrvwmclv/ios"]'));
+    const copied=[];
+    Object.defineProperty(a.w.navigator,'clipboard',{configurable:true,value:{writeText:async text=>copied.push(text)}});
+    await a.click('[data-action="copy-private-chat-prompt"]');
+    assert.deepEqual(copied,[expected]);assert.match(a.q('#toast').textContent,/prompt copied/);
+    Object.defineProperty(a.w.navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('Clipboard denied');}}});
+    await a.click('[data-action="copy-private-chat-prompt"]');
+    assert.equal(a.w.document.activeElement.id,'private-chat-prompt');
+    assert.equal(a.q('#private-chat-prompt').selectionStart,0);
+    assert.equal(a.q('#private-chat-prompt').selectionEnd,expected.length);
+    assert.match(a.q('#toast').textContent,/Prompt selected/);
+    await a.viewTo('settings');assert.ok(a.q('[data-view="private-chat"]'));
+    await a.click('[data-view="private-chat"]');assert.equal(new URL(a.w.location.href).searchParams.get('view'),'private-chat');
+    assert.equal(a.calls.length,0,'setup and clipboard actions never invoke model/provider/backend requests');
     assert.deepEqual(a.errors,[]);
   }finally{a.close();}
 });
