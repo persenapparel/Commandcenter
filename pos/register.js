@@ -893,7 +893,7 @@ by('pair').onclick=async()=>{
  }finally{button.disabled=false}
 };
 by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t)};
-by('save-template').onclick=saveTemplate;by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');receipt();window.print()};
+by('save-template').onclick=saveTemplate;by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');if(!window.confirm('The Epson station may already have printed this receipt. After checking the printer and queue, print a browser BACKUP copy?'))return;receipt();window.print()};
 createBillButtons();boot();
 
 // Event setup writes the same selections read by Command Center Inventory Hub.

@@ -13,7 +13,7 @@ const seed=()=>({
  stock_items:[{id:'44444444-4444-4444-8444-444444444444',sku:'XMAS-RED-M',product_name:'Christmas Hoodie',color:'Red',size:'M',quantity:3,reorder_at:1},{id:'55555555-5555-4555-8555-555555555555',sku:'XMAS-RED-L',product_name:'Christmas Hoodie',color:'Red',size:'L',quantity:2,reorder_at:1}],
  pos_variant_details:[{stock_id:'44444444-4444-4444-8444-444444444444',price_cents:4000,taxable:true,category:'Apparel',product_type:'hoodie',description:''},{stock_id:'55555555-5555-4555-8555-555555555555',price_cents:4000,taxable:true,category:'Apparel',product_type:'hoodie',description:''}],
  pos_registers:[{id:REG,owner_id:USER,active:true,display_secret:PAIR,display_expires_at:null,label:'Front register',cash_drawer:{},drawer_version:0,drawer_configured:false,created_at:today}],
- pos_checkouts:[],pos_sales:[],pos_print_jobs:[],pos_events:[],
+ pos_checkouts:[],pos_sales:[],pos_print_jobs:[],pos_drawer_open_jobs:[],pos_events:[],
  inventory_catalog:[{name:'Christmas Hoodie',inventory_type:'sales',price_cents:4000,is_active:true}],inventory_event_profiles:[],inventory_event_quick_products:[],
  pos_receipt_templates:[{id:'66666666-6666-4666-8666-666666666666',owner_id:USER,name:'Default',headline:'THANK YOU!',promotion:'persenapparel.com',footer:'Shop local',active:true,updated_at:today}],
  site_content:[],pos_drawer_recounts:[]
@@ -159,6 +159,7 @@ function rpc(name,p={}){
   const sale={id:newid(state),checkout_id:match.id,owner_id:USER,event_id:match.event_id,snapshot:{items:match.items,receipt_print:match.receipt_print},subtotal_cents:match.subtotal_cents,discount_cents:match.discount_cents,tax_cents:match.tax_cents,total_cents:match.total_cents,tendered_cents:p.p_tender_cents,change_cents:p.p_tender_cents-match.total_cents,change_breakdown:p.p_change_breakdown||{},created_at:new Date().toISOString()};
   t.pos_sales.push(sale);
   if(match.receipt_print)t.pos_print_jobs.push({id:newid(state),sale_id:sale.id,owner_id:USER,register_id:REG,state:'queued',created_at:new Date().toISOString(),attempts:0});
+   t.pos_drawer_open_jobs.push({id:newid(state),sale_id:sale.id,owner_id:USER,register_id:REG,kind:'cash-sale',reason:'completed-cash-sale',state:'queued',created_at:new Date().toISOString()});
   if(sessionStorage.getItem('mock-lose-cash-response')){
    sessionStorage.removeItem('mock-lose-cash-response');
    save(state);

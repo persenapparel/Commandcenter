@@ -1,0 +1,17 @@
+
+/* Epson Center is a read-only owner dashboard. The Windows agent runs separately. */
+.printer-center{margin:20px 0}
+.printer-center .epson-overview{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
+.printer-center .epson-metric{flex:1 1 180px;border:1px solid #d7e5f5;border-radius:13px;padding:14px;background:#f6faff}
+.printer-center .epson-metric span{display:block;color:#607b9c;font-size:12px;font-weight:700}
+.printer-center .epson-metric strong{display:block;margin-top:6px;font-size:18px;color:#173f74}
+.epson-queues{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.epson-queues h3{font-size:14px;color:#163d71;margin:10px 0}
+.epson-job{display:flex;gap:12px;justify-content:space-between;align-items:center;border-bottom:1px solid #e8eef8;padding:10px 0}
+.epson-job strong{display:block;color:#173856;font-size:12px;line-height:1.45}
+.epson-job small{display:block;margin-top:4px;color:#607b9c;font-size:11px}
+.epson-job-state{color:#335987;font-size:11px;font-weight:700;white-space:nowrap}
+.epson-guard{background:#fff9ef;border:1px solid #e6d4af;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;color:#75551c}
+.printer-center .epson-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.printer-center .epson-actions a{font-size:13px;font-weight:700}
+@media(max-width:760px){.epson-queues{grid-template-columns:1fr}}

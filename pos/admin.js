@@ -178,7 +178,8 @@ async function boot(){
   if(!await PA.isAdmin(owner))throw Error('This account is not authorized to manage the POS');
   $('auth').hidden=true;$('workspace').hidden=false;
   await Promise.all([loadInventory(),loadEvents(),live()]);
-  await loadResponses();
+  window.PersenEpsonCenter?.attach({db,owner});
+   await loadResponses();
   if(liveTimer)clearInterval(liveTimer);liveTimer=setInterval(live,4000);
   say('Back office connected to staging. Add products, edit your inventory, and watch live checkouts here.');
  }catch(err){say('Cannot open back office: '+err.message)}
