@@ -50,3 +50,12 @@ References: https://support.epson.net/publist/bsmanual.php?lang=EN&model=TM-T20I
 **Hardware:** Windows laptop, Epson, Volcora and both iPads must be physically tested. Until then, use drawer key and existing receipt backup workflow, and do not take real event payments.
 
 When an owner completes the physical acceptance checklist, review deployment/security gates separately before production use.
+
+## Laptop back-office Print Center (Epson staging UI)
+The POS device dashboard and cashier register now link to `admin.html#print-center`, a single owner-authenticated **read-only** Epson Print Center. It displays recent receipt/drawer queue records and their known server states; it never claims jobs, sends ESC/POS commands, or promises physical device status. The monitor requires the reviewed Epson staging SQL and owner RLS permissions.
+
+**Why a service remains necessary:** Cloudflare-hosted pages and iPad Safari cannot directly send Windows RAW spooler jobs or kick a drawer. Run `node pos/epson-station/agent.cjs` in a separate, signed-in Windows process with the settings above after hardware acceptance. Keeping the Back Office page open is not sufficient to print. Print Center cannot start, stop or detect whether that local process is alive; inspect its console on the laptop.
+
+**Old NELKO flow:** `print-station.html` now shows a non-printing informational page, and the old `print-station.js`, `print-station.css` and `receipt-paper-layout.js` are excluded from the Epson Pages build. They remain archived in source for historical reference only. Never keep a previously deployed NELKO browser worker armed when using the Epson agent.
+
+**Backup:** The cashier's Emergency browser reprint button requires explicit duplicate-warning confirmation and is **not** an Epson RAW print command. Confirm whether the Epson has already printed before using it.
