@@ -129,14 +129,12 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(link,await cashier.evaluate(()=>navigator.clipboard.readText()));
   customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await visible(customer,'#live-preview-note');await txt(customer,'#items','Christmas Hoodie');assert.equal(await customer.locator('#contact').isVisible(),false)
  });
- await step('Print station test print, paper selection, arm',async()=>{
-  printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');await visible(printer,'#station-panel');
-  await printer.locator('#paper').selectOption('continuous-100');await printer.locator('#test-print').click();await txt(printer,'#station-message','Test sent to Chrome');
-  assert.ok(Number(await printer.evaluate(()=>localStorage.getItem('__prints')))>0);
-  assert.equal(await printer.locator('#arm').isDisabled(),true,'Physical confirmation must gate automatic printing');
-  await printer.locator('#test-printed').check();
-  assert.equal(await printer.locator('#arm').isEnabled(),true,'Operator-confirmed paper test can arm station');
-  await printer.locator('#arm').click();await txt(printer,'#station-state','Listening for paid sales');
+ await step('Epson Center integrated into Back Office, legacy browser worker disabled',async()=>{
+  await visible(admin,'#print-center');await txt(admin,'#epson-monitor-status','Showing staging queue history');
+  assert.ok(await admin.locator('#epson-refresh').isEnabled());
+  printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');
+  await txt(printer,'main','old NELKO browser print worker is disabled');
+  assert.equal(await printer.locator('#arm').count(),0,'Legacy browser auto-print must not be available');
  });
  await step('Send checkout and laptop live monitor',async()=>{
   await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');
@@ -215,15 +213,22 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal((await state(cashier)).tables.pos_checkouts.at(-1).cash_handoff_complete,true);
   await visible(customer,'#thanks',11000);
  });
- await step('Print queue receives sale only after payment',async()=>{
-  await printer.waitForFunction(()=>__POS_TEST_DB.get().tables.pos_print_jobs[0]?.state==='submitted_to_browser',null,{timeout:11000});
-  assert.equal((await state(printer)).tables.pos_print_jobs.length,1);assert.ok(Number(await printer.evaluate(()=>localStorage.getItem('__prints')))>=2)
+ await step('Paid sale creates Epson receipt and cash-drawer queue jobs',async()=>{
+  await admin.locator('#epson-refresh').click();
+  await txt(admin,'#epson-receipt-queue','1 queued');
+  await txt(admin,'#epson-drawer-queue','1 queued');
+  const snapshot=await state(admin);
+  assert.equal(snapshot.tables.pos_print_jobs.length,1);
+  assert.equal(snapshot.tables.pos_drawer_open_jobs.length,1);
+  assert.equal(snapshot.tables.pos_print_jobs[0].state,'queued','Only the Windows agent may claim receipt jobs');
+  assert.equal(snapshot.tables.pos_drawer_open_jobs[0].state,'queued','Only the Windows agent may open the drawer');
+  await txt(admin,'#epson-receipt-list','Queued — waiting for Windows station');
  });
- await step('Print station pause and manual retry',async()=>{
-  await printer.locator('#disarm').click();await txt(printer,'#station-state','Paused');const prior=Number(await printer.evaluate(()=>localStorage.getItem('__prints')));
-  await printer.locator('#job-list button').first().click();await txt(printer,'#station-message','queued again');
-  assert.equal(Number(await printer.evaluate(()=>localStorage.getItem('__prints'))),prior);await printer.locator('#arm').click();
-  await printer.waitForFunction(n=>Number(localStorage.getItem('__prints'))>n,prior,{timeout:9000})
+ await step('Read-only Back Office cannot silently print or open drawer',async()=>{
+  await admin.waitForTimeout(350);
+  const snapshot=await state(admin);
+  assert.equal(snapshot.tables.pos_print_jobs[0].state,'queued');
+  assert.equal(snapshot.tables.pos_drawer_open_jobs[0].state,'queued');
  });
  await step('Inventory reflects sale and customer completion',async()=>{
   await visible(customer,'#customer-welcome',11000);
@@ -241,5 +246,5 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}
  if(failures.length){console.error('POS functional failures:',JSON.stringify(failures,null,2));process.exitCode=1}
- else console.log('PASS: Laptop, cashier, customer iPad, printer and shared mocked checkout exercised interactively. Not physical hardware/live-email validation.');
+ else console.log('PASS: Laptop Epson queue monitor, cashier, customer iPad and shared mocked checkout exercised interactively. No physical hardware commands or email delivery.');
 })().catch(e=>{console.error(e);try{server.close()}catch{}process.exitCode=1});
