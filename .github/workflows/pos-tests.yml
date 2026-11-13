@@ -91,6 +91,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f pos/pos-customer-answers-tests.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql-integration-test.sql
           psql -v ON_ERROR_STOP=1 -f pos/epson-t20iv-staging.sql
+          psql -v ON_ERROR_STOP=1 -f pos/epson-contact-promotion-staging.sql
           psql -v ON_ERROR_STOP=1 -f pos/tests/epson-staging-schema-test.sql
       - name: Build separate static POS project
         run: |

@@ -216,8 +216,21 @@ async function loadStock(){
  }catch(e){eventProfiles=[];eventQuickTiles=[];notice('Inventory event presets unavailable: '+e.message)}
  draw();renderProductList();
 }
-async function loadTemplates(){templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));by('templates').replaceChildren();for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;by('templates').append(opt)}const t=templates.find(x=>x.active)||templates[0];if(t){by('templates').value=t.id;showTemplate(t)}}
-function showTemplate(t){by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false}
+async function loadTemplates(selectedId=''){
+ templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));
+ by('templates').replaceChildren();
+ const fresh=document.createElement('option');fresh.value='';fresh.textContent='+ Create new receipt design';by('templates').append(fresh);
+ for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name+(t.active?' · ACTIVE':'');by('templates').append(opt)}
+ const t=templates.find(x=>x.id===selectedId)||templates.find(x=>x.active)||templates[0];
+ if(t){by('templates').value=t.id;showTemplate(t)}
+ else by('template-active-status').textContent='No saved receipt designs. Create a promotion and choose Save & Use on Epson.';
+}
+function showTemplate(t){
+ by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;
+ by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;
+ by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false;
+ by('template-active-status').textContent=t.active?'ACTIVE on Epson for new sales: '+t.name:'Saved draft (not sent to Epson yet). Use Save & Use on Epson.';
+}
 async function ensureRegister(){const regs=await check(db.from('pos_registers').select('*').eq('owner_id',user.id).eq('active',true).order('created_at').limit(1));register=regs[0]||await check(db.from('pos_registers').insert({owner_id:user.id,label:'Persen POS register'}).select('*').single());pendingCash=sessionStorage.getItem(pendingCashKey());syncCheckoutUI();}
 const saleForCheckout=id=>check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,tendered_cents,change_cents,change_breakdown,created_at').eq('checkout_id',id).maybeSingle());
 function showPaidAwaitingHandoff(saved,record){
@@ -332,7 +345,37 @@ async function cash(){
  }finally{busy=false;await status()}
 }
 function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-tax').textContent=C.money(lastSale.totals.tax_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
-async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
+async function saveTemplate(activate=false){
+ const save=by('save-template'),go=by('activate-template');
+ save.disabled=true;go.disabled=true;
+ try{
+  const id=templates.some(t=>t.id===by('templates').value)?by('templates').value:null;
+  const selected=templates.find(t=>t.id===id);
+  const payload={
+   owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,
+   promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,
+   show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,
+   active:selected?.active===true,updated_at:new Date().toISOString()
+  };
+  if(!payload.name)throw Error('Template name required');
+  let savedId=id;
+  if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));
+  else{const row=await check(db.from('pos_receipt_templates').insert(payload).select('id').single());savedId=row.id;}
+  if(activate){
+   const enabled=await check(db.rpc('pos_activate_receipt_template',{p_template:savedId}));
+   if(enabled!==true)throw Error('Receipt design was saved but could not be activated');
+  }
+  await loadTemplates(savedId);
+  notice(activate?'Promotion activated for NEW Epson cash receipts. Existing sales are unchanged.':'Receipt design saved. Select Save & Use on Epson to activate it.');
+ }catch(e){notice('Receipt design: '+e.message)}
+ finally{save.disabled=false;go.disabled=false}
+}
+const RECEIPT_PROMOS=Object.freeze({
+ holiday:'Discover the latest seasonal Persen Apparel collection at persenapparel.com!',
+ custom:'Need custom apparel for a business, team, school, or event? Request a quote at persenapparel.com.',
+ shop:'Shop Persen Apparel collections and see new arrivals at persenapparel.com.',
+ blank:''
+});
 async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales(),reloadDrawer()]);if(sessionStorage.getItem('pos-register-open')==='1'&&stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))setRegisterOpen(true);try{const contents=await check(db.from('site_content').select('key,value').in('key',['seasonal_campaigns_v1','v54_google_reviews']));const dict=Object.fromEntries((contents||[]).map(x=>[x.key,x.value]));season=C.season(dict.seasonal_campaigns_v1);reviewLink=R.reviewUrl(dict.v54_google_reviews);if(season){Experience.apply(document,season);by('seasonal-status').textContent='Active: '+season.title+' — receipt and display promotions';notice('Seasonal Studio connected: '+season.title)}else{by('seasonal-status').textContent='No published active campaign — classic receipt and customer display'}if(!reviewLink)notice('Google review link not configured in Command Center Site Studio; review invitation hidden until configured.')}catch(err){by('seasonal-status').textContent='Seasonal Studio temporarily unavailable';}by('pairing').textContent='Use Create temporary iPad link to pair the customer display. A new link expires after 2 hours and replaces the previous link.';await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
 
 /* Event manager: owner/admin-only RLS queries and historical immutable sale snapshots. */
@@ -892,8 +935,11 @@ by('pair').onclick=async()=>{
   notice('Could not create a private pairing link: '+e.message+'. Check the POS connection and owner access.');
  }finally{button.disabled=false}
 };
-by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t)};
-by('save-template').onclick=saveTemplate;by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');if(!window.confirm('The Epson station may already have printed this receipt. After checking the printer and queue, print a browser BACKUP copy?'))return;receipt();window.print()};
+by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t);else{by('template-name').value='';by('headline').value=R.DEFAULTS.headline;by('promotion').value='';by('footer').value=R.DEFAULTS.footer;by('review-message').value=R.DEFAULTS.review;by('template-active-status').textContent='New design: fill in the fields, then choose Save & Use on Epson.'}};
+by('save-template').onclick=()=>void saveTemplate(false);
+by('activate-template').onclick=()=>void saveTemplate(true);
+by('promotion-preset').onchange=()=>{const choice=by('promotion-preset').value;if(Object.hasOwn(RECEIPT_PROMOS,choice))by('promotion').value=RECEIPT_PROMOS[choice]};
+by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');if(!window.confirm('The Epson station may already have printed this receipt. After checking the printer and queue, print a browser BACKUP copy?'))return;receipt();window.print()};
 createBillButtons();boot();
 
 // Event setup writes the same selections read by Command Center Inventory Hub.

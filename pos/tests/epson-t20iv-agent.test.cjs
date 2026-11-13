@@ -23,6 +23,38 @@ test('Every Epson job contains exactly two cut receipts with distinct roles',()=
  assert.equal(cuts,2,'Customer and merchant copy must be individually cut');
  assert.equal(buf.includes(drawerKick()),false,'Copies must never open the drawer');
 });
+test('Both Epson receipts print saved customer phone, email and show promotion',()=>{
+ const sale={...sample,phone:'(631) 555-0199',email:'customer@example.com',
+  headline:'Thanks for shopping with us',promotion:'See winter shirts at persenapparel.com',
+  footer:'Visit our next event',review_message:'Leave us a Google review'};
+ const buf=escposReceipt(sale),raw=buf.toString('latin1');
+ const copies=raw.split(Buffer.from([0x1d,0x56,0]).toString('latin1'));
+ assert.equal(copies.length,3,'One spool payload must cut customer and merchant copies');
+ for(const copy of copies.slice(0,2)){
+  assert.match(copy,/Phone: \(631\) 555-0199/);
+  assert.match(copy,/Email: customer@example\.com/);
+  assert.match(copy,/PROMO: See winter shirts at/);
+  assert.match(copy,/persenapparel\.com/);
+  assert.match(copy,/Visit our next event/);
+  assert.match(copy,/Leave us a Google review/);
+ }
+ assert.match(copies[0],/Thanks for shopping with us/);
+ assert.match(copies[1],/MERCHANT RECORD - RETAIN/);
+ assert.equal(buf.includes(drawerKick()),false);
+});
+test('Long emails and promotions are wrapped rather than clipped',()=>{
+ const email='customer.'+'x'.repeat(150)+'@example.com',promotion='Sale promotion '+('longtext '.repeat(30));
+ const str=escposReceipt({...sample,email,promotion,phone:'6315550199'}).toString('latin1');
+ assert.equal((str.match(/@example\.com/g)||[]).length,2,'Email tail remains on both copies');
+ assert.equal((str.match(/longtext/g)||[]).length,60,'Both copies retain the whole promotion');
+});
+test('Untrusted receipt contact and promotion text cannot inject ESC/POS instructions',()=>{
+ const raw=escposReceipt({...sample,phone:'6315550199\x1bp',email:'a@example.com\x1bV',
+  promotion:'Special\x1bp\x00 offer'}).toString('latin1');
+ assert.equal(raw.includes('Special\x1bp'),false);
+ assert.equal(raw.includes('6315550199\x1bp'),false);
+ assert.equal((raw.match(/Special p  offer/g)||[]).length,2);
+});
 test('Bad sale payload never produces two copies',()=>{
  assert.throws(()=>escposReceipt({...sample,items:[{name:'Invalid',qty:0,unit_cents:300}]}),/Invalid item/);
 });

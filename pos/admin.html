@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="epson-center.css">
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="../config.js"></script><script defer src="../backend.js"></script>
-<script defer src="epson-center.js"></script><script defer src="admin.js"></script>
+<script defer src="epson-center.js"></script><script defer src="epson-promotions.js"></script><script defer src="admin.js"></script>
 </head><body>
 <header class="top"><div class="brand"><img src="assets/persen-logo.png" alt="" onerror="this.hidden=true">PERSEN <span>POS</span><small>BACK OFFICE</small></div>
 <nav><a href="index.html">Dashboard</a><a href="inventory.html">Sales Products &amp; Inventory</a><a href="register.html">Open Cashier</a><a href="#customer-insights">Customer Responses</a><a href="#print-center">Epson Print Center</a></nav></header>
@@ -47,6 +47,17 @@
   <div class="section-head"><div><span class="eyebrow">04 · EPSON PRINT CENTER · STAGING</span><h2 id="printer-center-title">Receipts &amp; cash drawer</h2></div><button id="epson-refresh" type="button">↻ Refresh queues</button></div>
   <p class="muted">Monitor recent receipt and cash-drawer commands directly in your laptop back office. This page never prints a receipt or opens the cash drawer. The separate Windows Epson station service must be installed, signed in, and running while the laptop is awake.</p>
   <p class="epson-guard"><strong>Hardware not yet verified.</strong> Use the Epson TM-T20IV RAW Windows station, not the old NELKO browser Print Station. The printer must be physically connected and compatible with the cash drawer. Do not start both print services. Queue status does not prove paper printed, that the cutter ran, or that a drawer opened.</p>
+  <form id="epson-promo-form" class="epson-promo-editor">
+   <h3>Promotion on both Epson receipts</h3>
+   <p class="muted">Choose a suggestion or write your own. The new promotion applies only to new cash sales. This does not sign customers up for marketing.</p>
+   <label for="epson-promo-preset">Quick promotion idea
+    <select id="epson-promo-preset"><option value="">Custom message</option><option value="seasonal">Seasonal collection</option><option value="custom">Custom apparel and bulk orders</option><option value="online">Online shop</option><option value="none">No promotion</option></select>
+   </label>
+   <label for="epson-promo-message">Receipt message (300 characters max)
+    <textarea id="epson-promo-message" maxlength="300" rows="3" placeholder="Example: Check out our winter shirts at persenapparel.com"></textarea>
+   </label>
+   <div class="epson-actions"><button id="epson-promo-save" type="submit">Save promotion on both copies</button><span class="muted" id="epson-promo-status" role="status">Checking active promotion…</span></div>
+  </form>
   <div class="epson-overview">
    <div class="epson-metric"><span>Receipt jobs</span><strong id="epson-receipt-queue">Checking…</strong></div>
    <div class="epson-metric"><span>Drawer commands</span><strong id="epson-drawer-queue">Checking…</strong></div>
