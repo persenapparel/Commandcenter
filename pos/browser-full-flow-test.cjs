@@ -142,49 +142,57 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await visible(customer,'#contact');await txt(admin,'#live-list','Customer is checking out',11000);
   const s=await state(admin);assert.equal(s.tables.pos_checkouts.at(-1).event_id,s.tables.pos_events[0].id)
  });
- await step('Customer keypad, validation, back, email and payment options',async()=>{
-  await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
-  for(const digit of '6315550199')await customer.locator('[data-digit="'+digit+'"]').click();
-  await customer.locator('#wizard-next').click();await txt(customer,'#step-receipt-title','receipt');await customer.locator('#wizard-back').click();await customer.locator('#wizard-next').click();
-  await customer.locator('input[name=receipt_mode][value=both]').check();await customer.locator('#wizard-next').click();
-  await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
-  await customer.locator('#email-address').fill('test-pos@example.com');await customer.locator('#wizard-next').click();
-  await customer.locator('input[name=payment_preference][value=venmo_info]').check();await txt(customer,'#payment-instructions','@persenapparel');
-  assert.equal(await customer.locator('input[name=payment_preference][value=apple_cash_info]').count(),0);
-  await customer.locator('input[name=payment_preference][value=cash]').check();await customer.locator('#wizard-next').click();await txt(customer,'#step-promos-title','offers');
- });
- await step('Live help request reaches cashier and laptop',async()=>{
-  await customer.locator('#wizard-help').click();await visible(cashier,'#customer-help-alert',12000);await txt(admin,'#live-list','Customer requested help',12000);
-  await customer.locator('#wizard-help').click()
- });
- await step('Optional questionnaire and final checkout screen',async()=>{
-  await customer.locator('input[name=marketing][value=no]').check();await customer.locator('input[name=marketing][value=yes]').check();
-  await customer.locator('#wizard-next').click();await customer.locator('input[name=rating][value="5"]').check();await customer.locator('#wizard-next').click();
-  await customer.locator('input[name=interest][value=maybe]').check();await customer.locator('#wizard-next').click();
-  await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await customer.waitForFunction(()=>window.__POS_TEST_DB.get().tables.pos_checkouts.at(-1)?.status==='contact_received',null,{timeout:11000});await visible(customer,'#waiting-payment');assert.match(await customer.locator('#waiting-payment h2').innerText(),/Waiting for your cashier/);assert.equal(await customer.locator('#thanks').isVisible(),false);
-  const s=await state(customer);assert.equal(s.tables.pos_checkouts.at(-1).status,'contact_received');assert.equal(s.tables.pos_checkouts.at(-1).receipt_email,true)
- });
- await step('Submitted questions appear in the private laptop back office',async()=>{
-  await admin.locator('#responses-refresh').click();
-  await txt(admin,'#response-message','1 matching saved response');
-  await txt(admin,'#response-count','1');
-  await txt(admin,'#response-optins','1');
-  await txt(admin,'#response-leads','1');
-  await txt(admin,'#response-rating','5.0 / 5');
-  await admin.locator('.response-card').first().click();
-  await txt(admin,'#response-detail','test-pos@example.com');
-  await txt(admin,'#response-detail','Yes — explicitly opted in');
-  await txt(admin,'#response-detail','Maybe in the future');
-  await txt(admin,'#response-detail','Printed + Email requested');
-  const saved=(await state(admin)).tables.pos_checkouts.at(-1);
-  assert.equal(saved.marketing_response,'yes');
-  assert.equal(saved.marketing_opt_in,true);
-  assert.equal(saved.custom_interest,'maybe');
-  assert.equal(saved.rating,5);
-  assert.equal(saved.receipt_print,true);
-  assert.equal(saved.receipt_email,true);
- });
- await step('Cash changes, no early customer success, recovery and Finish Order gate',async()=>{
+ await step('Fast show customer phone, email, receipt and payment flow',async()=>{
+   await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
+   for(const digit of '6315550199')await customer.locator('[data-digit="'+digit+'"]').click();
+   await customer.locator('#wizard-next').click();await txt(customer,'#step-email-title','email');
+   await customer.locator('#wizard-back').click();await customer.locator('#wizard-next').click();
+   await customer.locator('input[name=receipt_mode][value=both]').check();
+   await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
+   await customer.locator('#email-address').fill('test-pos@example.com');await customer.locator('#wizard-next').click();
+   await customer.locator('input[name=payment_preference][value=venmo_info]').check();await txt(customer,'#payment-instructions','@persenapparel');
+   assert.equal(await customer.locator('input[name=payment_preference][value=apple_cash_info]').count(),0);
+   await customer.locator('input[name=payment_preference][value=cash]').check();await customer.locator('#wizard-next').click();
+   await txt(customer,'#step-review-title','Almost done');
+   assert.equal(await customer.locator('input[name=marketing], input[name=rating], input[name=interest]').count(),0);
+  });
+  await step('Live help request reaches cashier and laptop',async()=>{
+   await customer.locator('#wizard-help').click();await visible(cashier,'#customer-help-alert',12000);await txt(admin,'#live-list','Customer requested help',12000);
+   await customer.locator('#wizard-help').click();
+  });
+  await step('Final checkout saves contact and no marketing consent',async()=>{
+   await customer.locator('#wizard-finish').click();
+   await customer.waitForFunction(()=>window.__POS_TEST_DB.get().tables.pos_checkouts.at(-1)?.status==='contact_received',null,{timeout:11000});
+   await visible(customer,'#waiting-payment');
+   assert.match(await customer.locator('#waiting-payment h2').innerText(),/Waiting for your cashier/);
+   assert.equal(await customer.locator('#thanks').isVisible(),false);
+   const checkout=(await state(customer)).tables.pos_checkouts.at(-1);
+   assert.equal(checkout.status,'contact_received');
+   assert.equal(checkout.receipt_email,true);
+   assert.equal(checkout.marketing_response,'not_answered');
+   assert.equal(checkout.marketing_opt_in,false);
+  });
+  await step('Saved contact is private to back office, without survey opt-in',async()=>{
+   await admin.locator('#responses-refresh').click();
+   await txt(admin,'#response-message','1 matching saved response');
+   await txt(admin,'#response-count','1');
+   await txt(admin,'#response-optins','0');
+   await txt(admin,'#response-leads','0');
+   await txt(admin,'#response-rating','—');
+   await admin.locator('.response-card').first().click();
+   await txt(admin,'#response-detail','test-pos@example.com');
+   await txt(admin,'#response-detail','Not answered (not subscribed)');
+   await txt(admin,'#response-detail','Skipped / no answer');
+   await txt(admin,'#response-detail','Printed + Email requested');
+   const saved=(await state(admin)).tables.pos_checkouts.at(-1);
+   assert.equal(saved.marketing_response,'not_answered');
+   assert.equal(saved.marketing_opt_in,false);
+   assert.equal(saved.custom_interest,'not_answered');
+   assert.equal(saved.rating,null);
+   assert.equal(saved.receipt_print,true);
+   assert.equal(saved.receipt_email,true);
+  });
+  await step('Cash changes, no early customer success, recovery and Finish Order gate',async()=>{
   await cashier.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('ready for cashier'),null,{timeout:9000});
   assert.equal(await customer.locator('#thanks').isVisible(),false);
   assert.equal(await cashier.locator('#cash').isDisabled(),true);
