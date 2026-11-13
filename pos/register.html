@@ -77,6 +77,18 @@
 <p class="hint">Count cash actually in your register. The POS checks whether it can return exact change using your current bills and coins. Update counts when you add or remove cash.</p><p class="hint"><strong>Electronic opening:</strong> staging integration is prepared, but the RJ11/RJ12 drawer needs a tested kick-port printer or secure USB controller/bridge. This NELKO label printer is not confirmed to have a drawer port. No open command is sent until hardware is configured and a cash sale has been saved.</p>
 <div class="drawer-grid" id="drawer-grid"></div>
 <div class="drawer-footer"><span>Counted cash: <strong id="drawer-value">$0.00</strong></span><button id="save-drawer" type="button">Save drawer counts</button></div>
+<div class="drawer-footer">
+  <label for="manual-drawer-reason">Reason for owner access
+   <select id="manual-drawer-reason">
+    <option value="cash-count">Count cash</option>
+    <option value="change-float">Add change / float</option>
+    <option value="drawer-reconcile">Reconcile drawer</option>
+    <option value="supervisor-access">Owner access</option>
+   </select>
+  </label>
+  <button id="manual-drawer-open" type="button">Request owner-only drawer opening</button>
+</div>
+<p class="hint">Staging only. Actual electronic opening remains disabled until a separate authenticated controller verifies a signed-in owner's secure approval. A badge scan alone does not unlock the drawer; do not enter a PIN on this page.</p>
 <p id="drawer-status" class="hint">Your drawer counts haven't been loaded.</p>
 </details></section><div class="receipt-studio"><h3>Receipt Studio · Seasonal Studio connected</h3><p class="hint" id="seasonal-status">Checking active seasonal campaign…</p><label>Template <select id="templates"></select></label><input id="template-name" maxlength="80" placeholder="Template name"><input id="headline" maxlength="100" placeholder="Receipt headline"><textarea id="promotion" maxlength="300" placeholder="Promo / website"></textarea><input id="footer" maxlength="120" placeholder="Footer"><label>Google review invitation <input id="review-message" maxlength="130" value="Enjoyed your experience? Leave us an honest Google review."></label><label><input type="checkbox" id="receipt-seasonal" checked style="width:auto"> Include current Seasonal Studio offer</label><label><input type="checkbox" id="receipt-review" checked style="width:auto"> Include Google review invitation</label><p class="hint"><strong>Automatic receipts:</strong> when a connected print station is armed on your Windows computer, every completed cash sale is queued to that printer, even when the cashier uses a phone or iPad. Keep the station open. You can still print a manual backup below.</p><details class="dell-printer-guide">
   <summary>How the Dell + NELKO receipt station works</summary>
