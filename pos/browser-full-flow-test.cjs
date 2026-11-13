@@ -64,7 +64,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
  await step('Cashier starts closed, opens, and selects event',async()=>{
-  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
+  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await cashier.locator('input[name="checkout-device-mode"][value="dual"]').check();await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
   await cashier.locator('#setup-event-launch').click();await visible(cashier,'#event-setup-dialog');
   await cashier.locator('#setup-event').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
   await cashier.locator('input[aria-label="Include Christmas Hoodie"]').check();
@@ -243,6 +243,32 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await cashier.getByRole('button',{name:/L · Red/i}).click();
   await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');await cashier.locator('#checkout-cancel-quick').click();await txt(cashier,'#notice','Checkout cancelled');
   assert.equal((await state(cashier)).tables.pos_sales.length,1);assert.equal((await state(cashier)).tables.pos_print_jobs.length,1)
+ });
+ await step('One-iPad swivel checkout hides owner controls and authenticates cashier return',async()=>{
+  await cashier.locator('input[name="checkout-device-mode"][value="swivel"]').check();
+  assert.equal(await cashier.locator('#start').innerText(),'Hand to Customer →');
+  await cashier.locator('#start').click();
+  await visible(cashier,'#swivel-overlay');
+  assert.equal(await cashier.evaluate(()=>document.querySelector('main').inert),true);
+  const frame=cashier.frameLocator('#swivel-customer-frame');
+  await frame.locator('#contact').waitFor({state:'visible',timeout:11000});
+  await frame.locator('#phone-display').waitFor({state:'visible'});
+  await cashier.locator('#swivel-lock').click();
+  await visible(cashier,'#swivel-unlock-form');
+  assert.equal(await cashier.locator('#workspace').isVisible(),false);
+  await cashier.locator('#swivel-password').fill('test-cashier-password');
+  await cashier.locator('#swivel-unlock-submit').click();
+  await cashier.waitForFunction(()=>document.querySelector('#swivel-overlay').hidden,{timeout:11000});
+  assert.equal(await cashier.evaluate(()=>document.querySelector('main').inert),false);
+  await visible(cashier,'#swivel-resume');
+  await cashier.locator('#swivel-resume').click();await visible(cashier,'#swivel-overlay');
+  await cashier.locator('#swivel-lock').click();
+  await cashier.locator('#swivel-password').fill('test-cashier-password');
+  await cashier.locator('#swivel-unlock-submit').click();
+  await cashier.waitForFunction(()=>document.querySelector('#swivel-overlay').hidden,{timeout:11000});
+  await cashier.locator('#checkout-cancel-quick').click();
+  await txt(cashier,'#notice','Checkout cancelled');
+  assert.equal((await state(cashier)).tables.pos_sales.length,1,'Swivel preview must not create extra sales');
  });
  }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}
  if(failures.length){console.error('POS functional failures:',JSON.stringify(failures,null,2));process.exitCode=1}
