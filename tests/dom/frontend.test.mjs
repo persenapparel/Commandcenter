@@ -390,3 +390,10 @@ test('voice recognition ignores empty or malformed Safari transcripts without se
   assert.match(source,/if\(!text\)\{const label=\$\('#voice-status'\);if\(label\)label\.textContent='No words recognized\./);
   assert.match(source,/if\(!text\)[\s\S]*?return;\}const input=\$\('#chat-form textarea'\)/);
 });
+
+test('empty transcript feedback survives recognition onend instead of being overwritten',async()=>{
+  const source=await readFile(path.join(project,'donna/app.js'),'utf8');
+  assert.match(source,/let emptyTranscript=false;recognition\.lang='en-US'/);
+  assert.match(source,/if\(!text\)\{emptyTranscript=true;const label=/);
+  assert.match(source,/!state\.sending&&!state\.busy&&!emptyTranscript\)label\.textContent='Ready for your next question\.'/);
+});
