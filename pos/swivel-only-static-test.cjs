@@ -12,6 +12,12 @@ assert.match(swivel,/pos_issue_display_pairing/,'Existing server token still req
 // Fail-closed guard: neither initial handoff nor resume may reach open().
 assert.match(swivel,/if\(swivelStarting\|\|busy\|\|checkout\|\|pendingCash\)return;[\s\S]*?notice\('Customer handoff is temporarily unavailable:[\s\S]*?return;[\s\S]*?swivelStarting=true;/);
 assert.match(swivel,/if\(!checkout\|\|checkout.status!=='awaiting_customer'\)return;[\s\S]*?notice\('Customer handoff is disabled[\s\S]*?return;[\s\S]*?const button=\$\('swivel-resume'\)/);
+// Defense in depth while customer handoff is deliberately fail-closed.
+const registerHtml=fs.readFileSync('pos/register.html','utf8');
+const customerFrame=(registerHtml.match(/<iframe\b[^>]*\bid="swivel-customer-frame"[^>]*>/)||[])[0]||'';
+assert.ok(customerFrame,'Swivel customer frame must exist');
+assert.match(customerFrame,/\bsandbox="allow-scripts allow-forms"/,'Customer iframe must be sandboxed without cashier origin privileges');
+assert.doesNotMatch(customerFrame,/\ballow-same-origin\b|\ballow-top-navigation\b/,'Customer frame must not access parent origin or navigate the top window');
 const dashboard=fs.readFileSync('pos/index.html','utf8');
 assert.doesNotMatch(dashboard,/Optional Second iPad|Open Customer Display|Two-iPad mode remains optional|The separate customer display is still available/);
 assert.match(dashboard,/href="register.html"/);

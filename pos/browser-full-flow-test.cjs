@@ -24,8 +24,11 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(await p.locator('#pin-gate').count(),0);
   assert.equal(await p.locator('#pin-input').count(),0);
   assert.match(await p.locator('.test').innerText(),/Cloudflare Access/);
-  for(const file of ['admin.html','register.html','display.html'])
+  for(const file of ['admin.html','register.html'])
    assert.equal(await p.locator('a[href="'+file+'"]').count(),1);
+  // Do not advertise the customer-only route on the signed-in owner dashboard.
+  assert.equal(await p.locator('a[href="display.html"]').count(),0);
+  assert.equal((await p.request.get(url+'display.html')).status(),200,'Controlled customer route must remain bundled');
    assert.equal(await p.locator('a[href="admin.html#print-center"]').count(),1,'Epson Print Center must be on the dashboard');
   await p.reload();await visible(p,'#device-dashboard');
  });
@@ -65,7 +68,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
  await step('Cashier starts closed, opens, and selects event',async()=>{
-  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await cashier.locator('input[name="checkout-device-mode"][value="dual"]').check();await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
+  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');assert.equal(await cashier.locator('input[name="checkout-device-mode"][value="dual"]').count(),0,'Legacy dual-iPad control must be absent');assert.equal(await cashier.locator('body').getAttribute('data-checkout-device-mode'),'swivel','One swivel iPad must be active');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
   await cashier.locator('#setup-event-launch').click();await visible(cashier,'#event-setup-dialog');
   await cashier.locator('#setup-event').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
   await cashier.locator('input[aria-label="Include Christmas Hoodie"]').check();
@@ -108,13 +111,13 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#search').fill('');await cashier.locator('.quick-product').filter({hasText:'Winter Crewneck'}).click();
   await cashier.getByRole('button',{name:/S · Forest Green/i}).click();assert.equal(await cashier.locator('#cart .cart-row').count(),2);
  });
- await step('Cashier quantity, discount, tax, close/reopen',async()=>{
+ await step('Cashier quantity, discount, no-tax UI, close/reopen',async()=>{
   const row=cashier.locator('#cart .cart-row').first(),quantity=row.locator('input[type=number]').first();
   assert.equal(await row.locator('input[aria-label^="Unit price for "]').getAttribute('readonly'),'');
   await quantity.fill('4');await quantity.dispatchEvent('change');assert.equal(await quantity.inputValue(),'1');
   await quantity.fill('2');await quantity.dispatchEvent('change');
   await cashier.locator('button[data-discount="10"]').click();assert.equal(await cashier.locator('#discount').inputValue(),'10');
-  await cashier.locator('#tax').fill('0');await cashier.locator('#tax').dispatchEvent('input');assert.equal(await cashier.locator('#start').isDisabled(),false);
+  assert.equal(await cashier.locator('#tax').count(),0,'No tax input must appear for new sales');assert.equal(await cashier.locator('#start').isDisabled(),false);
   await cashier.locator('#close-register').click();await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();assert.equal(await cashier.locator('#cart .cart-row').count(),2)
  });
  await step('Cashier pairing on iPad with blocked clipboard, manual link and retry',async()=>{
