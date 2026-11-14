@@ -111,13 +111,13 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#search').fill('');await cashier.locator('.quick-product').filter({hasText:'Winter Crewneck'}).click();
   await cashier.getByRole('button',{name:/S · Forest Green/i}).click();assert.equal(await cashier.locator('#cart .cart-row').count(),2);
  });
- await step('Cashier quantity, discount, tax, close/reopen',async()=>{
+ await step('Cashier quantity, discount, no-tax UI, close/reopen',async()=>{
   const row=cashier.locator('#cart .cart-row').first(),quantity=row.locator('input[type=number]').first();
   assert.equal(await row.locator('input[aria-label^="Unit price for "]').getAttribute('readonly'),'');
   await quantity.fill('4');await quantity.dispatchEvent('change');assert.equal(await quantity.inputValue(),'1');
   await quantity.fill('2');await quantity.dispatchEvent('change');
   await cashier.locator('button[data-discount="10"]').click();assert.equal(await cashier.locator('#discount').inputValue(),'10');
-  await cashier.locator('#tax').fill('0');await cashier.locator('#tax').dispatchEvent('input');assert.equal(await cashier.locator('#start').isDisabled(),false);
+  assert.equal(await cashier.locator('#tax').count(),0,'No tax input must appear for new sales');assert.equal(await cashier.locator('#start').isDisabled(),false);
   await cashier.locator('#close-register').click();await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();assert.equal(await cashier.locator('#cart .cart-row').count(),2)
  });
  await step('Cashier pairing on iPad with blocked clipboard, manual link and retry',async()=>{
