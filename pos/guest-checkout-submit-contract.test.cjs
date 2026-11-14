@@ -35,3 +35,11 @@ test('signature required and submit rate limit is bounded',()=>{
   assert.match(sql,/request_count<5/);
   assert.match(sql,/on conflict\(checkout_id\) do nothing/);
 });
+
+// A PL/pgSQL RETURN false does not undo prior writes. Enforce rollback on
+// post-write failures so stale signature/limit rows cannot be committed.
+test('post-write conflicts abort transaction instead of returning false',()=>{
+  assert.match(sql,/if not found then\s+raise exception 'guest checkout submission conflict'/i);
+  assert.match(sql,/if not found then\s+raise exception 'guest checkout changed during submission'/i);
+  assert.match(sql,/errcode='40001'/);
+});
