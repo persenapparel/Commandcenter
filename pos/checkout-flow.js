@@ -1,6 +1,6 @@
 /* Persen POS — kiosk checkout wizard helpers.
    Entirely offline and side-effect free; browser/client handles the UI only.
-   Phone entry defaults to a US 10-digit keypad, without the iOS keyboard.
+   Phone entry is optional; when supplied it must contain 10 US digits.
 */
 (function(root,factory){
  const api=factory();
@@ -49,7 +49,7 @@
   const email=String(values?.email||'').trim();
   const choice=receipt(values?.receipt);
   switch(stepId){
-   case 'phone':return validPhone(phone)?'':'Please enter all 10 digits of your phone number.';
+   case 'phone':return !String(phone).trim()||validPhone(phone)?'':'Enter all 10 digits, or leave the phone number blank.';
    case 'receipt':return receiptModes.includes(values?.receipt)?'':'Choose Printed, Email, Both, or No Receipt.';
    case 'email':return choice.email&&!email?'An email address is required for an emailed receipt.':
        email&&!validEmail(email)?'Please enter a valid email address, or leave this blank for a printed receipt.':'';

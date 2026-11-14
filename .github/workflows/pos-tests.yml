@@ -62,6 +62,12 @@ jobs:
         run: node pos/swivel-cash-drawer-policy-test.cjs
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Test optional customer contact validation (offline)
+        run: node --test pos/checkout-optional-contact-test.cjs
+      - name: Guard no-tax staging checkout
+        run: node pos/no-tax-checkout-regression.cjs
+      - name: Guard 1-second scanner confirmation
+        run: node pos/scan-confirmation-regression.cjs
       - name: Verify paired live cart, tiles and scanner integrations
         run: node pos/live-cart-structure-test.cjs
       - name: Run connected barcode and receipt-safety tests (offline)

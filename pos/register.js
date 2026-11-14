@@ -32,7 +32,7 @@ function rememberCash(id){
  else sessionStorage.removeItem(pendingCashKey());
 }
 const row=(name,price,action,meta)=>{const div=document.createElement('div');div.className='product';const left=document.createElement('div');left.textContent=name;const sm=document.createElement('small');sm.textContent=meta||'';left.append(sm);const btn=document.createElement('button');btn.textContent=price;btn.onclick=action;div.append(left,btn);return div};
-function current(){return C.totals(cart,Number(by('discount').value),C.taxMilli(by('tax').value));}
+function current(){return C.totals(cart,Number(by('discount').value),0);}
 /* Paired iPad shows a read-only draft as the cashier builds the cart.
    This is presentation only: the checkout RPC still validates prices and stock. */
 let draftTimer=null,draftDirty=false,draftSending=false,draftFailureShown=false;
@@ -190,7 +190,6 @@ function syncCheckoutUI(){
  by('start').disabled=!!checkout||!!pendingCash||!cart.length;
  by('cancel').disabled=!checkout||checkout.status==='completed';
  by('discount').disabled=!!checkout;
- by('tax').disabled=!!checkout;
  by('event-select').disabled=!!checkout||!!cart.length;
 }
 async function loadStock(){
@@ -316,7 +315,7 @@ async function status(){
   syncCheckoutUI();renderCash();
  }catch(e){notice('Connection lost: '+e.message)}finally{statusRunning=false}
 }
-async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=C.taxMilli(by('tax').value);const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
+async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=0;const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
 async function cancel(){if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();syncCashierStage();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 async function cash(){
  if(!checkout||checkout.status!=='contact_received'||busy)return;
@@ -381,7 +380,7 @@ function drawReport(){
  stat('Collected',fmt(summary.collected_cents));
  stat('Gross merchandise',fmt(summary.gross_cents));
  stat('Discounts',fmt(summary.discount_cents));
- stat('Sales tax',fmt(summary.tax_cents));
+ // Historical tax amounts are preserved in saved records, but POS does not compute or display new tax.
  stat('Average rating',summary.rating_average===null?'—':summary.rating_average.toFixed(1)+'/5');
  stat('Promo opt-ins',summary.promo_opt_ins);
  stat('Custom apparel leads',summary.custom_leads);
@@ -422,9 +421,6 @@ function renderProductList(){
   const price=document.createElement('input');price.type='number';price.step='0.01';price.min='0';price.max='100000';price.inputMode='decimal';
   price.placeholder='Price $';price.value=m?String((m.price_cents/100).toFixed(2)):'';
   price.setAttribute('aria-label','Selling price for '+(x.product_name||x.sku));
-  const taxable=document.createElement('label');taxable.className='variant-tax-check';
-  const flag=document.createElement('input');flag.type='checkbox';flag.checked=m?.taxable??true;
-  taxable.append(flag,document.createTextNode('Taxable'));
   const save=document.createElement('button');save.type='button';save.textContent=m?'Update price':'Set price';
   save.onclick=async()=>{
    if(checkout)return notice('Finish the current checkout before changing prices.');
@@ -432,7 +428,7 @@ function renderProductList(){
    try{
     if(!price.value.trim())throw Error('Enter a selling price.');
     const cents=C.cents(price.value);
-    const metadata={stock_id:x.id,price_cents:cents,taxable:flag.checked,
+    const metadata={stock_id:x.id,price_cents:cents,taxable:false,
       category:m?.category||'Apparel',product_type:m?.product_type||'other',description:m?.description||''};
     await check(db.from('pos_variant_details').upsert(metadata,{onConflict:'stock_id'}));
     variantMeta.set(x.id,metadata);
@@ -441,7 +437,7 @@ function renderProductList(){
    }catch(e){notice('Could not save price: '+e.message)}
    finally{save.disabled=false}
   };
-  form.append(price,taxable,save);div.append(info,form);host.append(div);
+  form.append(price,save);div.append(info,form);host.append(div);
  }
  if(stock.length>150){
    const more=document.createElement('p');more.className='hint';more.textContent='Showing 150 product variants, with unpriced items first. Use inventory search for the remaining items.';host.append(more);
@@ -459,7 +455,7 @@ async function createVariant(e){
   const price=C.cents(f.get('price'));
   if(!name||name.length>120||sku.length<2||sku.length>100)throw Error('Product name and unique SKU required');
   if(!Number.isInteger(quantity)||quantity<0||quantity>1000000||!Number.isInteger(reorder)||reorder<0)throw Error('Enter valid stock and reorder quantities');
-  const details={category:String(f.get('category')||'Apparel').slice(0,90),product_type:String(f.get('type')||'other'),description:String(f.get('description')||'').slice(0,500),price_cents:price,taxable:f.has('taxable')};
+  const details={category:String(f.get('category')||'Apparel').slice(0,90),product_type:String(f.get('type')||'other'),description:String(f.get('description')||'').slice(0,500),price_cents:price,taxable:false};
   const row=await check(db.from('stock_items').insert({sku,product_name:name,color,size,quantity,reorder_at:reorder,supplier:String(f.get('supplier')||'').slice(0,120)}).select('id').single());
   createdId=row.id;
   try{await check(db.from('pos_variant_details').insert({stock_id:createdId,...details}));}
@@ -676,6 +672,30 @@ by('epson-enroll-method').addEventListener('change',()=>{
 
 
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
+// A non-blocking, accessible one-second scan confirmation. It never captures scanner focus.
+let scanConfirmationTimer;
+function showScanConfirmation(variant,quantity){
+ let panel=document.getElementById('scan-confirmation');
+ if(!panel){
+  panel=document.createElement('aside');
+  panel.id='scan-confirmation';
+  panel.setAttribute('role','status');
+  panel.setAttribute('aria-live','polite');
+  panel.setAttribute('aria-atomic','true');
+  panel.style.cssText='position:fixed;z-index:1100;left:50%;top:12%;transform:translateX(-50%);width:min(90vw,440px);padding:22px 26px;border:3px solid #1e7357;border-radius:20px;background:#fff;color:#123044;box-shadow:0 18px 50px #0004;pointer-events:none;text-align:center;font:inherit';
+  document.body.append(panel);
+ }
+ clearTimeout(scanConfirmationTimer);
+ panel.replaceChildren();
+ const check=document.createElement('div');check.textContent='✓ ADDED TO CART';check.style.cssText='font-size:22px;font-weight:800;color:#146547';
+ const name=document.createElement('div');name.textContent=variant.product_name||'Product';name.style.cssText='font-size:28px;font-weight:800;margin:8px 0';
+ const details=document.createElement('div');details.textContent=[variant.color,variant.size&&'Size '+variant.size].filter(Boolean).join(' · ');details.style.cssText='font-size:20px';
+ const price=document.createElement('div');price.textContent=C.money(variantMeta.get(variant.id).price_cents);price.style.cssText='font-size:24px;font-weight:700;margin-top:8px';
+ const count=document.createElement('div');count.textContent='Quantity in cart: '+quantity;count.style.cssText='font-size:15px;margin-top:6px';
+ panel.append(check,name,details,price,count);
+ panel.hidden=false;
+ scanConfirmationTimer=setTimeout(()=>{panel.hidden=true;},1000);
+}
 // Keyboard-wedge barcode input. One inventory SKU per color/size variant;
 // no background keystroke listener so employee typing/password fields are safe.
 function scanSku(input){
@@ -725,7 +745,9 @@ function scanSku(input){
  }
  if(result.status!=='added'){out.textContent='Product Not Found. Use search.';search.hidden=false;return;}
  addVariant(variant);
- out.textContent=match.label+' added. '+(cart.find(x=>x.stock_id===variant.id)?.qty||1)+' in cart.';
+ const inCart=cart.find(x=>x.stock_id===variant.id);
+ if(inCart)showScanConfirmation(variant,inCart.qty);
+ out.textContent=match.label+' added. '+(inCart?.qty||1)+' in cart.';
 }
 let scanMode='sell';
 function setScanMode(mode){
@@ -834,7 +856,7 @@ by('barcode-csv').addEventListener('click',exportBarcodeLabels);
 by('scan-search').addEventListener('click',()=>{
  const field=by('search');field.focus();by('scan-search').hidden=true;
 });
-by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
+by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:false});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
 by('clear-cart').onclick=()=>{if(checkout||pendingCash)return notice('Finish the current order first.');if(!cart.length)return;if(!window.confirm('Clear all items from this cart?'))return;cart=[];draw();notice('Cart cleared. Customer display will reset.')};

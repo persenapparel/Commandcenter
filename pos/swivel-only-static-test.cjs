@@ -9,6 +9,9 @@ assert.match(swivel,/el\.hidden=true/);
 assert.match(swivel,/db\.auth\.signInWithPassword/);
 assert.match(swivel,/PA\.isAdmin\(user\)/);
 assert.match(swivel,/pos_issue_display_pairing/,'Existing server token still required internally until secure single-screen protocol is reviewed');
+// Fail-closed guard: neither initial handoff nor resume may reach open().
+assert.match(swivel,/if\(swivelStarting\|\|busy\|\|checkout\|\|pendingCash\)return;[\s\S]*?notice\('Customer handoff is temporarily unavailable:[\s\S]*?return;[\s\S]*?swivelStarting=true;/);
+assert.match(swivel,/if\(!checkout\|\|checkout.status!=='awaiting_customer'\)return;[\s\S]*?notice\('Customer handoff is disabled[\s\S]*?return;[\s\S]*?const button=\$\('swivel-resume'\)/);
 const dashboard=fs.readFileSync('pos/index.html','utf8');
 assert.doesNotMatch(dashboard,/Optional Second iPad|Open Customer Display|Two-iPad mode remains optional|The separate customer display is still available/);
 assert.match(dashboard,/href="register.html"/);
