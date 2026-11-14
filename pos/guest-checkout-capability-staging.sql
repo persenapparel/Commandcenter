@@ -146,6 +146,36 @@ $$;
 revoke all on function public.pos_guest_checkout_snapshot(text)
   from public, anon, authenticated;
 
+-- Fail closed on any checkout mutation that invalidates the guest's view.
+-- Runs in the same transaction as the checkout update. This is defense in
+-- depth; explicit cancellation/completion must also revoke capabilities.
+create or replace function public.pos_revoke_guest_capability_on_checkout_change()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $
+begin
+  if old.status is distinct from new.status
+     or old.items is distinct from new.items
+     or old.subtotal_cents is distinct from new.subtotal_cents
+     or old.discount_cents is distinct from new.discount_cents
+     or old.total_cents is distinct from new.total_cents
+     or old.register_id is distinct from new.register_id
+     or old.owner_id is distinct from new.owner_id then
+    update public.pos_guest_checkout_capabilities
+       set revoked_at=now()
+     where checkout_id=old.id and revoked_at is null;
+  end if;
+  return new;
+end;
+$;
+revoke all on function public.pos_revoke_guest_capability_on_checkout_change()
+  from public, anon, authenticated;
+drop trigger if exists pos_guest_capability_checkout_changed on public.pos_checkouts;
+create trigger pos_guest_capability_checkout_changed
+after update of status, items, subtotal_cents, discount_cents, total_cents,
+                register_id, owner_id on public.pos_checkouts
+for each row execute function public.pos_revoke_guest_capability_on_checkout_change();
+
 -- Required follow-up before enabling customer handoff:
 -- 1) Add an authenticated owner RPC that atomically STARTS checkout + issues
 --    scoped capability before owner local-session sign-out.
