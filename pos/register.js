@@ -421,9 +421,6 @@ function renderProductList(){
   const price=document.createElement('input');price.type='number';price.step='0.01';price.min='0';price.max='100000';price.inputMode='decimal';
   price.placeholder='Price $';price.value=m?String((m.price_cents/100).toFixed(2)):'';
   price.setAttribute('aria-label','Selling price for '+(x.product_name||x.sku));
-  const taxable=document.createElement('label');taxable.className='variant-tax-check';
-  const flag=document.createElement('input');flag.type='checkbox';flag.checked=m?.taxable??true;
-  taxable.append(flag,document.createTextNode('Taxable'));
   const save=document.createElement('button');save.type='button';save.textContent=m?'Update price':'Set price';
   save.onclick=async()=>{
    if(checkout)return notice('Finish the current checkout before changing prices.');
@@ -431,7 +428,7 @@ function renderProductList(){
    try{
     if(!price.value.trim())throw Error('Enter a selling price.');
     const cents=C.cents(price.value);
-    const metadata={stock_id:x.id,price_cents:cents,taxable:flag.checked,
+    const metadata={stock_id:x.id,price_cents:cents,taxable:false,
       category:m?.category||'Apparel',product_type:m?.product_type||'other',description:m?.description||''};
     await check(db.from('pos_variant_details').upsert(metadata,{onConflict:'stock_id'}));
     variantMeta.set(x.id,metadata);
@@ -440,7 +437,7 @@ function renderProductList(){
    }catch(e){notice('Could not save price: '+e.message)}
    finally{save.disabled=false}
   };
-  form.append(price,taxable,save);div.append(info,form);host.append(div);
+  form.append(price,save);div.append(info,form);host.append(div);
  }
  if(stock.length>150){
    const more=document.createElement('p');more.className='hint';more.textContent='Showing 150 product variants, with unpriced items first. Use inventory search for the remaining items.';host.append(more);
@@ -458,7 +455,7 @@ async function createVariant(e){
   const price=C.cents(f.get('price'));
   if(!name||name.length>120||sku.length<2||sku.length>100)throw Error('Product name and unique SKU required');
   if(!Number.isInteger(quantity)||quantity<0||quantity>1000000||!Number.isInteger(reorder)||reorder<0)throw Error('Enter valid stock and reorder quantities');
-  const details={category:String(f.get('category')||'Apparel').slice(0,90),product_type:String(f.get('type')||'other'),description:String(f.get('description')||'').slice(0,500),price_cents:price,taxable:f.has('taxable')};
+  const details={category:String(f.get('category')||'Apparel').slice(0,90),product_type:String(f.get('type')||'other'),description:String(f.get('description')||'').slice(0,500),price_cents:price,taxable:false};
   const row=await check(db.from('stock_items').insert({sku,product_name:name,color,size,quantity,reorder_at:reorder,supplier:String(f.get('supplier')||'').slice(0,120)}).select('id').single());
   createdId=row.id;
   try{await check(db.from('pos_variant_details').insert({stock_id:createdId,...details}));}
@@ -859,7 +856,7 @@ by('barcode-csv').addEventListener('click',exportBarcodeLabels);
 by('scan-search').addEventListener('click',()=>{
  const field=by('search');field.focus();by('scan-search').hidden=true;
 });
-by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:f.has('taxable')});e.target.reset();draw()}catch(err){notice(err.message)}};
+by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:false});e.target.reset();draw()}catch(err){notice(err.message)}};
 for(const x of ['discount','tax'])by(x).oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
 by('clear-cart').onclick=()=>{if(checkout||pendingCash)return notice('Finish the current order first.');if(!cart.length)return;if(!window.confirm('Clear all items from this cart?'))return;cart=[];draw();notice('Cart cleared. Customer display will reset.')};
