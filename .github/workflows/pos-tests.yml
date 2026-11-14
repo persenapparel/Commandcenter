@@ -60,6 +60,8 @@ jobs:
           node --check pos/epson-station/agent.cjs
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Test optional customer contact validation (offline)
+        run: node --test pos/checkout-optional-contact-test.cjs
       - name: Guard no-tax staging checkout
         run: node pos/no-tax-checkout-regression.cjs
       - name: Guard 1-second scanner confirmation
