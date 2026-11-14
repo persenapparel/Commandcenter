@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Persen POS — Scanner Diagnostics (Staging Only)</title>
+<style>body{font:16px system-ui;margin:2rem auto;padding:0 1rem;max-width:650px;color:#17212e}input,button{font:inherit;padding:.75rem;border-radius:.5rem}input{width:95%;border:1px solid #899}button{margin:.6rem .5rem .6rem 0}output{display:block;padding:1rem;background:#eef2f6;border-radius:.5rem;overflow-wrap:anywhere}.muted{color:#52606d}</style></head>
+<body><h1>ScanAvenger scanner check</h1><p>Staging-only keyboard-wedge diagnostic. Connect the scanner to this device, tap the input, then scan a <strong>non-sensitive test barcode</strong>. Do not scan employee credentials or customer information.</p>
+<label for="scan">Scanner input</label><input id="scan" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="hint" autofocus>
+<p id="hint" class="muted">A scanner in HID keyboard mode typically types characters and may send Enter at the end.</p>
+<button id="focus" type="button">Focus input</button><button id="clear" type="button">Clear results</button>
+<output id="result" aria-live="polite">Waiting for a test scan…</output>
+<p class="muted">Nothing is transmitted or stored. This page does not log employees in, modify inventory, or activate customer handoff.</p>
+<script>
+(()=>{'use strict';const input=document.getElementById('scan'),result=document.getElementById('result');let first=0,last=0,count=0;
+function reset(){input.value='';first=last=count=0;}
+input.addEventListener('input',()=>{const now=performance.now();if(!first)first=now;last=now;count=input.value.length;result.textContent='Received '+count+' character(s). Waiting for Enter or next scan.';});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key==='Tab'){if(e.key==='Tab')e.preventDefault();const value=input.value;result.textContent=value?'Scan received: '+value.length+' characters; terminator: '+e.key+'; input duration: '+Math.round(last-first)+' ms. (Value intentionally hidden.)':'Terminator received with no characters.';reset();}});
+document.getElementById('focus').addEventListener('click',()=>input.focus());
+document.getElementById('clear').addEventListener('click',()=>{reset();result.textContent='Cleared. Waiting for a test scan…';input.focus();});
+})();
+</script></body></html>
