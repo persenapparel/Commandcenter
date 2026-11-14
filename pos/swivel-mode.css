@@ -1,12 +1,5 @@
-/* Swivel iPad retail checkout; isolated from the separate-device workflow. */
-.pos-device-mode{display:flex;align-items:center;flex-wrap:wrap;gap:12px;background:#f5f8fd;border:1px solid #bfd0e5;border-radius:16px;padding:13px 16px;margin:14px 0}
-.pos-device-mode div{display:flex;flex-direction:column;margin-right:auto;gap:3px}
-.pos-device-mode strong{font-size:14px;color:#12335b}
-.pos-device-mode small{font-size:12px;color:#586e87}
-.pos-device-mode label{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #cbd7e7;border-radius:12px;padding:10px 12px;min-height:42px;cursor:pointer;font-weight:700;font-size:13px}
-.pos-device-mode input{width:auto!important;margin:0;accent-color:#193f77}
+/* Single swivel iPad cashier/customer checkout. */
 #swivel-resume{width:100%;margin-top:10px;background:#f2f7ff;color:#123b75;border:1px solid #85afe4;border-radius:12px;min-height:50px;font-weight:800}
-body[data-checkout-device-mode=swivel] #pair-link-panel{display:none!important}
 body.swivel-customer-active{overflow:hidden!important}
 .swivel-overlay[hidden],.swivel-unlock-form[hidden]{display:none!important}
 .swivel-overlay{position:fixed;inset:0;z-index:2147483646;background:#f2f6fb;color:#142844;display:flex;flex-direction:column;padding:0;overflow:hidden}
@@ -23,5 +16,5 @@ body.swivel-customer-active{overflow:hidden!important}
 .swivel-unlock-form input{font-size:18px;min-height:52px;padding:10px;background:white;color:#142844;border:1px solid #b4c7db;border-radius:11px}
 .swivel-unlock-form button{min-height:48px;font-weight:800;border-radius:10px}
 #swivel-unlock-message{min-height:20px;font-weight:700;color:#913437}
-@media(max-width:600px){.pos-device-mode{display:grid;grid-template-columns:1fr 1fr}.pos-device-mode div{grid-column:1/-1}.pos-device-mode label{font-size:12px;padding:10px}.swivel-topbar{min-height:55px}.swivel-brand strong{font-size:12px}#swivel-lock{font-size:11px;padding:8px}.swivel-unlock-form{inset:55px 0 0}}
-@media print{.swivel-overlay,.pos-device-mode{display:none!important}}
+@media(max-width:600px){.swivel-topbar{min-height:55px}.swivel-brand strong{font-size:12px}#swivel-lock{font-size:11px;padding:8px}.swivel-unlock-form{inset:55px 0 0}}
+@media print{.swivel-overlay{display:none!important}}
