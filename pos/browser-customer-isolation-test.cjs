@@ -40,8 +40,9 @@ window.supabase={createClient:(url,key,options)=>{
       iframe.src='display.html?pair=22222222-2222-4222-8222-222222222222';
     });
     const iframe=page.frameLocator('#swivel-customer-frame');
-    await iframe.locator('body').waitFor();
-    await iframe.locator('#customer-welcome').waitFor();
+    // The checkout overlay is intentionally hidden while handoff is gated.
+    // Check that the document loaded; don't demand that its frame is visible.
+    await iframe.locator('#customer-welcome').waitFor({state:'attached'});
     const isolation=await iframe.locator('body').evaluate(()=>{
       let parentAccessible=false,storageAccessible=false;
       try{void window.parent.document.body;parentAccessible=true}catch{}
