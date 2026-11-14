@@ -1,4 +1,4 @@
-/* Cross-device interactive browser test. LOCAL MOCK DATA ONLY. */
+/* Single-iPad cashier smoke + fail-closed security regression. LOCAL MOCK DATA ONLY. Customer payment flow is not yet enabled. */
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),http=require('node:http'),path=require('node:path'),{chromium}=require('playwright');
 const root=path.resolve('pos-dist'),types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.png':'image/png'};
@@ -16,7 +16,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  await ctx.addInitScript({path:'pos/test-fake-supabase.js'});
  await ctx.addInitScript({content:"Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async s=>localStorage.setItem('__clip',s),readText:async()=>localStorage.getItem('__clip')}});Object.defineProperty(window,'print',{configurable:true,value:()=>localStorage.setItem('__prints',String(Number(localStorage.getItem('__prints')||0)+1))});window.confirm=()=>true;"});
  await ctx.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.fulfill({status:200,contentType:'application/javascript',body:''}));
- let admin,cashier,customer,printer;
+ let admin,cashier,printer;
  try{
  await step('Device dashboard routes without unsafe browser-stored PIN',async()=>{
   const p=await ctx.newPage();opened.push(p);assert.equal((await p.goto(url)).status(),200);
@@ -120,163 +120,38 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(await cashier.locator('#tax').count(),0,'No tax input must appear for new sales');assert.equal(await cashier.locator('#start').isDisabled(),false);
   await cashier.locator('#close-register').click();await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();assert.equal(await cashier.locator('#cart .cart-row').count(),2)
  });
- await step('Cashier pairing on iPad with blocked clipboard, manual link and retry',async()=>{
-  await cashier.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw Error('Clipboard not permitted')}});
-  await cashier.locator('#pair-quick').click();await txt(cashier,'#notice','Pairing link created');
-  await visible(cashier,'#pair-link-panel');
-  const link=await cashier.locator('#pair-link-field').inputValue();assert.match(link,/display\.html\?pair=[0-9a-f-]{36}/);
-  assert.equal(await cashier.locator('#pair-link-field').getAttribute('readonly'),'');
-  await cashier.locator('#pair-copy').click();await txt(cashier,'#pair-feedback','Safari blocked automatic copying');
-  assert.equal(await cashier.evaluate(()=>document.activeElement.id),'pair-link-field');
-  await cashier.evaluate(()=>{navigator.clipboard.writeText=async s=>localStorage.setItem('__clip',s)});
-  await cashier.locator('#pair-copy').click();await txt(cashier,'#pair-feedback','Private link copied');
-  assert.equal(link,await cashier.evaluate(()=>navigator.clipboard.readText()));
-  customer=await ctx.newPage();opened.push(customer);await customer.goto(link);await visible(customer,'#live-preview-note');await txt(customer,'#items','Christmas Hoodie');assert.equal(await customer.locator('#contact').isVisible(),false)
+ await step('Legacy two-iPad controls are no longer presented',async()=>{
+  for(const id of ['pair','pair-quick','pair-setup','pair-link-panel','pair-copy','pair-share']){
+   assert.equal(await cashier.locator('#'+id).count(),0,'Obsolete pairing UI must be removed: '+id);
+  }
+  assert.equal(await cashier.locator('input[name="checkout-device-mode"][value="dual"]').count(),0);
  });
- await step('Epson Center integrated into Back Office, legacy browser worker disabled',async()=>{
-  await visible(admin,'#print-center');await txt(admin,'#epson-monitor-status','Showing staging queue history');
+ await step('Single-iPad handoff fails closed until secure isolation is implemented',async()=>{
+  const before=await state(cashier);
+  const original={checkouts:before.tables.pos_checkouts.length,sales:before.tables.pos_sales.length,printJobs:before.tables.pos_print_jobs.length};
+  assert.equal(await cashier.locator('#start').innerText(),'Hand to Customer →');
+  assert.equal(await cashier.locator('#start').isDisabled(),false);
+  await cashier.locator('#start').click();
+  await txt(cashier,'#notice','Customer handoff is temporarily unavailable: secure customer isolation is required.');
+  assert.equal(await cashier.locator('#swivel-overlay').isVisible(),false,'Customer overlay must remain closed');
+  assert.equal(await cashier.locator('#swivel-customer-frame').getAttribute('src'),'about:blank','No customer session may be opened');
+  assert.equal(await cashier.locator('#workspace').isVisible(),true,'Cashier still controls the iPad');
+  assert.equal(await cashier.locator('#cart .cart-row').count(),2,'Cart must survive a blocked handoff');
+  const after=await state(cashier);
+  assert.equal(after.tables.pos_checkouts.length,original.checkouts,'Blocked handoff must not create checkout');
+  assert.equal(after.tables.pos_sales.length,original.sales,'Blocked handoff must not create sale');
+  assert.equal(after.tables.pos_print_jobs.length,original.printJobs,'Blocked handoff must not queue receipt');
+ });
+ await step('Epson Center remains read-only and legacy NELKO browser worker stays disabled',async()=>{
+  await visible(admin,'#print-center');
+  await txt(admin,'#epson-monitor-status','Showing staging queue history');
   assert.ok(await admin.locator('#epson-refresh').isEnabled());
   printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');
   await txt(printer,'main','old NELKO browser print worker is disabled');
-  assert.equal(await printer.locator('#arm').count(),0,'Legacy browser auto-print must not be available');
- });
- await step('Send checkout and laptop live monitor',async()=>{
-  await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');
-  await cashier.waitForFunction(()=>document.body.dataset.cashierStage==='customer');
-  await visible(customer,'#contact');await txt(admin,'#live-list','Customer is checking out',11000);
-  const s=await state(admin);assert.equal(s.tables.pos_checkouts.at(-1).event_id,s.tables.pos_events[0].id)
- });
- await step('Customer keypad, validation, back, email and payment options',async()=>{
-  await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
-  for(const digit of '6315550199')await customer.locator('[data-digit="'+digit+'"]').click();
-  await customer.locator('#wizard-next').click();await txt(customer,'#step-receipt-title','receipt');await customer.locator('#wizard-back').click();await customer.locator('#wizard-next').click();
-  await customer.locator('input[name=receipt_mode][value=both]').check();await customer.locator('#wizard-next').click();
-  await customer.locator('#wizard-next').click();await visible(customer,'#step-error');
-  await customer.locator('#email-address').fill('test-pos@example.com');await customer.locator('#wizard-next').click();
-  await customer.locator('input[name=payment_preference][value=venmo_info]').check();await txt(customer,'#payment-instructions','@persenapparel');
-  assert.equal(await customer.locator('input[name=payment_preference][value=apple_cash_info]').count(),0);
-  await customer.locator('input[name=payment_preference][value=cash]').check();await customer.locator('#wizard-next').click();await txt(customer,'#step-promos-title','offers');
- });
- await step('Live help request reaches cashier and laptop',async()=>{
-  await customer.locator('#wizard-help').click();await visible(cashier,'#customer-help-alert',12000);await txt(admin,'#live-list','Customer requested help',12000);
-  await customer.locator('#wizard-help').click()
- });
- await step('Optional questionnaire and final checkout screen',async()=>{
-  await customer.locator('input[name=marketing][value=no]').check();await customer.locator('input[name=marketing][value=yes]').check();
-  await customer.locator('#wizard-next').click();await customer.locator('input[name=rating][value="5"]').check();await customer.locator('#wizard-next').click();
-  await customer.locator('input[name=interest][value=maybe]').check();await customer.locator('#wizard-next').click();
-  await txt(customer,'#step-review-title','Almost done');await customer.locator('#wizard-finish').click();await customer.waitForFunction(()=>window.__POS_TEST_DB.get().tables.pos_checkouts.at(-1)?.status==='contact_received',null,{timeout:11000});await visible(customer,'#waiting-payment');assert.match(await customer.locator('#waiting-payment h2').innerText(),/Waiting for your cashier/);assert.equal(await customer.locator('#thanks').isVisible(),false);
-  const s=await state(customer);assert.equal(s.tables.pos_checkouts.at(-1).status,'contact_received');assert.equal(s.tables.pos_checkouts.at(-1).receipt_email,true)
- });
- await step('Submitted questions appear in the private laptop back office',async()=>{
-  await admin.locator('#responses-refresh').click();
-  await txt(admin,'#response-message','1 matching saved response');
-  await txt(admin,'#response-count','1');
-  await txt(admin,'#response-optins','1');
-  await txt(admin,'#response-leads','1');
-  await txt(admin,'#response-rating','5.0 / 5');
-  await admin.locator('.response-card').first().click();
-  await txt(admin,'#response-detail','test-pos@example.com');
-  await txt(admin,'#response-detail','Yes — explicitly opted in');
-  await txt(admin,'#response-detail','Maybe in the future');
-  await txt(admin,'#response-detail','Printed + Email requested');
-  const saved=(await state(admin)).tables.pos_checkouts.at(-1);
-  assert.equal(saved.marketing_response,'yes');
-  assert.equal(saved.marketing_opt_in,true);
-  assert.equal(saved.custom_interest,'maybe');
-  assert.equal(saved.rating,5);
-  assert.equal(saved.receipt_print,true);
-  assert.equal(saved.receipt_email,true);
- });
- await step('Cash changes, no early customer success, recovery and Finish Order gate',async()=>{
-  await cashier.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('ready for cashier'),null,{timeout:9000});
-  assert.equal(await customer.locator('#thanks').isVisible(),false);
-  assert.equal(await cashier.locator('#cash').isDisabled(),true);
-  await cashier.locator('#drawer-config').evaluate(x=>x.open=true);
-  for(const [denom,count] of [['2000','3'],['1000','2'],['500','2'],['100','5'],['25','10'],['10','10'],['5','10'],['1','20']])
-    await cashier.locator('#drawer-grid [data-denom="'+denom+'"]').fill(count);
-  await cashier.locator('#save-drawer').click();await txt(cashier,'#notice','Cash drawer saved');
-  await cashier.locator('#cash-received').fill('120.00');
-  await cashier.locator('#cash-received').dispatchEvent('input');
-  await txt(cashier,'#change-amount','$17.85');
-  await cashier.waitForFunction(()=>document.querySelector('#cash')?.disabled===false,null,{timeout:6000});
-  await cashier.evaluate(()=>sessionStorage.setItem('mock-lose-cash-response','1'));
-  await cashier.locator('#cash').click();
-  await visible(cashier,'#cash-handoff');
-  await txt(cashier,'#cash-handoff-change','$17.85');
-  await visible(customer,'#waiting-change',11000);
-  await txt(customer,'#customer-change','$17.85');
-  assert.equal(await customer.locator('#thanks').isVisible(),false);
-  assert.equal(await cashier.locator('#start').isDisabled(),true);
-  assert.equal((await state(cashier)).tables.pos_sales.length,1);
-  assert.equal((await state(cashier)).tables.pos_checkouts.at(-1).cash_handoff_complete,false);
-  // Customer cannot see final success until cashier consciously finishes the handoff.
-  await cashier.locator('#finish-order').click();
-  await txt(cashier,'#notice','Ready for the next customer.');
-  await visible(cashier,'#receipt');assert.equal(await cashier.locator('#cart .cart-row').count(),0);
-  assert.equal((await state(cashier)).tables.pos_checkouts.at(-1).cash_handoff_complete,true);
-  await visible(customer,'#thanks',11000);
- });
- await step('Paid sale creates Epson receipt and cash-drawer queue jobs',async()=>{
-  await admin.locator('#epson-refresh').click();
-  await txt(admin,'#epson-receipt-queue','1 queued');
-  await txt(admin,'#epson-drawer-queue','1 queued');
+  assert.equal(await printer.locator('#arm').count(),0);
   const snapshot=await state(admin);
-  assert.equal(snapshot.tables.pos_print_jobs.length,1);
-  assert.equal(snapshot.tables.pos_drawer_open_jobs.length,1);
-  assert.equal(snapshot.tables.pos_print_jobs[0].state,'queued','Only the Windows agent may claim receipt jobs');
-  assert.equal(snapshot.tables.pos_drawer_open_jobs[0].state,'queued','Only the Windows agent may open the drawer');
-  await txt(admin,'#epson-receipt-list','Queued — waiting for Windows station');
- });
- await step('Read-only Back Office cannot silently print or open drawer',async()=>{
-  await admin.waitForTimeout(350);
-  const snapshot=await state(admin);
-  assert.equal(snapshot.tables.pos_print_jobs[0].state,'queued');
-  assert.equal(snapshot.tables.pos_drawer_open_jobs[0].state,'queued');
- });
- await step('Inventory reflects sale and customer completion',async()=>{
-  await visible(customer,'#customer-welcome',11000);
-  assert.equal(await customer.locator('#kiosk-shell').isVisible(),false);
-  assert.equal(await customer.locator('#items .cart-row').count(),0);
-  assert.equal(await customer.locator('#total').innerText(),'$0.00');
-  await cashier.locator('#refresh-products').click();await txt(cashier,'#notice','refreshed');
-  await admin.locator('#refresh').click();
-  assert.ok((await state(admin)).tables.stock_items.find(x=>x.sku==='XMAS-RED-M').quantity<3)
- });
- await step('Cancel checkout leaves sales and receipts unchanged',async()=>{
-  await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await cashier.getByRole('button',{name:/L · Red/i}).click();
-  await cashier.locator('#start').click();await txt(cashier,'#notice','Checkout sent');await cashier.locator('#checkout-cancel-quick').click();await txt(cashier,'#notice','Checkout cancelled');
-  assert.equal((await state(cashier)).tables.pos_sales.length,1);assert.equal((await state(cashier)).tables.pos_print_jobs.length,1)
- });
- await step('One-iPad swivel checkout hides owner controls and authenticates cashier return',async()=>{
-  await cashier.locator('input[name="checkout-device-mode"][value="swivel"]').check();
-  assert.equal(await cashier.locator('#start').innerText(),'Hand to Customer →');
-  await cashier.locator('#start').click();
-  await visible(cashier,'#swivel-overlay');
-  assert.equal(await cashier.evaluate(()=>document.querySelector('main').inert),true);
-  const frame=cashier.frameLocator('#swivel-customer-frame');
-  await frame.locator('#contact').waitFor({state:'visible',timeout:11000});
-  await frame.locator('#phone-display').waitFor({state:'visible'});
-  await cashier.locator('#swivel-lock').click();
-  await visible(cashier,'#swivel-unlock-form');
-  assert.equal(await cashier.evaluate(()=>document.querySelector('main').inert),true,'Cashier workspace must remain noninteractive');
-  await cashier.locator('#swivel-password').fill('wrong');
-  await cashier.locator('#swivel-unlock-submit').click();
-  await txt(cashier,'#swivel-unlock-message','Invalid credentials');
-  assert.equal(await cashier.locator('#swivel-overlay').isVisible(),true,'Bad password must not unlock register');
-  await cashier.locator('#swivel-password').fill('test-cashier-password');
-  await cashier.locator('#swivel-unlock-submit').click();
-  await cashier.waitForFunction(()=>document.querySelector('#swivel-overlay').hidden,{timeout:11000});
-  assert.equal(await cashier.evaluate(()=>document.querySelector('main').inert),false);
-  await visible(cashier,'#swivel-resume');
-  await cashier.locator('#swivel-resume').click();await visible(cashier,'#swivel-overlay');
-  await cashier.locator('#swivel-lock').click();
-  await cashier.locator('#swivel-password').fill('test-cashier-password');
-  await cashier.locator('#swivel-unlock-submit').click();
-  await cashier.waitForFunction(()=>document.querySelector('#swivel-overlay').hidden,{timeout:11000});
-  await cashier.locator('#checkout-cancel-quick').click();
-  await txt(cashier,'#notice','Checkout cancelled');
-  assert.equal((await state(cashier)).tables.pos_sales.length,1,'Swivel preview must not create extra sales');
+  assert.equal(snapshot.tables.pos_print_jobs.length,0);
+  assert.equal(snapshot.tables.pos_drawer_open_jobs.length,0);
  });
  }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}
  if(failures.length){console.error('POS functional failures:',JSON.stringify(failures,null,2));process.exitCode=1}

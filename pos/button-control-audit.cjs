@@ -1,9 +1,9 @@
-/* Offline four-station button wiring audit; no payment calls. */
+/* Offline single-swivel POS button wiring audit; no payment calls. */
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const read=f=>fs.readFileSync('pos/'+f,'utf8');
 const suites=[
- ['register.html','register.js',['open-register','close-register','pair-setup','pair-quick','pair-copy','pair-share','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','pair','copy-venmo','scan-search','barcode-csv','save-template','print','close-variant']],
+ ['register.html','register.js',['open-register','close-register','refresh-products','start','cancel','cash','finish-order','cash-exact','cash-clear','save-drawer','copy-venmo','scan-search','barcode-csv','save-template','print','close-variant']],
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
  ['admin.html','epson-center.js',['epson-refresh']],
@@ -27,10 +27,16 @@ const expectations=[
 ];
 for(const [file,tokens] of expectations){const code=read(file);for(const token of tokens)assert.ok(code.includes(token),file+' is missing action '+token)}
 assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
+const registerHtml=read('register.html'),registerJs=read('register.js');
+for(const id of ['pair-setup','pair-quick','pair-copy','pair-share','pair-link-panel','pair']){
+ assert.ok(!registerHtml.includes('id="'+id+'"'),'Obsolete two-iPad UI must stay removed: '+id);
+}
+assert.ok(!registerJs.includes("by('pair')"),'Legacy pairing event handler must stay removed');
 const build=read('build-pages.mjs');
 assert.ok(!build.includes("'test-fake-supabase.js'")&&!build.includes("'browser-full-flow-test.cjs'"),'Mock test files must not deploy');
 const epsonCenter=read('epson-center.js');
 assert.ok(!/\.rpc\(|\.insert\(|\.update\(|\.delete\(/.test(epsonCenter),'Epson browser center must be read-only');
 assert.ok(!build.includes("'print-station.js'")&&!build.includes("'print-station.css'"),'Legacy NELKO printing worker must not ship');
 assert.ok(read('print-station.html').includes('old NELKO browser print worker is disabled'),'Legacy route must be inert');
+require('./swivel-pairing-regression-test.cjs');
 console.log('PASS: '+checked+' named controls, four unique-ID checks, additional forms and generated controls');

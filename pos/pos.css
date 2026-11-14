@@ -440,21 +440,6 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 /* Visible after cashier is opened; leave hidden only in setup mode. */
 .fast-mode:not(.pos-register-closed) .quick-toolbar{display:flex}
 
-/* Secure client-side share fallback for iPadOS clipboard restrictions. */
-.pair-link-panel{margin:14px 0;padding:17px;border:1px solid #a8cdec;border-radius:15px;background:#f0f7ff;color:#153d6e;display:grid;gap:10px}
-.pair-link-panel[hidden]{display:none!important}
-.pair-link-panel strong{font-size:14px;font-weight:900}
-.pair-link-panel p{margin:0;line-height:1.5}
-.pair-link-panel label{margin:2px 0 -3px;font-size:11px;font-weight:850;color:#37608d}
-.pair-link-panel input{display:block;width:100%;min-width:0;border:1px solid #b9d3f1;border-radius:9px;padding:13px;background:#fff;font-size:12px;direction:ltr;color:#1d4277}
-.pair-link-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pair-link-actions button,.pair-link-actions a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border-radius:9px;font-weight:800;text-decoration:none;font-size:12px}
-.pair-link-actions button:first-child{background:#155fca;color:#fff;border-color:#155fca}
-.pair-link-actions a{color:#1558a6;background:#fff;border:1px solid #c4dbf4}
-.pair-link-actions [hidden]{display:none!important}
-@media(max-width:520px){.pair-link-actions>*{flex:1 1 100%}}
-
-
 /* Event-specific quick tiles, synced only when POS and Command Center share a database. */
 .quick-product.event-featured{border:2px solid #4c97e7!important;background:linear-gradient(160deg,#f0f8ff,#fff)!important;box-shadow:0 8px 20px #1454a81f}
 .quick-product.event-featured .quick-detail{font-weight:800;color:#205ba0}
