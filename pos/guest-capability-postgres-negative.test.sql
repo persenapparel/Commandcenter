@@ -25,14 +25,20 @@ BEGIN
   END IF;
   -- PostgreSQL's PUBLIC pseudo-role must be denied explicitly: revoking
   -- anon/authenticated alone does not override inherited PUBLIC privileges.
-  IF has_table_privilege('public',token_table,'SELECT')
-     OR has_table_privilege('public',token_table,'INSERT')
-     OR has_table_privilege('public',token_table,'UPDATE')
-     OR has_table_privilege('public',token_table,'DELETE') THEN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c,
+      LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl
+    WHERE c.oid=token_table AND acl.grantee=0
+      AND acl.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE')
+  ) THEN
     RAISE EXCEPTION 'PUBLIC can access private guest token table';
   END IF;
   FOREACH fn IN ARRAY ARRAY[snap,issue,revoke_token,trigger_func] LOOP
-    IF has_function_privilege('public',fn,'EXECUTE') THEN
+    IF EXISTS (
+      SELECT 1 FROM pg_proc p,
+        LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+      WHERE p.oid=fn AND acl.grantee=0 AND acl.privilege_type='EXECUTE'
+    ) THEN
       RAISE EXCEPTION 'PUBLIC can execute guest capability function %',fn::regprocedure;
     END IF;
   END LOOP;
