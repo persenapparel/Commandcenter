@@ -68,7 +68,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
  await step('Cashier starts closed, opens, and selects event',async()=>{
-  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');await cashier.locator('input[name="checkout-device-mode"][value="dual"]').check();await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
+  cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');assert.equal(await cashier.locator('input[name="checkout-device-mode"][value="dual"]').count(),0,'Legacy dual-iPad control must be absent');assert.equal(await cashier.locator('body').getAttribute('data-checkout-device-mode'),'swivel','One swivel iPad must be active');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
   await cashier.locator('#setup-event-launch').click();await visible(cashier,'#event-setup-dialog');
   await cashier.locator('#setup-event').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
   await cashier.locator('input[aria-label="Include Christmas Hoodie"]').check();
