@@ -64,7 +64,14 @@
    const url=await pairing(); // Do not begin if customer screen cannot pair.
    await originalBegin();
    if(checkout?.status==='awaiting_customer'){
-    open(url);notice('Customer checkout opened on this iPad. Turn the swivel stand toward the customer.');
+    // Before a customer can handle the tablet, revoke the cashier's local
+    // browser session. The return screen requires a fresh credential check.
+    const signedOut=await db.auth.signOut({scope:'local'});
+    if(signedOut.error)throw signedOut.error;
+    const remaining=await db.auth.getSession();
+    if(remaining.error||remaining.data?.session)throw Error('Cashier session could not be cleared.');
+    open(url);
+    notice('Customer checkout opened on this iPad. Turn the swivel stand toward the customer.');
    }
   }catch(e){notice('Customer screen unavailable. Checkout not started: '+e.message)}
   finally{swivelStarting=false;update();$('start').disabled=!!checkout||!!pendingCash||!cart.length}
