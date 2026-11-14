@@ -26,7 +26,9 @@ function padAmount(label,amount){
  const a=ascii(label).slice(0,printColumns-12),b=ascii(amount).slice(0,11);
  return a.padEnd(Math.max(a.length,printColumns-b.length),' ')+b;
 }
-function escposReceipt(sale){
+function escposReceipt(sale,copy='CUSTOMER COPY'){
+ if(!['CUSTOMER COPY','MERCHANT COPY'].includes(copy))throw Error('Invalid receipt copy');
+ if(sale?.tax_cents!==0)throw Error('Tax-bearing sale cannot use the no-tax staging receipt');
  if(!sale||!UUID.test(String(sale.sale_id||''))||!Array.isArray(sale.items)||sale.items.length>80)throw Error('Invalid verified receipt payload');
  const items=[];
  for(const item of sale.items){
@@ -38,12 +40,11 @@ function escposReceipt(sale){
  }
  const hr='-'.repeat(printColumns);
  const lines=[
-  'PERSEN APPAREL','persenapparel.com','',
+  'PERSEN APPAREL','persenapparel.com',copy,'',
   'SALE '+String(sale.sale_id).slice(0,8).toUpperCase(),
   hr,...items,hr,
   padAmount('Subtotal',money(sale.subtotal_cents)),
   padAmount('Discount','-'+money(sale.discount_cents)),
-  padAmount('Tax',money(sale.tax_cents)),
   padAmount('TOTAL',money(sale.total_cents)),
   padAmount('Cash received',money(sale.tendered_cents)),
   padAmount('Change',money(sale.change_cents)),
@@ -52,6 +53,11 @@ function escposReceipt(sale){
  const body=Buffer.from(lines.map(x=>ascii(x).slice(0,printColumns)).join('\n')+'\n','ascii');
  // Printer reset, no automatic drawer pulse, feed, cut.
  return Buffer.concat([Buffer.from([ESC,0x40]),body,Buffer.from([0x0a,0x0a,GS,0x56,0x00])]);
+}
+// One server-claimed print job sends both separately cut receipts in a single RAW spool call.
+// If the spooler result is uncertain, the job is never replayed automatically.
+function escposTwoCopies(sale){
+ return Buffer.concat([escposReceipt(sale,'CUSTOMER COPY'),escposReceipt(sale,'MERCHANT COPY')]);
 }
 function drawerKick(opts={}){
  const pin=opts.pin??0, on=opts.on??50, off=opts.off??250;
@@ -111,7 +117,7 @@ function createProcessor({rpc,raw,fetchJobs,logger=()=>{},now=()=>Date.now()}){
    if(!sale)continue;
    attempted.add(job.id);
    let error=null;
-   try{await raw(escposReceipt(sale));}catch(err){error='RAW receipt spooler failed';logger(error);}
+   try{await raw(escposTwoCopies(sale));}catch(err){error='RAW receipt spooler failed';logger(error);}
    await rpc('pos_finish_print_job',{p_job:job.id,p_error:error});
    return {kind:'receipt',id:job.id,spooled:!error};
   }
@@ -213,4 +219,4 @@ async function main(){
  }
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
-module.exports={escposReceipt,drawerKick,createProcessor,makeClient,sendRawWindows,ascii};
+module.exports={escposReceipt,escposTwoCopies,drawerKick,createProcessor,makeClient,sendRawWindows,ascii};

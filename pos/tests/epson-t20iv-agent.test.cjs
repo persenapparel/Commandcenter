@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {escposReceipt,drawerKick,createProcessor}=require('../epson-station/agent.cjs');
+const {escposReceipt,escposTwoCopies,drawerKick,createProcessor}=require('../epson-station/agent.cjs');
 const UUID1='00000000-0000-4000-8000-000000000001';
 const UUID2='00000000-0000-4000-8000-000000000002';
 const sample={sale_id:UUID1,items:[{name:'Hoodie',qty:1,unit_cents:4000,color:'Red',size:'M'}],subtotal_cents:4000,discount_cents:0,tax_cents:0,total_cents:4000,tendered_cents:5000,change_cents:1000};
@@ -12,6 +12,17 @@ test('Epson receipt prints totals and cuts, without a drawer-open command',()=>{
  assert.match(str,/Change[\s]+\$10.00/);
  assert.ok(buf.subarray(-3).equals(Buffer.from([0x1d,0x56,0])));
  assert.equal(buf.includes(drawerKick()),false);
+ assert.doesNotMatch(str,/\nTax\s/,'No tax line on staging receipt');
+ assert.match(str,/CUSTOMER COPY/);
+});
+test('One claimed receipt job contains two copies and two cuts, never a drawer pulse',()=>{
+ const buf=escposTwoCopies(sample),str=buf.toString('latin1');
+ const cut=Buffer.from([0x1d,0x56,0]);
+ assert.equal(str.split('CUSTOMER COPY').length-1,1);
+ assert.equal(str.split('MERCHANT COPY').length-1,1);
+ assert.equal(buf.toString('hex').split(cut.toString('hex')).length-1,2);
+ assert.equal(buf.includes(drawerKick()),false);
+ assert.doesNotMatch(str,/\nTax\s/);
 });
 test('Epson cash kick is a separate validated ESC/POS pulse',()=>{
  assert.deepEqual([...drawerKick()],[0x1b,0x70,0,50,250]);
@@ -20,6 +31,8 @@ test('Epson cash kick is a separate validated ESC/POS pulse',()=>{
 test('Reject malformed receipt totals and invalid items',()=>{
  assert.throws(()=>escposReceipt({...sample,sale_id:'spoof'}),/verified/);
  assert.throws(()=>escposReceipt({...sample,items:[{name:'Bad',qty:-2}]}),/Invalid item/);
+ assert.throws(()=>escposReceipt({...sample,tax_cents:120}),/Tax-bearing sale/);
+ assert.throws(()=>escposReceipt(sample,'UNVERIFIED COPY'),/Invalid receipt copy/);
 });
 test('Cash job must be server claimed, only then one command is queued',async()=>{
  const writes=[],calls=[];
@@ -63,6 +76,9 @@ test('Receipt claim produces a raw print and does not open drawer',async()=>{
  await processor.receipt();await processor.receipt();
  assert.equal(writes.length,1);
  assert.equal(writes[0].includes(drawerKick()),false);
+ assert.match(writes[0].toString('latin1'),/CUSTOMER COPY/);
+ assert.match(writes[0].toString('latin1'),/MERCHANT COPY/);
+ assert.equal(writes[0].toString('hex').split('1d5600').length-1,2);
  assert.equal(calls.filter(n=>n==='pos_finish_print_job').length,1);
 });
 test('Never print without authenticated claim',async()=>{
