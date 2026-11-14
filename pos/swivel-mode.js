@@ -71,6 +71,8 @@
  };
  $('swivel-resume').onclick=async()=>{
   if(!checkout||checkout.status!=='awaiting_customer')return;
+  notice('Customer handoff is disabled until secure customer isolation is implemented.');
+  return;
   const button=$('swivel-resume');button.disabled=true;
   try{open(await pairing())}
   catch(e){notice('Unable to resume customer checkout: '+e.message)}
