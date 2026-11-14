@@ -14,4 +14,10 @@ assert.doesNotMatch(html,/id="receipt-tax"/,'no active tax line in the new-sale 
 assert.doesNotMatch(js,/by\('receipt-tax'\)/,'receipt rendering must not access the removed tax element');
 assert.match(js,/by\('discount'\)\.oninput=draw;/,'cashier controls initialize without a removed tax input');
 assert.match(js,/select\('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents/,'historical sales still retain legacy tax fields for accounting compatibility');
+// Catch crashes caused by stale DOM selectors after checkout UI elements are removed.
+// This is deliberately a structural check; interactive browser coverage is separate.
+const htmlIds=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match=>match[1]));
+for(const match of js.matchAll(/\bby\((['"])([^'"]+)\1\)/g)){
+  assert.ok(htmlIds.has(match[2]), 'Register JS references missing element #'+match[2]);
+}
 console.log('PASS: staged new-sale POS UI has no tax input and sends zero tax (static only)');
