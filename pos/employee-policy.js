@@ -20,11 +20,12 @@
  function allowed(role,action){
   return typeof role==='string'&&Object.hasOwn(PERMISSIONS,action)&&PERMISSIONS[action].includes(role);
  }
- function shouldLock(lastActivityMs,nowMs,checkoutActive){
+ function shouldLock(lastActivityMs,nowMs,_checkoutActive){
   if(!Number.isFinite(lastActivityMs)||!Number.isFinite(nowMs)||nowMs<lastActivityMs)return true;
-  // Do not change an in-progress checkout; the server must separately revoke
-  // privileged actions on idle timeout and prevent customer data exposure.
-  return !checkoutActive&&(nowMs-lastActivityMs>=30000);
+  // An active cart is NOT an exception to the 30-second privacy lock. The
+  // lock UI must conceal it without deleting it; the server must separately
+  // revoke privileged actions until verified reauthentication.
+  return nowMs-lastActivityMs>=30000;
  }
  function scanSku(value){
   if(typeof value!=='string')return null;
