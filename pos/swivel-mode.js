@@ -9,11 +9,6 @@
  if(!originalBegin||!overlay||!frame)throw Error('Single-iPad POS needs the cashier checkout layout.');
  function update(){
   document.body.dataset.checkoutDeviceMode='swivel';
-  // Retire the legacy two-device selector instead of offering an unsafe fallback.
-  document.querySelector('.pos-device-mode')?.remove();
-  for(const id of ['pair','pair-quick','pair-setup']){
-   const el=$(id);if(el)el.hidden=true;
-  }
   const hint=document.querySelector('.live-cart-hint');
   if(hint)hint.textContent='Scan everything first. Hand this iPad to the customer to enter their details and review the total.';
   $('start').textContent='Hand to Customer →';
