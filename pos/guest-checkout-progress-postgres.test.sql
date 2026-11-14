@@ -12,7 +12,7 @@ begin
  ) then raise exception 'Guest progress must be SECURITY DEFINER with empty search_path'; end if;
  if has_function_privilege('anon',v_oid,'EXECUTE')
     or has_function_privilege('authenticated',v_oid,'EXECUTE')
-    or has_function_privilege('public',v_oid,'EXECUTE') then
+    or exists (select 1 from pg_proc p where p.oid=v_oid and has_function_privilege(v_oid,'EXECUTE') and (select bool_or(x.grantee=0 and (x.privilege_type='EXECUTE')) from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) x)) then
    raise exception 'Guest progress is publicly executable'; end if;
  if not exists (
   select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
