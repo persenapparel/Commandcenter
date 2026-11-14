@@ -121,6 +121,7 @@ begin
   from public.pos_guest_checkout_capabilities t
   join public.pos_checkouts c on c.id=t.checkout_id
   where t.token_sha256=encode(extensions.digest(p_capability,'sha256'),'hex')
+    and t.owner_id=c.owner_id
     and t.revoked_at is null and t.expires_at>now()
     and c.created_at>now()-interval '30 minutes'
     and c.status in ('awaiting_customer','contact_received')
@@ -158,6 +159,10 @@ begin
      or old.items is distinct from new.items
      or old.subtotal_cents is distinct from new.subtotal_cents
      or old.discount_cents is distinct from new.discount_cents
+     or old.discount_bps is distinct from new.discount_bps
+     or old.tax_milli is distinct from new.tax_milli
+     or old.tax_cents is distinct from new.tax_cents
+     or old.event_id is distinct from new.event_id
      or old.total_cents is distinct from new.total_cents
      or old.cash_handoff_complete is distinct from new.cash_handoff_complete
      or old.register_id is distinct from new.register_id
@@ -173,7 +178,8 @@ revoke all on function public.pos_revoke_guest_capability_on_checkout_change()
   from public, anon, authenticated;
 drop trigger if exists pos_guest_capability_checkout_changed on public.pos_checkouts;
 create trigger pos_guest_capability_checkout_changed
-after update of status, items, subtotal_cents, discount_cents, total_cents,
+after update of status, items, subtotal_cents, discount_cents, discount_bps,
+                tax_milli, tax_cents, event_id, total_cents,
                 cash_handoff_complete, register_id, owner_id on public.pos_checkouts
 for each row execute function public.pos_revoke_guest_capability_on_checkout_change();
 
