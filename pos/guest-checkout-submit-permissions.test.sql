@@ -20,8 +20,12 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Guest submit must be SECURITY DEFINER with empty search_path';
   END IF;
-  FOR role_name IN SELECT unnest(ARRAY['PUBLIC','anon','authenticated']) LOOP
-    IF role_name <> 'PUBLIC' AND NOT EXISTS (
+  IF EXISTS (SELECT 1 FROM pg_proc p, LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+             WHERE p.oid=f AND a.grantee=0 AND a.privilege_type='EXECUTE') THEN
+    RAISE EXCEPTION 'PUBLIC can execute guest submission RPC';
+  END IF;
+  FOR role_name IN SELECT unnest(ARRAY['anon','authenticated']) LOOP
+    IF NOT EXISTS (
       SELECT 1 FROM pg_roles WHERE rolname=role_name
     ) THEN
       RAISE EXCEPTION 'Missing expected role %',role_name;
