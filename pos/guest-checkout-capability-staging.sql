@@ -159,6 +159,7 @@ begin
      or old.subtotal_cents is distinct from new.subtotal_cents
      or old.discount_cents is distinct from new.discount_cents
      or old.total_cents is distinct from new.total_cents
+     or old.cash_handoff_complete is distinct from new.cash_handoff_complete
      or old.register_id is distinct from new.register_id
      or old.owner_id is distinct from new.owner_id then
     update public.pos_guest_checkout_capabilities
@@ -173,7 +174,7 @@ revoke all on function public.pos_revoke_guest_capability_on_checkout_change()
 drop trigger if exists pos_guest_capability_checkout_changed on public.pos_checkouts;
 create trigger pos_guest_capability_checkout_changed
 after update of status, items, subtotal_cents, discount_cents, total_cents,
-                register_id, owner_id on public.pos_checkouts
+                cash_handoff_complete, register_id, owner_id on public.pos_checkouts
 for each row execute function public.pos_revoke_guest_capability_on_checkout_change();
 
 -- Required follow-up before enabling customer handoff:
