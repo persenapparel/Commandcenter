@@ -376,7 +376,9 @@ async function start(){
   show('Open the private pairing link provided by the cashier.');return;
  }
  db=PA.db;
- history.replaceState(null,'',location.pathname);
+ // Opaque-origin sandboxed customer frames cannot mutate session history.
+ // Never let URL cleanup failure interrupt a checkout or reveal owner auth.
+ try{history.replaceState(null,'',location.pathname)}catch{/* sandbox prohibits History API */ }
  try{
   const result=await checked(db.from('site_content').select('value').eq('key','seasonal_campaigns_v1').maybeSingle());
   const campaign=C.season(result?.value);
