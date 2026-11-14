@@ -44,6 +44,7 @@ test('snapshot never exposes PII, staff auth, or finished transactions',()=>{
  assert.match(snap,/t\.revoked_at is null and t\.expires_at>now\(\)/i);
  assert.match(snap,/c\.status in \('awaiting_customer','contact_received'\)/i);
  assert.match(snap,/r\.active=true/i);
+ assert.match(snap,/t\.owner_id=c\.owner_id/i);
  for(const forbidden of ['phone','email','signature','owner_id','display_secret','marketing_opt_in','payment_token']){
   assert.doesNotMatch(snap,new RegExp("'"+forbidden+"'\\s*,\\s*v_checkout\\.",'i'),'guest response leaks '+forbidden);
  }
@@ -67,8 +68,8 @@ test('customer handoff remains blocked before any pairing or checkout begins',()
 test('checkout changes revoke active guest capability in the same transaction',()=>{
  const trigger=section('create or replace function public.pos_revoke_guest_capability_on_checkout_change','-- Required follow-up');
  assert.match(trigger,/returns trigger/i);
- assert.match(trigger,/after update of status, items, subtotal_cents, discount_cents, total_cents,\s*cash_handoff_complete,/i);
- for(const field of ['status','items','subtotal_cents','discount_cents','total_cents','cash_handoff_complete','register_id','owner_id']){
+ assert.match(trigger,/after update of status, items, subtotal_cents, discount_cents, discount_bps,\s*tax_milli, tax_cents, event_id, total_cents,\s*cash_handoff_complete,/i);
+ for(const field of ['status','items','subtotal_cents','discount_cents','discount_bps','tax_milli','tax_cents','event_id','total_cents','cash_handoff_complete','register_id','owner_id']){
   assert.match(trigger,new RegExp('old\\.'+field+' is distinct from new\\.'+field,'i'));
  }
  assert.match(trigger,/update public\\.pos_guest_checkout_capabilities\\s+set revoked_at=now\\(\\)/i);
