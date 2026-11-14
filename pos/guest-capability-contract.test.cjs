@@ -67,8 +67,8 @@ test('customer handoff remains blocked before any pairing or checkout begins',()
 test('checkout changes revoke active guest capability in the same transaction',()=>{
  const trigger=section('create or replace function public.pos_revoke_guest_capability_on_checkout_change','-- Required follow-up');
  assert.match(trigger,/returns trigger/i);
- assert.match(trigger,/after update of status, items, subtotal_cents, discount_cents, total_cents,/i);
- for(const field of ['status','items','subtotal_cents','discount_cents','total_cents','register_id','owner_id']){
+ assert.match(trigger,/after update of status, items, subtotal_cents, discount_cents, total_cents,\s*cash_handoff_complete,/i);
+ for(const field of ['status','items','subtotal_cents','discount_cents','total_cents','cash_handoff_complete','register_id','owner_id']){
   assert.match(trigger,new RegExp('old\\.'+field+' is distinct from new\\.'+field,'i'));
  }
  assert.match(trigger,/update public\\.pos_guest_checkout_capabilities\\s+set revoked_at=now\\(\\)/i);
