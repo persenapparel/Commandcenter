@@ -53,6 +53,11 @@
  }
  $('start').onclick=async()=>{
   if(swivelStarting||busy||checkout||pendingCash)return;
+  // SECURITY: A same-origin customer iframe can reach the authenticated cashier
+  // window and session. Fail closed until a separately isolated customer origin
+  // and server-authorized handoff have been implemented and tested.
+  notice('Customer handoff is temporarily unavailable: secure customer isolation is required. Do not turn this signed-in iPad toward a customer.');
+  return;
   swivelStarting=true;
   $('start').disabled=true;
   try{
