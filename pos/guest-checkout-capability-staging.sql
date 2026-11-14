@@ -152,7 +152,7 @@ revoke all on function public.pos_guest_checkout_snapshot(text)
 create or replace function public.pos_revoke_guest_capability_on_checkout_change()
 returns trigger
 language plpgsql security definer set search_path = ''
-as $
+as $$
 begin
   if old.status is distinct from new.status
      or old.items is distinct from new.items
@@ -167,7 +167,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 revoke all on function public.pos_revoke_guest_capability_on_checkout_change()
   from public, anon, authenticated;
 drop trigger if exists pos_guest_capability_checkout_changed on public.pos_checkouts;
