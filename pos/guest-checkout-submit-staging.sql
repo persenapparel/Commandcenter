@@ -45,7 +45,7 @@ begin
   -- Deliberately return the same failure for bad credentials and bad input.
   if p_capability is null or p_capability !~ '^[0-9a-f]{64}$'
     or p_answers is null or jsonb_typeof(p_answers) <> 'object'
-    or jsonb_object_length(p_answers) > 10
+    or (select count(*) from jsonb_object_keys(p_answers)) > 9
     or exists (
       select 1 from jsonb_object_keys(p_answers) k
       where k not in ('phone','email','marketing_choice','rating',
