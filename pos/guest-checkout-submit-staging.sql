@@ -127,7 +127,11 @@ begin
     (checkout_id,signature_png_data_url,captured_at)
   values(v_id,v_signature,v_now)
   on conflict(checkout_id) do nothing;
-  if not found then return false; end if;
+  -- An unexpected signature conflict must abort the entire transaction,
+  -- not return false after consuming the submission rate-limit slot.
+  if not found then
+    raise exception 'guest checkout submission conflict' using errcode='23505';
+  end if;
 
   update public.pos_checkouts c
   set phone=v_phone,email=v_email,
@@ -140,7 +144,11 @@ begin
       receipt_print=v_print,receipt_email=v_email_receipt,
       status='contact_received',updated_at=v_now
   where c.id=v_id and c.status='awaiting_customer';
-  if not found then return false; end if;
+  -- Returning false here would COMMIT the previously inserted signature and
+  -- rate-limit mutation. Raise to force PostgreSQL transaction rollback.
+  if not found then
+    raise exception 'guest checkout changed during submission' using errcode='40001';
+  end if;
 
   -- Checkout-change trigger revokes the token in this transaction. Defense
   -- in depth: explicitly revoke as well; no subsequent guest call may succeed.
