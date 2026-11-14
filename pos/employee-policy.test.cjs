@@ -19,7 +19,7 @@ test('30-second idle threshold is fail-closed on invalid time',()=>{
  assert.equal(p.shouldLock(0,30000,false),true);
  assert.equal(p.shouldLock(NaN,30000,false),true);
  assert.equal(p.shouldLock(31000,30000,false),true);
- assert.equal(p.shouldLock(0,31000,true),false);
+ assert.equal(p.shouldLock(0,31000,true),true);\n assert.equal(p.shouldLock(0,29999,true),false);
 });
 test('scan accepts safe SKU, not secrets or multi-line input',()=>{
  assert.equal(p.scanSku(' XMAS-RED-M '),'XMAS-RED-M');
