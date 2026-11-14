@@ -675,6 +675,30 @@ by('epson-enroll-method').addEventListener('change',()=>{
 
 
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
+// A non-blocking, accessible one-second scan confirmation. It never captures scanner focus.
+let scanConfirmationTimer;
+function showScanConfirmation(variant,quantity){
+ let panel=document.getElementById('scan-confirmation');
+ if(!panel){
+  panel=document.createElement('aside');
+  panel.id='scan-confirmation';
+  panel.setAttribute('role','status');
+  panel.setAttribute('aria-live','polite');
+  panel.setAttribute('aria-atomic','true');
+  panel.style.cssText='position:fixed;z-index:1100;left:50%;top:12%;transform:translateX(-50%);width:min(90vw,440px);padding:22px 26px;border:3px solid #1e7357;border-radius:20px;background:#fff;color:#123044;box-shadow:0 18px 50px #0004;pointer-events:none;text-align:center;font:inherit';
+  document.body.append(panel);
+ }
+ clearTimeout(scanConfirmationTimer);
+ panel.replaceChildren();
+ const check=document.createElement('div');check.textContent='✓ ADDED TO CART';check.style.cssText='font-size:22px;font-weight:800;color:#146547';
+ const name=document.createElement('div');name.textContent=variant.product_name||'Product';name.style.cssText='font-size:28px;font-weight:800;margin:8px 0';
+ const details=document.createElement('div');details.textContent=[variant.color,variant.size&&'Size '+variant.size].filter(Boolean).join(' · ');details.style.cssText='font-size:20px';
+ const price=document.createElement('div');price.textContent=C.money(variantMeta.get(variant.id).price_cents);price.style.cssText='font-size:24px;font-weight:700;margin-top:8px';
+ const count=document.createElement('div');count.textContent='Quantity in cart: '+quantity;count.style.cssText='font-size:15px;margin-top:6px';
+ panel.append(check,name,details,price,count);
+ panel.hidden=false;
+ scanConfirmationTimer=setTimeout(()=>{panel.hidden=true;},1000);
+}
 // Keyboard-wedge barcode input. One inventory SKU per color/size variant;
 // no background keystroke listener so employee typing/password fields are safe.
 function scanSku(input){
@@ -724,7 +748,9 @@ function scanSku(input){
  }
  if(result.status!=='added'){out.textContent='Product Not Found. Use search.';search.hidden=false;return;}
  addVariant(variant);
- out.textContent=match.label+' added. '+(cart.find(x=>x.stock_id===variant.id)?.qty||1)+' in cart.';
+ const inCart=cart.find(x=>x.stock_id===variant.id);
+ if(inCart)showScanConfirmation(variant,inCart.qty);
+ out.textContent=match.label+' added. '+(inCart?.qty||1)+' in cart.';
 }
 let scanMode='sell';
 function setScanMode(mode){
