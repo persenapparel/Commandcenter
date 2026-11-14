@@ -11,7 +11,7 @@
 -- * Only authenticated Persen POS owner can issue/revoke a capability.
 -- * 32 random bytes of entropy, server keeps only SHA-256 digest.
 -- * One capability per immutable checkout id; reissue rotates old token.
--- * 20 minute expiry, and inactive/cancelled/expired checkouts fail closed.
+-- * 20 minute expiry, and inactive/cancelled/completed checkouts fail closed.
 -- * RLS, no direct table SELECT/INSERT/UPDATE/DELETE for any API role.
 -- * NO anon guest API grants here; rate limits, validation, browser negative
 --   tests, contact semantics and signature checks are still P0 blockers.
@@ -123,7 +123,11 @@ begin
   where t.token_sha256=encode(extensions.digest(p_capability,'sha256'),'hex')
     and t.revoked_at is null and t.expires_at>now()
     and c.created_at>now()-interval '30 minutes'
-    and c.status in ('awaiting_customer','contact_received','completed')
+    and c.status in ('awaiting_customer','contact_received')
+    and exists (
+      select 1 from public.pos_registers r
+      where r.id=c.register_id and r.owner_id=c.owner_id and r.active=true
+    )
   limit 1;
   if not found then
     return jsonb_build_object('status','unavailable');
