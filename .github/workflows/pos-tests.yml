@@ -56,7 +56,6 @@ jobs:
           node --check pos/epson-center.js
           node --check pos/checkout-flow.js
           node --check pos/display.js
-          node --check pos/print-station.js
           node --check pos/epson-station/agent.cjs
       - name: Run POS unit tests
         run: node pos/tests.cjs
@@ -66,7 +65,7 @@ jobs:
         run: node pos/no-tax-checkout-regression.cjs
       - name: Guard 1-second scanner confirmation
         run: node pos/scan-confirmation-regression.cjs
-      - name: Verify paired live cart, tiles and scanner integrations
+      - name: Verify live cart, tiles and scanner integrations
         run: node pos/live-cart-structure-test.cjs
       - name: Run connected barcode and receipt-safety tests (offline)
         run: node --test pos/tests/*.test.cjs
@@ -136,7 +135,7 @@ jobs:
         run: |
           node --check pos/browser-customer-isolation-test.cjs
           node pos/browser-customer-isolation-test.cjs
-      - name: Interactive four-station POS workflow (isolated mock browser)
+      - name: Single-swivel cashier smoke and secure-handoff guard (isolated mock browser)
         run: |
           node --check pos/browser-full-flow-test.cjs
           node --check pos/test-fake-supabase.js
