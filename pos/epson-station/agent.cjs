@@ -30,6 +30,8 @@ function escposReceipt(sale,copy='CUSTOMER COPY'){
  if(!['CUSTOMER COPY','MERCHANT COPY'].includes(copy))throw Error('Invalid receipt copy');
  if(sale?.tax_cents!==0)throw Error('Tax-bearing sale cannot use the no-tax staging receipt');
  if(!sale||!UUID.test(String(sale.sale_id||''))||!Array.isArray(sale.items)||sale.items.length>80)throw Error('Invalid verified receipt payload');
+ const cashier=String(sale.cashier_name??'').trim();
+ if(!/^[A-Za-z][A-Za-z .'-]{0,59}$/.test(cashier))throw Error('Verified cashier identity required for both receipt copies');
  const items=[];
  for(const item of sale.items){
   if(!item||typeof item!=='object'||!Number.isSafeInteger(item.qty)||item.qty<1||item.qty>999)throw Error('Invalid item');
@@ -42,6 +44,7 @@ function escposReceipt(sale,copy='CUSTOMER COPY'){
  const lines=[
   'PERSEN APPAREL','persenapparel.com',copy,'',
   'SALE '+String(sale.sale_id).slice(0,8).toUpperCase(),
+  'Cashier: '+cashier,
   hr,...items,hr,
   padAmount('Subtotal',money(sale.subtotal_cents)),
   padAmount('Discount','-'+money(sale.discount_cents)),
