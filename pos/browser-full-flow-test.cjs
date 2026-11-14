@@ -24,8 +24,11 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(await p.locator('#pin-gate').count(),0);
   assert.equal(await p.locator('#pin-input').count(),0);
   assert.match(await p.locator('.test').innerText(),/Cloudflare Access/);
-  for(const file of ['admin.html','register.html','display.html'])
+  for(const file of ['admin.html','register.html'])
    assert.equal(await p.locator('a[href="'+file+'"]').count(),1);
+  // Do not advertise the customer-only route on the signed-in owner dashboard.
+  assert.equal(await p.locator('a[href="display.html"]').count(),0);
+  assert.equal((await p.request.get(url+'display.html')).status(),200,'Controlled customer route must remain bundled');
    assert.equal(await p.locator('a[href="admin.html#print-center"]').count(),1,'Epson Print Center must be on the dashboard');
   await p.reload();await visible(p,'#device-dashboard');
  });
