@@ -54,7 +54,7 @@ test('failed credential lock never exposes customer',async()=>{
 });
 
 test('completed sale cannot be submitted again if guest revocation fails',async()=>{
- let finishes=0;
+ let finishes=0, cleared=0, homes=0;
  const c=createHandoffCoordinator({
   beginCheckout:async()=>({checkoutId:'once'}),
   issueCheckoutCapability:async id=>({checkoutId:id,capability:'scoped',revoke:async()=>{throw Error('revocation unavailable')}}),
@@ -64,15 +64,17 @@ test('completed sale cannot be submitted again if guest revocation fails',async(
   getCheckoutStatus:async()=> 'contact_received',
   resumeCashier:async()=>{},
   finishVerifiedSale:async()=>{finishes++;return {completed:true,checkoutId:'once'}},
-  clearGuestContext:async()=>{},
-  showBrandedHome:async()=>{}
+  clearGuestContext:async()=>{cleared++},
+  showBrandedHome:async()=>{homes++}
  });
  await c.handToCustomer();
  await c.customerCompleted();
  c.showCashierLock();
  await c.badgeResume('verified-badge');
- await assert.rejects(c.finishSale({cashCents:1000}),/revocation unavailable/);
+ await assert.rejects(c.finishSale({cashCents:1000}),/Guest cleanup incomplete/);
  assert.equal(c.state().phase,'finalizing');
  await assert.rejects(c.finishSale({cashCents:1000}),/not in payment state/);
  assert.equal(finishes,1);
+ assert.equal(cleared,1,'local guest context must clear even when revocation fails');
+ assert.equal(homes,0,'never show unlocked home after failed revocation');
 });
