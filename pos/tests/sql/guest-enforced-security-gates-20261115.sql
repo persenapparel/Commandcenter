@@ -16,7 +16,7 @@ BEGIN
     AND p.proname IN ('pos_customer_view','pos_customer_cart_preview',
       'pos_set_customer_progress','pos_submit_customer_v2','pos_issue_display_pairing')
     AND (has_function_privilege('anon',p.oid,'EXECUTE')
-      OR has_function_privilege('PUBLIC',p.oid,'EXECUTE'));
+      OR EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE'));
   IF exposed IS NOT NULL THEN
     RAISE EXCEPTION 'FAIL: anonymous legacy RPC EXECUTE: %', exposed;
   END IF;
@@ -29,10 +29,10 @@ BEGIN
       OR has_table_privilege('anon',c.oid,'INSERT')
       OR has_table_privilege('anon',c.oid,'UPDATE')
       OR has_table_privilege('anon',c.oid,'DELETE')
-      OR has_table_privilege('PUBLIC',c.oid,'SELECT')
-      OR has_table_privilege('PUBLIC',c.oid,'INSERT')
-      OR has_table_privilege('PUBLIC',c.oid,'UPDATE')
-      OR has_table_privilege('PUBLIC',c.oid,'DELETE'));
+      OR EXISTS (SELECT 1 FROM aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a WHERE a.grantee=0 AND a.privilege_type='SELECT')
+      OR EXISTS (SELECT 1 FROM aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a WHERE a.grantee=0 AND a.privilege_type='INSERT')
+      OR EXISTS (SELECT 1 FROM aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a WHERE a.grantee=0 AND a.privilege_type='UPDATE')
+      OR EXISTS (SELECT 1 FROM aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a WHERE a.grantee=0 AND a.privilege_type='DELETE'));
   IF unsafe_tables IS NOT NULL THEN
     RAISE EXCEPTION 'FAIL: guest table direct grants or RLS: %',unsafe_tables;
   END IF;
