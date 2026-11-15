@@ -24,7 +24,7 @@ for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','pos.js','pos-co
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
 await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
-for(const f of ['register.html','display.html','index.html','print-station.html','admin.html','inventory.html','scanner-diagnostic.html']){
+for(const f of ['register.html','display.html','index.html','print-station.html','admin.html','inventory.html','scanner-diagnostic.html','practice-checkout.html']){
  let s=await readFile(join('pos',f),'utf8');
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  await writeFile(join(dest,f),s);
