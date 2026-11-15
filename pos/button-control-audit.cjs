@@ -7,7 +7,7 @@ const suites=[
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
  ['admin.html','epson-center.js',['epson-refresh']],
- ['register.html','swivel-mode.js',['swivel-resume','swivel-lock','swivel-unlock-submit','swivel-keep-customer']]
+ ['register.html','swivel-mode.js',['swivel-resume']]
 ];
 let checked=0;
 for(const [page,script,buttons] of suites){
@@ -28,6 +28,17 @@ const expectations=[
 for(const [file,tokens] of expectations){const code=read(file);for(const token of tokens)assert.ok(code.includes(token),file+' is missing action '+token)}
 assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
 const registerHtml=read('register.html'),registerJs=read('register.js');
+const swivel=read('swivel-mode.js');
+// When handoff is security-gated, do not require or render obsolete password
+// unlock controls. The new checkout must use a server-verified badge/PIN flow.
+assert.ok(swivel.includes("start.onclick=deny"),'Handoff must fail closed until checkout authorization is verified');
+assert.ok(swivel.includes("overlay.hidden=true"),'Blocked customer overlay must remain hidden');
+assert.ok(swivel.includes("frame.removeAttribute('src')"),'Blocked mode must remove the guest frame source');
+assert.ok(swivel.includes("active:()=>false"),'Blocked mode cannot claim active guest checkout');
+for(const id of ['swivel-lock','swivel-password','swivel-unlock-form','swivel-unlock-message','swivel-unlock-submit','swivel-keep-customer']){
+ assert.ok(!registerHtml.includes('id="'+id+'"'),'Retired cashier password UI must not remain in checkout markup: '+id);
+ assert.ok(!swivel.includes("'"+id+"'"),'Retired cashier password handler must stay removed: '+id);
+}
 for(const id of ['pair-setup','pair-quick','pair-copy','pair-share','pair-link-panel','pair']){
  assert.ok(!registerHtml.includes('id="'+id+'"'),'Obsolete two-iPad UI must stay removed: '+id);
 }
