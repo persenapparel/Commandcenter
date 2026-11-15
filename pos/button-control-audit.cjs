@@ -7,7 +7,7 @@ const suites=[
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
  ['admin.html','epson-center.js',['epson-refresh']],
- ['register.html','swivel-mode.js',['swivel-resume','swivel-lock','swivel-unlock-submit','swivel-keep-customer']]
+ ['register.html','swivel-mode.js',['swivel-resume']]
 ];
 let checked=0;
 for(const [page,script,buttons] of suites){
@@ -28,6 +28,11 @@ const expectations=[
 for(const [file,tokens] of expectations){const code=read(file);for(const token of tokens)assert.ok(code.includes(token),file+' is missing action '+token)}
 assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
 const registerHtml=read('register.html'),registerJs=read('register.js');
+const swivel=read('swivel-mode.js');
+for(const id of ['swivel-lock','swivel-unlock-submit','swivel-keep-customer']){
+ assert.ok(!swivel.includes("$('"+id+"')"),'Retired unsafe swivel control must not be rebound: '+id);
+}
+assert.ok(swivel.includes('start.onclick=deny')&&swivel.includes('resume.onclick=deny')&&swivel.includes("frame.removeAttribute('src')"),'Handoff and cashier resume must remain fail closed and clear the customer frame');
 for(const id of ['pair-setup','pair-quick','pair-copy','pair-share','pair-link-panel','pair']){
  assert.ok(!registerHtml.includes('id="'+id+'"'),'Obsolete two-iPad UI must stay removed: '+id);
 }
