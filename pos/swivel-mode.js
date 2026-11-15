@@ -26,6 +26,16 @@
  start.onclick=deny;
  const resume=$('swivel-resume');
  if(resume)resume.onclick=deny;
+ // All legacy overlay controls remain wired to the same fail-closed handler.
+ // Never expose the cashier register or navigate to an unisolated guest iframe.
+ const lock=$('swivel-lock');
+ if(lock)lock.onclick=deny;
+ const keepCustomer=$('swivel-keep-customer');
+ if(keepCustomer)keepCustomer.onclick=deny;
+ const unlockSubmit=$('swivel-unlock-submit');
+ if(unlockSubmit)unlockSubmit.onclick=event=>{event.preventDefault();deny();};
+ const unlockForm=unlockSubmit?.closest('form');
+ if(unlockForm)unlockForm.onsubmit=event=>{event.preventDefault();deny();};
  // The legacy customer iframe, register-wide pairing RPC, and in-page
  // password reauthentication were intentionally removed. The replacement
  // must issue a per-checkout server capability and use an isolated guest
