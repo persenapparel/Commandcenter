@@ -87,6 +87,9 @@ function createHandoffCoordinator({
       const result=await finishVerifiedSale({checkoutId,payment});
       if (!result || result.completed!==true || result.checkoutId!==checkoutId)
         throw Error('Sale completion not verified');
+      // Server completion is irreversible. Never submit payment twice if
+      // guest revocation, cleanup, or home navigation subsequently fails.
+      phase='finalizing';
       if (guestRevoker) await guestRevoker();
       await clearGuestContext();
       await showBrandedHome();
