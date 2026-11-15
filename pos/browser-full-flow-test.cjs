@@ -134,7 +134,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#start').click();
   await txt(cashier,'#notice','Customer handoff is temporarily unavailable: secure customer isolation is required.');
   assert.equal(await cashier.locator('#swivel-overlay').isVisible(),false,'Customer overlay must remain closed');
-  assert.equal(await cashier.locator('#swivel-customer-frame').getAttribute('src'),'about:blank','No customer session may be opened');
+  assert.equal(await cashier.locator('#swivel-customer-frame').getAttribute('src'),null,'No customer session may be opened; frame src must be absent');
   assert.equal(await cashier.locator('#workspace').isVisible(),true,'Cashier still controls the iPad');
   assert.equal(await cashier.locator('#cart .cart-row').count(),2,'Cart must survive a blocked handoff');
   const after=await state(cashier);

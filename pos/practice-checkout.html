@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b2540">
+<title>Persen POS · Practice Checkout</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#142c42;background:#eff4f8;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}
+button{cursor:pointer;touch-action:manipulation}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #2a9ede;outline-offset:2px}
+header{background:#0a2849;color:#fff;display:flex;align-items:center;gap:13px;padding:12px max(15px,calc((100% - 1080px)/2));min-height:70px}
+.logo{height:44px;width:44px;object-fit:contain;background:#fff;border-radius:11px;padding:2px}
+.brand{font-size:20px;font-weight:850;letter-spacing:.03em}.brand small{font-size:11px;font-weight:550;display:block;color:#bed5eb;letter-spacing:0}
+header .right{margin-left:auto;font-weight:700;font-size:12px;text-align:right}
+main{max-width:1080px;margin:0 auto;padding:21px 16px 44px}.banner{background:#fff1cd;border:1px solid #e8cc82;border-radius:13px;padding:12px 15px;line-height:1.5;font-size:13px;color:#654c10;margin-bottom:18px}
+.panel{background:#fff;border:1px solid #dae3ec;box-shadow:0 8px 35px #1a4a7111;border-radius:20px;padding:22px;margin-bottom:16px}
+h1{font-size:clamp(25px,4.5vw,38px);margin:4px 0 10px;letter-spacing:-.03em}h2{font-size:20px;margin:4px 0 12px}h3{font-size:16px;margin:0 0 9px}p{color:#53697c;line-height:1.55}strong{font-weight:800}
+.muted{color:#667b8b;font-size:13px}.eyebrow{color:#145a9e;text-transform:uppercase;letter-spacing:.09em;font-size:11px;font-weight:850}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}.stack{display:grid;gap:11px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.btn{background:#0a5aae;color:white;border:0;border-radius:12px;padding:13px 18px;font-weight:750;min-height:48px}
+.btn:hover{background:#0a4789}.btn.secondary{background:#eaf1f8;color:#153956}.btn.secondary:hover{background:#dbe8f5}
+.btn.danger{background:#fff0ed;color:#9c4037}.btn:disabled{opacity:.45;cursor:not-allowed}
+.big{font-size:17px;padding:18px 20px;min-height:64px}.wide{width:100%}
+.tile{border:1px solid #d6e2eb;border-radius:14px;background:#f7faff;padding:15px;text-align:left;min-height:116px}
+.tile:hover{border-color:#2773b1;background:#ecf6ff}.tile strong{display:block;font-size:17px}.tile small{display:block;color:#6d8091;margin-top:6px}
+label{font-weight:750;font-size:13px;display:block;margin-bottom:6px}
+input,select{border:1px solid #b6cadc;border-radius:10px;min-height:49px;width:100%;padding:10px 12px;background:white;color:#142c42}
+input[type=checkbox]{width:20px;min-height:20px;accent-color:#1a609a;vertical-align:middle}
+.cols{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,.8fr);gap:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:11px 5px;border-bottom:1px solid #e4ecf2;text-align:left}td:last-child,th:last-child{text-align:right}
+.money{font-size:32px;font-weight:850;letter-spacing:-.02em;color:#113c61}.success{color:#136943}
+.chip{background:#ebf4fd;padding:6px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.hint{font-size:12px;color:#64788a}.notice{border-left:4px solid #307fbb;background:#f1f8ff;padding:12px;margin:12px 0;font-size:13px;line-height:1.5}
+#signature{width:100%;height:140px;border:2px dashed #b5c9d9;background:#fff;border-radius:12px;touch-action:none}
+.center{text-align:center}.sleep{min-height:65vh;display:grid;place-items:center;text-align:center}
+#view[hidden],.hide{display:none!important}
+footer{color:#738498;font-size:11px;text-align:center;margin-top:20px}
+@media(max-width:700px){.cols,.grid.three{grid-template-columns:1fr}.panel{padding:16px}.grid{grid-template-columns:1fr 1fr}.brand{font-size:16px}}
+@media(max-width:400px){.grid{grid-template-columns:1fr}header .right{display:none}}
+</style></head>
+<body>
+<header><img class="logo" src="assets/persen-logo.png" alt="Persen Apparel"><div class="brand">PERSEN POS<small>Owner practice checkout · 1 swivel iPad</small></div><div class="right">TRAINING ONLY<br>NO REAL SALES</div></header>
+<main><div class="banner"><strong>Safe practice version.</strong> No real employee login, inventory writes, orders, emails, payments, or printing. Staff selection and customer handoff are simulations, not secure authentication. This page must still stay behind Cloudflare Access. Never scan actual staff credentials into this demo.</div><div id="view" aria-live="polite"></div><footer>Persen Apparel · Isolated training UI · All practice data stays in this browser's memory and disappears on reload.</footer></main>
+<script>
+"use strict";
+(function(){
+const root=document.getElementById("view");
+const products=[
+{id:"WINTER-LS",name:"Winter Long Island Long Sleeve",price:25,icon:"☃️",stock:{"S":5,"M":8,"L":10,"XL":5},sku:"DEMO-WINTER"},
+{id:"CHRISTMAS-HOOD",name:"Embroidered Christmas Hoodie",price:40,icon:"🎄",stock:{"S":4,"M":6,"L":8,"XL":3},sku:"DEMO-HOODIE"},
+{id:"CHRISTMAS-CREW",name:"Embroidered Crewneck",price:40,icon:"🎁",stock:{"S":3,"M":7,"L":7,"XL":3},sku:"DEMO-CREW"},
+{id:"HOLIDAY-TEE",name:"Holiday Graphic T-Shirt",price:20,icon:"👕",stock:{"S":7,"M":9,"L":9,"XL":4},sku:"DEMO-TEE"}
+];
+const money=n=>"$"+Number(n||0).toFixed(2);
+const st={phase:"idle",staff:"",event:"Holiday Boutique — practice",cart:[],cust:{email:"",phone:"",marketing:false,signed:false,declined:true},tender:"",payType:"cash",last:"",done:false,stock:products.map(p=>({...p.stock}))};
+let lastActivity=Date.now(),interval=null,ctx=null,drawing=false,hasInk=false;
+function total(){return st.cart.reduce((s,x)=>s+x.price*x.qty,0)}
+function qty(id,size){return st.cart.filter(x=>x.id===id&&x.size===size).reduce((s,x)=>s+x.qty,0)}
+function clearContact(){st.cust={email:"",phone:"",marketing:false,signed:false,declined:true};hasInk=false}
+function reset(){st.phase="idle";st.staff="";st.cart=[];st.tender="";st.payType="cash";st.last="";clearContact();draw()}
+function activity(){lastActivity=Date.now()}
+function lock(){st.phase="idle";st.staff="";st.tender="";clearContact();draw()}
+function btn(id,fn){const el=document.getElementById(id);if(el)el.addEventListener("click",fn)}
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function head(title,subtitle){return '<div class="eyebrow">PERSEN APPAREL · PRACTICE MODE</div><h1>'+title+'</h1><p>'+subtitle+'</p>'}
+function draw(){
+ activity();
+ if(st.phase==="idle"){
+ root.innerHTML='<section class="panel sleep"><div><img src="assets/persen-logo.png" alt="" style="width:94px;height:94px;object-fit:contain"><h1>Welcome to Persen Apparel</h1><p id="clock"></p><p>Holiday season · Practice register</p><button class="btn big" id="wake">Tap to Start Training</button><p class="muted">This is not a real badge sign-in screen.</p></div></section>';btn("wake",()=>{st.phase="staff";draw()});clock();return;
+ }
+ if(st.phase==="staff"){
+ root.innerHTML='<section class="panel">'+head("Choose a training employee","These buttons simulate badge recognition. They do not authenticate anyone or grant real POS permissions.")+'<div class="grid three">'+["Luke · Owner","Logan · Employee","Colleen · Employee"].map((name,i)=>'<button class="btn secondary big" id="staff'+i+'">'+name+'</button>').join("")+'</div><div class="notice">Real badge + PIN login is still being implemented. Do not enter your actual staff barcode or PIN here.</div><button id="gohome" class="btn secondary">Back to Home</button></section>';
+ ["Luke","Logan","Colleen"].forEach((n,i)=>btn("staff"+i,()=>{st.staff=n;st.phase="register";draw()}));btn("gohome",reset);return;
+ }
+ if(st.phase==="register"){
+ const itemRows=st.cart.map((x,i)=>'<tr><td><strong>'+safe(x.name)+'</strong><div class="hint">Size '+x.size+' · '+money(x.price)+'</div></td><td><button class="btn secondary" id="rm'+i+'" aria-label="Remove one '+safe(x.name)+'">−</button> '+x.qty+' <button class="btn secondary" id="add'+i+'" aria-label="Add one '+safe(x.name)+'">+</button></td><td>'+money(x.price*x.qty)+'</td></tr>').join("");
+ root.innerHTML=head("Hello, "+safe(st.staff)+"!","Scan a SAMPLE product barcode or tap products. The cart and stock are fake and reset on refresh.")+
+ '<div class="row between" style="margin-bottom:15px"><span class="chip">Training · '+safe(st.event)+'</span><button class="btn secondary" id="relock">Lock Register</button></div><div class="cols"><section class="panel"><div class="row between"><h2>Sale Items</h2><div style="width:220px;max-width:100%"><label for="event">Practice event</label><select id="event"><option>Holiday Boutique — practice</option><option>Winterfest — practice</option><option>Other Event — practice</option></select></div></div><div class="grid">'+products.map((p,i)=>'<button class="tile" id="product'+i+'"><span style="font-size:27px">'+p.icon+'</span><strong>'+safe(p.name)+'</strong><small>'+money(p.price)+' · Tap to add</small></button>').join("")+'</div><div style="margin-top:18px"><label for="scan">Product barcode input (fake SKU only)</label><input id="scan" autocomplete="off" placeholder="Scan DEMO-TEE-L or type it and press Enter"><div class="hint">Sample codes: DEMO-TEE-L, DEMO-HOODIE-M, DEMO-WINTER-XL, DEMO-CREW-S. Never scan actual employee badges here.</div><p id="scanmsg" class="hint" role="status"></p></div></section>'+
+ '<section class="panel"><h2>Current Cart</h2><div id="cartRows">'+(st.cart.length?'<table><thead><tr><th>Item</th><th>Qty</th><th>Amount</th></tr></thead><tbody>'+itemRows+'</tbody></table>':'<p>Cart is empty. Add an item to begin.</p>')+'</div><p class="muted">Sales tax: none (practice)</p><div class="row between"><strong>Total</strong><span class="money">'+money(total())+'</span></div><button class="btn wide big" id="handoff" '+(st.cart.length?'':'disabled')+'>Hand to Customer ↗</button><button class="btn secondary wide" id="clear">Clear Practice Cart</button><p class="hint">No inventory, transaction, payment, email, or Epson print jobs are created.</p></section></div>';
+ document.getElementById("event").value=st.event;document.getElementById("event").onchange=e=>{st.event=e.target.value;activity()};
+ products.forEach((p,i)=>btn("product"+i,()=>{let size=prompt("Practice size for "+p.name+" (S, M, L, XL)","M");if(size===null)return;size=size.toUpperCase().trim();add(p,size)}));
+ st.cart.forEach((x,i)=>{btn("rm"+i,()=>{x.qty--;if(x.qty===0)st.cart.splice(i,1);draw()});btn("add"+i,()=>add(products.find(p=>p.id===x.id),x.size))});
+ document.getElementById("scan").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();const value=e.target.value.trim().toUpperCase();e.target.value="";const m=value.match(/^DEMO-(TEE|HOODIE|WINTER|CREW)-(S|M|L|XL)$/);if(!m){document.getElementById("scanmsg").textContent="Sample SKU not recognized. Use a DEMO-* code.";return}const map={TEE:3,HOODIE:1,WINTER:0,CREW:2};add(products[map[m[1]]],m[2])}});
+ btn("handoff",()=>{st.phase="customer";draw()});btn("clear",()=>{st.cart=[];draw()});btn("relock",lock);return;
+ }
+ if(st.phase==="customer"){
+ root.innerHTML='<section class="panel"><div class="eyebrow">Customer-facing · simulated swivel handoff</div><h1>Welcome! 🎄</h1><p>Practice customer checkout on the same iPad. No payment is being processed.</p><h2>Your items</h2><div class="stack">'+st.cart.map(x=>'<div class="row between"><span>'+safe(x.name)+' · '+x.size+' × '+x.qty+'</span><strong>'+money(x.price*x.qty)+'</strong></div>').join("")+'</div><hr style="border:0;border-top:1px solid #dce5ee;margin:20px 0"><div class="row between"><h2>Total</h2><span class="money">'+money(total())+'</span></div><div class="grid"><div><label for="email">Email (optional)</label><input id="email" type="email" autocomplete="off" placeholder="you@example.com" maxlength="150"></div><div><label for="phone">Phone (optional)</label><input id="phone" type="tel" autocomplete="off" placeholder="Optional" maxlength="30"></div></div><p><label style="font-weight:500"><input type="checkbox" id="marketing"> I would like to receive marketing from Persen Apparel (optional, off by default).</label></p><p class="notice">Practice only: contact fields, consent, and signature are not submitted, sent, or saved to a server. No real receipt email will be sent.</p><div><label style="font-weight:500"><input type="checkbox" id="sigConsent"> I choose to add a signature for this practice checkout.</label><div id="sigArea" class="hide"><label for="signature">Practice signature</label><canvas id="signature" width="820" height="220" aria-label="Signature drawing area"></canvas><button class="btn secondary" id="sigclear" type="button">Clear Signature</button></div><p class="hint">You can decline or skip. A real signature feature requires separate secure consent and server-to-Epson tests.</p></div><div class="row" style="margin-top:18px"><button class="btn big" id="custDone">Submit Practice Details</button><button class="btn secondary" id="abortCust">Return to Cashier (cancel practice handoff)</button></div></section>';
+ const c=document.getElementById("sigConsent"),area=document.getElementById("sigArea");c.onchange=()=>{area.classList.toggle("hide",!c.checked);hasInk=false;if(c.checked)initCanvas()};
+ btn("custDone",()=>{const email=document.getElementById("email").value.trim(),phone=document.getElementById("phone").value.trim();if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){alert("Please check the email or leave it empty.");return}st.cust={email:email,phone:phone,marketing:document.getElementById("marketing").checked,signed:c.checked&&hasInk,declined:!c.checked||!hasInk};st.phase="customerDone";draw()});
+ btn("abortCust",()=>{clearContact();st.phase="return";draw()});return;
+ }
+ if(st.phase==="customerDone"){
+ root.innerHTML='<section class="panel center" style="min-height:55vh;display:grid;place-items:center"><div><div style="font-size:65px">✅</div><h1>You&#39;re all set!</h1><p>Your <strong>practice information</strong> has been entered on this iPad only.</p><p>Please turn the iPad back to the cashier to finish checking out.</p><button class="btn big" id="backToCashier">Hand Back to Cashier</button></div></section>';btn("backToCashier",()=>{st.phase="return";draw()});return;
+ }
+ if(st.phase==="return"){
+ root.innerHTML='<section class="panel center sleep"><div><h1>Cashier Resume</h1><p>Customer details are hidden. This is a simulated badge re-scan, <strong>not</strong> server-verified employee authentication.</p><button class="btn big" id="demoReturn">Simulate '+safe(st.staff)+' Badge Scan</button><p class="hint">Actual badge + PIN approval remains blocked until the secure backend is ready.</p></div></section>';btn("demoReturn",()=>{st.phase="tender";draw()});return;
+ }
+ if(st.phase==="tender"){
+ const due=total();
+ root.innerHTML='<section class="panel">'+head("Finish Practice Sale","Cashier only · "+safe(st.staff)+" · No real payment, inventory update, receipt or drawer operation.")+'<div class="row between"><h2>Amount due</h2><span class="money">'+money(due)+'</span></div><div class="grid"><button class="btn secondary big" id="cash">Cash</button><button class="btn secondary big" id="external">External payment (simulation only)</button></div><div id="tenderBox" style="margin-top:16px"></div><div class="row" style="margin-top:18px"><button class="btn big" id="finish">Finish Practice Order</button><button class="btn secondary" id="backToCart">Back to Cart</button><button class="btn danger" id="cancelSale">Cancel</button></div><p class="notice">Finish Order creates no real order. Epson, stock, and cash drawer connections are intentionally disabled here.</p></section>';
+ const pay=()=>{document.getElementById("tenderBox").innerHTML=st.payType==="cash"?'<label for="tender">Cash received ($)</label><input id="tender" inputmode="decimal" type="number" min="0" step="0.01" placeholder="Enter amount customer gave"><p id="change" class="money"></p><p class="hint">You cannot finish until cash received is at least the total.</p>':'<p class="notice">Practice external payment recorded as a mock only. No payment processor is contacted.</p>';
+ if(st.payType==="cash"){const el=document.getElementById("tender");el.value=st.tender;el.oninput=()=>{st.tender=el.value;const amount=Number(st.tender),valid=st.tender.trim()!==""&&Number.isFinite(amount)&&amount>=due;document.getElementById("change").textContent=valid?"Change: "+money(amount-due):"Cash still due";document.getElementById("finish").disabled=!valid};el.dispatchEvent(new Event("input"))}else document.getElementById("finish").disabled=false;};
+ btn("cash",()=>{st.payType="cash";pay()});btn("external",()=>{st.payType="external";pay()});
+ btn("finish",()=>{if(st.payType==="cash"&&(!st.tender||Number(st.tender)<due))return;st.last=money(due);st.done=true;st.phase="done";clearContact();draw()});
+ btn("backToCart",()=>{st.phase="register";draw()});btn("cancelSale",reset);pay();return;
+ }
+ if(st.phase==="done"){
+ root.innerHTML='<section class="panel center sleep"><div><div style="font-size:70px">🎉</div><h1>Practice Order Complete!</h1><p>Simulated total: <strong>'+safe(st.last)+'</strong></p><p>Nothing was charged, saved, printed, emailed, or removed from real inventory.</p><button class="btn big" id="next">Start Next Practice Order</button><button class="btn secondary" id="doneHome">Return to Lock Screen</button></div></section>';btn("next",reset);btn("doneHome",reset);return;
+ }
+}
+function add(p,size){if(!p||!Object.hasOwn(p.stock,size)){alert("Choose S, M, L or XL.");return}let n=qty(p.id,size);const available=p.stock[size];if(n>=available){alert("Practice stock limit reached for "+p.name+" size "+size);return}let item=st.cart.find(x=>x.id===p.id&&x.size===size);if(item)item.qty++;else st.cart.push({id:p.id,name:p.name,size,price:p.price,qty:1});draw()}
+function clock(){const e=document.getElementById("clock");if(e)e.textContent=new Date().toLocaleString(undefined,{weekday:"long",hour:"numeric",minute:"2-digit"})}
+function initCanvas(){
+ const canvas=document.getElementById("signature");ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);ctx.lineWidth=4;ctx.lineCap="round";ctx.strokeStyle="#132c45";drawing=false;
+ function point(e){let r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}}
+ canvas.addEventListener("pointerdown",e=>{canvas.setPointerCapture(e.pointerId);drawing=true;let p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);activity()});
+ canvas.addEventListener("pointermove",e=>{if(!drawing)return;let p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasInk=true;activity()});
+ ["pointerup","pointercancel","lostpointercapture"].forEach(name=>canvas.addEventListener(name,()=>{drawing=false}));
+ btn("sigclear",()=>{ctx.clearRect(0,0,canvas.width,canvas.height);hasInk=false;activity()});
+}
+setInterval(()=>{clock();if(st.phase==="register"||st.phase==="staff"){if(Date.now()-lastActivity>=30000){lock()}}},1000);
+document.addEventListener("pointerdown",activity,{passive:true});
+document.addEventListener("keydown",activity);
+draw();
+})();
+</script></body></html>
