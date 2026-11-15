@@ -119,11 +119,12 @@ begin
   end if;
   select c.* into v_checkout
   from public.pos_guest_checkout_capabilities t
-  join public.pos_checkouts c on c.id=t.checkout_id
+  join public.pos_checkouts c on c.id=t.checkout_id and c.owner_id=t.owner_id
+  join public.pos_registers r on r.id=c.register_id and r.owner_id=t.owner_id and r.active=true
   where t.token_sha256=encode(extensions.digest(p_capability,'sha256'),'hex')
     and t.revoked_at is null and t.expires_at>now()
     and c.created_at>now()-interval '30 minutes'
-    and c.status in ('awaiting_customer','contact_received','completed')
+    and c.status='awaiting_customer'
   limit 1;
   if not found then
     return jsonb_build_object('status','unavailable');
@@ -134,8 +135,7 @@ begin
     'items',v_checkout.items,
     'subtotal_cents',v_checkout.subtotal_cents,
     'discount_cents',v_checkout.discount_cents,
-    'total_cents',v_checkout.total_cents,
-    'cash_handoff_complete',v_checkout.cash_handoff_complete
+    'total_cents',v_checkout.total_cents
   );
 end;
 $$;
