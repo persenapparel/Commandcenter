@@ -91,7 +91,8 @@ begin
     and exists (
       select 1 from public.pos_checkouts c
       join public.pos_registers r on r.id=c.register_id
-      where c.id=x.checkout_id and r.owner_id=v_owner
+      where c.id=x.checkout_id and c.owner_id=v_owner
+        and r.owner_id=v_owner and r.active=true
     );
   return found;
 end;
