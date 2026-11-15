@@ -4,14 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const swivel=fs.readFileSync('pos/swivel-mode.js','utf8');
 assert.doesNotMatch(swivel,/localStorage\.getItem\(key\)|mode\s*===?\s*['"]dual['"]|mode\s*!==?\s*['"]swivel['"]|showPairingUrl\(/);
-assert.match(swivel,/document\.querySelector\('\.pos-device-mode'\)\?\.remove\(\)/);
-assert.match(swivel,/el\.hidden=true/);
-assert.match(swivel,/db\.auth\.signInWithPassword/);
-assert.match(swivel,/PA\.isAdmin\(user\)/);
-assert.match(swivel,/pos_issue_display_pairing/,'Existing server token still required internally until secure single-screen protocol is reviewed');
-// Fail-closed guard: neither initial handoff nor resume may reach open().
-assert.match(swivel,/if\(swivelStarting\|\|busy\|\|checkout\|\|pendingCash\)return;[\s\S]*?notice\('Customer handoff is temporarily unavailable:[\s\S]*?return;[\s\S]*?swivelStarting=true;/);
-assert.match(swivel,/if\(!checkout\|\|checkout.status!=='awaiting_customer'\)return;[\s\S]*?notice\('Customer handoff is disabled[\s\S]*?return;[\s\S]*?const button=\$\('swivel-resume'\)/);
+require('./swivel-pairing-regression-test.cjs');
 // Defense in depth while customer handoff is deliberately fail-closed.
 const registerHtml=fs.readFileSync('pos/register.html','utf8');
 const customerFrame=(registerHtml.match(/<iframe\b[^>]*\bid="swivel-customer-frame"[^>]*>/)||[])[0]||'';
@@ -38,9 +31,6 @@ assert.equal(calls.length,1);
 assert.equal(calls[0].options.auth.persistSession,false);
 assert.equal(calls[0].options.auth.autoRefreshToken,false);
 assert.equal(calls[0].options.auth.detectSessionInUrl,false);
-assert.match(swivel,/db\.auth\.signOut\(\{scope:'local'\}\)/);
-assert.match(swivel,/db\.auth\.getSession\(\)/);
-assert.match(swivel,/if\(remaining\.error\|\|remaining\.data\?\.session\)throw Error/);
 // Browser checkout remains fail-closed until backend pairing tokens, throttling,
 // anonymous permissions and end-to-end isolation have been reviewed.
 const dashboard=fs.readFileSync('pos/index.html','utf8');

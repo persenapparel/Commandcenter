@@ -163,8 +163,6 @@ by('open-register').onclick=()=>setRegisterOpen(true);
 by('close-register').onclick=()=>setRegisterOpen(false);
 by('refresh-products').onclick=async()=>{if(checkout)return notice('Finish or cancel the current checkout first');try{await loadStock();notice('Sale products and event tiles refreshed.')}catch(e){notice('Could not refresh products: '+e.message)}};
 by('event-select').addEventListener('change',()=>{if(checkout||cart.length){by('event-select').value=selectedEventId;return notice('Finish or clear the cart before switching events.')}selectedEventId=by('event-select').value;sessionStorage.setItem('pos-event',selectedEventId);renderQuickCatalog()});
-by('pair-quick').onclick=()=>by('pair').click();
-by('pair-setup').onclick=()=>by('pair').click();
 window.addEventListener('focus',()=>{if(user&&!checkout&&!cart.length)loadStock().catch(()=>{});});
 
 by('close-variant').onclick=()=>{const dlg=by('variant-dialog');if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open')};
@@ -337,7 +335,7 @@ async function cash(){
 }
 function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
 async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
-async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales(),reloadDrawer()]);if(sessionStorage.getItem('pos-register-open')==='1'&&stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))setRegisterOpen(true);try{const contents=await check(db.from('site_content').select('key,value').in('key',['seasonal_campaigns_v1','v54_google_reviews']));const dict=Object.fromEntries((contents||[]).map(x=>[x.key,x.value]));season=C.season(dict.seasonal_campaigns_v1);reviewLink=R.reviewUrl(dict.v54_google_reviews);if(season){Experience.apply(document,season);by('seasonal-status').textContent='Active: '+season.title+' — receipt and display promotions';notice('Seasonal Studio connected: '+season.title)}else{by('seasonal-status').textContent='No published active campaign — classic receipt and customer display'}if(!reviewLink)notice('Google review link not configured in Command Center Site Studio; review invitation hidden until configured.')}catch(err){by('seasonal-status').textContent='Seasonal Studio temporarily unavailable';}by('pairing').textContent='Use Create temporary iPad link to pair the customer display. A new link expires after 2 hours and replaces the previous link.';await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
+async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales(),reloadDrawer()]);if(sessionStorage.getItem('pos-register-open')==='1'&&stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))setRegisterOpen(true);try{const contents=await check(db.from('site_content').select('key,value').in('key',['seasonal_campaigns_v1','v54_google_reviews']));const dict=Object.fromEntries((contents||[]).map(x=>[x.key,x.value]));season=C.season(dict.seasonal_campaigns_v1);reviewLink=R.reviewUrl(dict.v54_google_reviews);if(season){Experience.apply(document,season);by('seasonal-status').textContent='Active: '+season.title+' — receipt and display promotions';notice('Seasonal Studio connected: '+season.title)}else{by('seasonal-status').textContent='No published active campaign — classic receipt and customer display'}if(!reviewLink)notice('Google review link not configured in Command Center Site Studio; review invitation hidden until configured.')}catch(err){by('seasonal-status').textContent='Seasonal Studio temporarily unavailable';}await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
 
 /* Event manager: owner/admin-only RLS queries and historical immutable sale snapshots. */
 const eventOption=(id,label)=>{const o=document.createElement('option');o.value=id;o.textContent=label;return o};
@@ -867,58 +865,6 @@ for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo usern
   notice(label+' copied. Verify the customer is sending to an approved account.');
  }catch{notice('Unable to copy. The payment details are shown in the reference panel.');}};
 }
-/* Pairing links are sensitive. Show a local-only selectable fallback when iOS blocks clipboard.
-   Do not submit them to analytics, third-party QR services or persistent storage. */
-let activePairingUrl='';
-function showPairingUrl(url){
- activePairingUrl=url;
- by('pair-link-field').value=url;
- by('pair-open').href=url;
- by('pair-link-panel').hidden=false;
- by('pair-share').hidden=typeof navigator.share!=='function';
- by('pairing').textContent='A temporary pairing link was generated for 2 hours. The previous pairing, if any, is no longer valid.';
-}
-function pairingFeedback(message){by('pair-feedback').textContent=message}
-async function copyPairingUrl(){
- if(!activePairingUrl)return pairingFeedback('Create a private pairing link first.');
- try{
-  if(typeof navigator.clipboard?.writeText!=='function')throw Error('Clipboard API unavailable');
-  await navigator.clipboard.writeText(activePairingUrl);
-  pairingFeedback('Private link copied. Open it on your customer iPad.');
- }catch{
-  const input=by('pair-link-field');
-  input.focus();input.select();
-  pairingFeedback('Safari blocked automatic copying. The link is selected: use Copy from the selection menu, or tap Share with customer iPad.');
- }
-}
-by('pair-copy').onclick=copyPairingUrl;
-by('pair-share').onclick=async()=>{
- if(!activePairingUrl)return pairingFeedback('Create a pairing link first.');
- if(typeof navigator.share!=='function')return pairingFeedback('Sharing is unavailable here. Select and copy the link instead.');
- try{
-  await navigator.share({title:'Persen POS — Private customer iPad',url:activePairingUrl});
-  pairingFeedback('Sharing menu completed. Check that the customer iPad received the private link.');
- }catch(e){
-  if(e?.name!=='AbortError')pairingFeedback('Sharing did not complete. Select and copy the private link instead.');
- }
-};
-by('pair-link-field').onclick=e=>e.currentTarget.select();
-by('pair').onclick=async()=>{
- if(!register||busy)return notice('Sign in to the register before pairing the customer iPad.');
- const button=by('pair');button.disabled=true;
- by('pair-link-panel').hidden=true;
- activePairingUrl='';
- try{
-  const token=await check(db.rpc('pos_issue_display_pairing',{p_register:register.id}));
-  if(!/^[0-9a-f-]{36}$/i.test(String(token)))throw Error('Pairing service did not return a valid link.');
-  const link=new URL('display.html',location.href);link.searchParams.set('pair',token);
-  showPairingUrl(link.href);
-  notice('Pairing link created. Use the Copy or Share button below to send it privately to the customer iPad.');
-  pairingFeedback('Select Copy or Share. If Safari prevents copying, tap the link field and select Copy manually.');
- }catch(e){
-  notice('Could not create a private pairing link: '+e.message+'. Check the POS connection and owner access.');
- }finally{button.disabled=false}
-};
 by('templates').onchange=()=>{const t=templates.find(x=>x.id===by('templates').value);if(t)showTemplate(t)};
 by('save-template').onclick=saveTemplate;by('print').onclick=()=>{if(!lastSale)return notice('No completed sale to print');if(!window.confirm('The Epson station may already have printed this receipt. After checking the printer and queue, print a browser BACKUP copy?'))return;receipt();window.print()};
 createBillButtons();boot();
