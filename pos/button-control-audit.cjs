@@ -7,7 +7,7 @@ const suites=[
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
  ['admin.html','epson-center.js',['epson-refresh']],
- ['register.html','swivel-mode.js',['swivel-resume','swivel-lock','swivel-unlock-submit','swivel-keep-customer']]
+ ['register.html','swivel-mode.js',['swivel-resume']]
 ];
 let checked=0;
 for(const [page,script,buttons] of suites){
@@ -28,6 +28,16 @@ const expectations=[
 for(const [file,tokens] of expectations){const code=read(file);for(const token of tokens)assert.ok(code.includes(token),file+' is missing action '+token)}
 assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
 const registerHtml=read('register.html'),registerJs=read('register.js');
+const swivel=read('swivel-mode.js');
+// Secure staging has intentionally disabled customer handoff. Audit the
+// fail-closed contract instead of requiring obsolete same-origin unlock flows.
+assert.ok(swivel.includes("start.onclick=deny"),'Handoff must be explicitly denied until guest isolation is verified');
+assert.ok(swivel.includes("overlay.hidden=true"),'Customer overlay must remain hidden in blocked mode');
+assert.ok(swivel.includes("frame.removeAttribute('src')"),'Blocked handoff must remove any guest iframe source');
+assert.ok(swivel.includes("active:()=>false"),'Blocked swivel must never claim an active customer session');
+for(const obsolete of ['swivel-lock','swivel-unlock-submit','swivel-keep-customer']){
+ assert.ok(!swivel.includes("'"+obsolete+"'"),'Do not restore obsolete in-page unlock handler: '+obsolete);
+}
 for(const id of ['pair-setup','pair-quick','pair-copy','pair-share','pair-link-panel','pair']){
  assert.ok(!registerHtml.includes('id="'+id+'"'),'Obsolete two-iPad UI must stay removed: '+id);
 }
