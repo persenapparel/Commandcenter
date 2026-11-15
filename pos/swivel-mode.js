@@ -35,6 +35,8 @@
  const resume=$('swivel-resume');if(resume)resume.onclick=blocked;
  const lock=$('swivel-lock');if(lock)lock.onclick=blocked;
  const keep=$('swivel-keep-customer');if(keep)keep.onclick=blocked;
+ const unlockSubmit=$('swivel-unlock-submit');
+ if(unlockSubmit)unlockSubmit.onclick=event=>{event.preventDefault();blocked();};
  const form=$('swivel-unlock-form');
  if(form)form.addEventListener('submit',event=>{event.preventDefault();blocked();});
  failClosed();
