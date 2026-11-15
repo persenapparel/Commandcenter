@@ -39,8 +39,7 @@ BEGIN
  'pos_issue_display_pairing','pos_customer_view','pos_customer_cart_preview',
  'pos_set_customer_progress','pos_submit_customer_v2']) LOOP
  IF has_function_privilege('anon',f.oid,'EXECUTE') OR
-    has_function_privilege('authenticated',f.oid,'EXECUTE') OR
-    has_function_privilege('public',f.oid,'EXECUTE') THEN
+    has_function_privilege('authenticated',f.oid,'EXECUTE') THEN
    RAISE EXCEPTION 'Legacy RPC still executable: %', f.proname;
  END IF;
  END LOOP;
