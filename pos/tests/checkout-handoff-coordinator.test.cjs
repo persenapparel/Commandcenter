@@ -52,3 +52,27 @@ test('failed credential lock never exposes customer',async()=>{
  assert.equal(revoked,true);
  assert.equal(c.state().phase,'locked');
 });
+
+test('completed sale cannot be submitted again if guest revocation fails',async()=>{
+ let finishes=0;
+ const c=createHandoffCoordinator({
+  beginCheckout:async()=>({checkoutId:'once'}),
+  issueCheckoutCapability:async id=>({checkoutId:id,capability:'scoped',revoke:async()=>{throw Error('revocation unavailable')}}),
+  lockCashier:async()=>true,
+  openIsolatedGuest:async()=>{},
+  verifyShiftBadge:async({checkoutId})=>({verified:true,checkoutId}),
+  getCheckoutStatus:async()=> 'contact_received',
+  resumeCashier:async()=>{},
+  finishVerifiedSale:async()=>{finishes++;return {completed:true,checkoutId:'once'}},
+  clearGuestContext:async()=>{},
+  showBrandedHome:async()=>{}
+ });
+ await c.handToCustomer();
+ await c.customerCompleted();
+ c.showCashierLock();
+ await c.badgeResume('verified-badge');
+ await assert.rejects(c.finishSale({cashCents:1000}),/revocation unavailable/);
+ assert.equal(c.state().phase,'finalizing');
+ await assert.rejects(c.finishSale({cashCents:1000}),/not in payment state/);
+ assert.equal(finishes,1);
+});
