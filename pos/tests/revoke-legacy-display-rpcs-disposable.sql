@@ -19,6 +19,10 @@ CREATE OR REPLACE FUNCTION public.pos_customer_view() RETURNS integer LANGUAGE s
 CREATE OR REPLACE FUNCTION public.pos_customer_cart_preview() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;
 CREATE OR REPLACE FUNCTION public.pos_set_customer_progress() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;
 CREATE OR REPLACE FUNCTION public.pos_submit_customer_v2() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;
+-- Exercise overloaded RPC signatures, not just zero-argument fixtures.
+CREATE OR REPLACE FUNCTION public.pos_customer_view(p_token text) RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+CREATE OR REPLACE FUNCTION public.pos_submit_customer_v2(p_token text, p_answers jsonb) RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+GRANT EXECUTE ON FUNCTION public.pos_customer_view(text), public.pos_submit_customer_v2(text,jsonb) TO PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.pos_issue_display_pairing(), public.pos_customer_view(), public.pos_customer_cart_preview(), public.pos_set_customer_progress(), public.pos_submit_customer_v2() TO PUBLIC, anon, authenticated;
 DO $$
 BEGIN
@@ -35,10 +39,23 @@ BEGIN
  'pos_issue_display_pairing','pos_customer_view','pos_customer_cart_preview',
  'pos_set_customer_progress','pos_submit_customer_v2']) LOOP
  IF has_function_privilege('anon',f.oid,'EXECUTE') OR
-    has_function_privilege('authenticated',f.oid,'EXECUTE') THEN
+    has_function_privilege('authenticated',f.oid,'EXECUTE') OR
+    has_function_privilege('public',f.oid,'EXECUTE') THEN
    RAISE EXCEPTION 'Legacy RPC still executable: %', f.proname;
  END IF;
  END LOOP;
 END $$;
 -- Confirm re-running the migration remains safe.
 \ir ../revoke-legacy-display-rpcs-staging.sql
+
+-- Negative execution checks must fail with permission denied, not silently return data.
+DO $$
+BEGIN
+  BEGIN
+    EXECUTE 'SET LOCAL ROLE anon';
+    PERFORM public.pos_customer_view('stolen-token');
+    RAISE EXCEPTION 'anon unexpectedly executed legacy RPC';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RESET ROLE;
+  END;
+END $$;
