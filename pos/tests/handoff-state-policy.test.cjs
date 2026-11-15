@@ -25,10 +25,21 @@ test('no handoff without verified checkout scope and cashier suspension',()=>{
 test('guest cannot submit twice or enter payment through navigation',()=>{
  assert.equal(t(S.CUSTOMER,'CUSTOMER_SUBMITTED',{}),S.CUSTOMER);
  assert.equal(t(S.CUSTOMER_DONE,'CUSTOMER_SUBMITTED',{serverSubmissionAccepted:true}),S.CUSTOMER_DONE);
- for(const state of [S.CUSTOMER,S.CUSTOMER_DONE,S.CASHIER_LOCKED]){
+ // A customer can never resume privileged checkout by browser navigation,
+ // even when client-provided evidence claims a valid employee badge.
+ for(const state of [S.CUSTOMER,S.CUSTOMER_DONE]){
   for(const event of ['BACK','REFRESH','FINISH_ORDER','BADGE_VERIFIED']){
    assert.notEqual(t(state,event,{...badge,paymentVerified:true,orderCommitted:true}),S.PAYMENT);
   }
+ }
+ // An explicitly locked cashier screen cannot unlock through navigation, payment,
+ // or a forged/incomplete badge. A *real* server-verified badge is allowed to
+ // resume payment; the separate positive test below asserts that required path.
+ for(const event of ['BACK','REFRESH','FINISH_ORDER']){
+  assert.equal(t(S.CASHIER_LOCKED,event,{...badge,paymentVerified:true,orderCommitted:true}),S.CASHIER_LOCKED);
+ }
+ for(const key of Object.keys(badge)){
+  assert.equal(t(S.CASHIER_LOCKED,'BADGE_VERIFIED',{...badge,[key]:false}),S.CASHIER_LOCKED);
  }
 });
 test('cashier resume requires server-verified badge and same shift',()=>{
