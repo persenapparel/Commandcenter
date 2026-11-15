@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const s=fs.readFileSync(require('node:path').join(__dirname,'register.js'),'utf8');
+assert.match(s,/function showScanConfirmation\(variant,quantity\)/);
+assert.match(s,/scanConfirmationTimer=setTimeout\(\(\)=>\{panel.hidden=true;\},1000\)/);
+assert.match(s,/panel\.style\.cssText=.*pointer-events:none/);
+assert.match(s,/const inCart=cart\.find\(x=>x\.stock_id===variant\.id\)/);
+assert.match(s,/if\(inCart\)showScanConfirmation\(variant,inCart\.qty\)/);
+assert.match(s,/if\(scanMode==='inventory'\)checkInventorySku\(field\.value\)/);
+assert.match(s,/const result=model\.scanCart|result=model\.scanCart/);
+console.log('Staging scan confirmation structural regression passed (not a browser test).');
