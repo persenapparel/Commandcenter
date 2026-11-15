@@ -90,8 +90,18 @@ function createHandoffCoordinator({
       // Server completion is irreversible. Never submit payment twice if
       // guest revocation, cleanup, or home navigation subsequently fails.
       phase='finalizing';
-      if (guestRevoker) await guestRevoker();
-      await clearGuestContext();
+      // Attempt local credential cleanup even if server revocation fails.
+      // Never show the home screen or permit another sale until both succeed.
+      let revokeError=null;
+      try { if (guestRevoker) await guestRevoker(); }
+      catch (error) { revokeError=error; }
+      let cleanupError=null;
+      try { await clearGuestContext(); }
+      catch (error) { cleanupError=error; }
+      if (revokeError || cleanupError) {
+        throw new AggregateError([revokeError,cleanupError].filter(Boolean),
+          'Guest cleanup incomplete; checkout remains locked');
+      }
       await showBrandedHome();
       phase='home'; checkoutId=null;guestRevoker=null;
       return {phase};
