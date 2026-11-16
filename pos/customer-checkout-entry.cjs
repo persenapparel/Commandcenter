@@ -50,7 +50,17 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
       activeGuest = guest;
       started = true;
       window.removeEventListener('message', onMessage);
-      void controller.start();
+      // A failed guest bootstrap must not leave a reusable bearer in memory.
+      // This is client-side containment, not server-side capability revocation.
+      try {
+        Promise.resolve(controller.start()).catch(() => {
+          guest.revokeLocal();
+          activeGuest = null;
+        });
+      } catch (_) {
+        guest.revokeLocal();
+        activeGuest = null;
+      }
     } catch (_) {
       // Invalid bootstrap never unlocks cashier or creates a guest session.
     }
