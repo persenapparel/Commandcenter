@@ -105,6 +105,7 @@
     await api.restoreHandoffCheckout(payload);
     resetOverlay();
    },
+   unlockRegisterForNextSale:()=>api.reopenRegisterAfterVerifiedBadge(),
    finishAuthoritativeSale:payload=>api.finishHandoffSale(payload),
    clearGuest:async()=>{clearGuest({keepLocked:true});},
    showHome:async()=>{
