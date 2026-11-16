@@ -13,6 +13,9 @@ test('guest cleanup keeps opaque cashier cover until branded badge lock',()=>{
  assert.match(ui,/Register locked/);
  assert.match(ui,/bridge\.unlockNextSale\(badge\)/);
  assert.doesNotMatch(ui,/bridge=null;/);
+ assert.match(ui,/function ensureFreshGuestFrame\(\)/);
+ assert.match(ui,/ensureFreshGuestFrame\(\);\s*const active=ensureBridge\(\)/);
+ assert.match(ui,/guestFrame=null;\s*host\.replaceChildren\(\)/);
 });
 test('employee badge unlock is server-bound to original shift and not PIN reset',()=>{
  assert.match(adapter,/rpc\('pos_staff_resume_shift'/);
