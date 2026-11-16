@@ -1,35 +1,186 @@
 'use strict';
-/* Single-iPad handoff remains fail-closed until the checkout-scoped guest
- * gateway is deployed and independently verified. Do not revive legacy
- * register-wide pairing tokens or same-origin customer iframes.
+/* Staging-only one-swivel customer handoff. The customer runs only in a
+ * sandboxed, credential-free frame on the separate commandcenter Pages
+ * origin; the authenticated cashier session stays inaccessible at its own
+ * origin and is covered by a badge/PIN gate before and after customer use.
  */
 (()=>{
  const $=id=>document.getElementById(id);
- const start=$('start'),overlay=$('swivel-overlay'),frame=$('swivel-customer-frame');
- if(!start||!overlay||!frame)throw Error('Single-iPad POS needs the cashier checkout layout.');
- const blocked='Customer handoff is temporarily unavailable: secure customer isolation is required. Do not turn this signed-in iPad toward a customer.';
- function update(){
-  document.body.dataset.checkoutDeviceMode='swivel';
-  const hint=document.querySelector('.live-cart-hint');
-  if(hint)hint.textContent='Scan everything first. Customer handoff is unavailable until secure checkout is verified.';
-  start.textContent='Hand to Customer →';
-  const resume=$('swivel-resume');
-  if(resume)resume.hidden=true;
+ const start=$('start'),overlay=$('swivel-overlay'),host=$('swivel-guest-host');
+ const shiftDialog=$('swivel-shift-dialog'),shiftForm=$('swivel-shift-form');
+ const shiftBadge=$('swivel-badge'),shiftPin=$('swivel-pin'),shiftMessage=$('swivel-shift-message');
+ const returnForm=$('swivel-return-form'),returnBadge=$('swivel-return-badge');
+ const returnMessage=$('swivel-return-message'),lock=$('swivel-lock');
+ const keepCustomer=$('swivel-keep-customer'),resume=$('swivel-resume');
+ const api=window.PersenPOSRegister,secure=window.PersenPOSSecureHandoff;
+ const config=window.PersenPOSHandoffConfig;
+ const blocked='Customer handoff is unavailable until the isolated staging connection is verified. Do not turn this signed-in iPad toward a customer.';
+ if(!start||!overlay||!host||!shiftDialog||!shiftForm||!shiftBadge||!shiftPin||
+    !returnForm||!returnBadge||!lock||!api||!secure||!config)
+  throw Error('Single-iPad POS needs the secured handoff layout.');
+ function message(value){api.notice(value)}
+ function cashierOrigin(){
+  const url=new URL(location.origin),host=url.hostname.toLowerCase();
+  if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||
+     url.pathname!=='/'||
+     !(host==='persen-pos-staging.pages.dev'||host.endsWith('.persen-pos-staging.pages.dev')))
+   throw Error('Cashier must run on the protected staging Pages origin');
+  return url.origin;
+ }
+ function guestEntry(value){
+  const url=new URL(value),host=url.hostname.toLowerCase();
+  if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||
+     !['/pos-guest/','/pos-guest/index.html'].includes(url.pathname)||
+     !(host==='commandcenter-4yg.pages.dev'||host.endsWith('.commandcenter-4yg.pages.dev')))
+   throw Error('Customer frame must use the approved isolated staging origin');
+  return url;
+ }
+ let cashier=null,entry=null,bridge=null,guestFrame=null,transition=false;
+ function state(){return bridge?.state?.().checkout||null}
+ function resetOverlay(){
+  returnForm.hidden=true;
   overlay.hidden=true;
-  frame.removeAttribute('src');
   document.body.classList.remove('swivel-customer-active');
  }
- function deny(){
-  update();
-  notice(blocked);
+ function clearGuest(){
+  try{guestFrame?.dispose?.()}catch(_){}
+  guestFrame=null;
+  host.replaceChildren();
+  resetOverlay();
  }
- start.onclick=deny;
- const resume=$('swivel-resume');
- if(resume)resume.onclick=deny;
- // The legacy customer iframe, register-wide pairing RPC, and in-page
- // password reauthentication were intentionally removed. The replacement
- // must issue a per-checkout server capability and use an isolated guest
- // execution context with a separate authenticated cashier return path.
- update();
- window.PersenPOSSwivel={mode:()=> 'swivel',active:()=>false};
+ function renderCustomerLock(){
+  overlay.hidden=false;
+  document.body.classList.add('swivel-customer-active');
+  returnForm.hidden=true;
+  returnMessage.textContent='';
+ }
+ function ensureBridge(){
+  if(bridge)return bridge;
+  cashier=cashierOrigin();
+  entry=guestEntry(config.guestEntryUrl);
+  guestFrame=secure.createIsolatedGuestFrame({
+   window,container:host,cashierOrigin:cashier,guestOrigin:entry.origin,guestEntryUrl:entry.href
+  });
+  bridge=secure.createStagingHandoffBridge({
+   client:api.secureHandoffClient,
+   getStaffCheckoutRequest:()=>api.getStaffCheckoutRequest(),
+   lockAndVerifyCashier:async checkoutId=>{
+    api.lockHandoffCheckout(checkoutId);
+    renderCustomerLock();
+    return guestFrame&&entry.origin!==cashier;
+   },
+   openGuest:async payload=>{
+    if(!guestFrame)throw Error('Customer frame is unavailable');
+    await guestFrame.open(payload);
+   },
+   restoreCashier:async payload=>{
+    await api.restoreHandoffCheckout(payload);
+    resetOverlay();
+   },
+   finishAuthoritativeSale:payload=>api.finishHandoffSale(payload),
+   clearGuest:async()=>{clearGuest();},
+   showHome:async()=>{
+    await api.showHandoffHome();
+    bridge=null;
+   }
+  });
+  return bridge;
+ }
+ function openShiftDialog(){
+  if(!api.ready())return message('Sign in and open the register before starting a secure customer handoff.');
+  shiftMessage.textContent='';
+  shiftBadge.value='';shiftPin.value='';
+  if(typeof shiftDialog.showModal!=='function')return message(blocked);
+  if(!shiftDialog.open)shiftDialog.showModal();
+  shiftBadge.focus();
+ }
+ async function handToCustomer(){
+  if(transition)return;
+  transition=true;start.disabled=true;
+  try{
+   const active=ensureBridge();
+   await active.handToCustomer();
+   message('Customer checkout is ready. Turn the iPad toward the customer.');
+  }catch(_){
+   const phase=state()?.phase;
+   if(phase!=='locked')clearGuest();
+   else{
+    overlay.hidden=false;
+    document.body.classList.add('swivel-customer-active');
+    returnForm.hidden=false;
+    returnMessage.textContent='Secure handoff stopped before it could open. Keep this iPad with the cashier and do not start another order.';
+   }
+   message('Secure customer handoff could not start. The cashier screen remains locked.');
+  }finally{
+   transition=false;start.disabled=false;
+  }
+ }
+ start.onclick=()=>{
+  if(!bridge?.state?.().employee)return openShiftDialog();
+  void handToCustomer();
+ };
+ shiftForm.addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(transition)return;
+  const badge=shiftBadge.value.trim(),pin=shiftPin.value;
+  if(!badge||!pin){shiftMessage.textContent='Scan a badge and enter the staff PIN.';return}
+  transition=true;shiftMessage.textContent='Verifying staff access…';
+  try{
+   const active=ensureBridge();
+   const employee=await active.startShift({badge,pin});
+   shiftBadge.value='';shiftPin.value='';
+   shiftMessage.textContent='';
+   shiftDialog.close();
+   message('Hello, '+employee.firstName+'. Preparing the secure customer checkout…');
+   transition=false;
+   await handToCustomer();
+  }catch(_){
+   shiftBadge.value='';shiftPin.value='';
+   shiftMessage.textContent='Staff access was not verified. Check the badge and PIN.';
+   transition=false;
+  }
+ });
+ $('swivel-shift-cancel').onclick=()=>{shiftBadge.value='';shiftPin.value='';shiftMessage.textContent='';shiftDialog.close();};
+ lock.onclick=async()=>{
+  const active=bridge;
+  if(!active)return message(blocked);
+  try{
+   const phase=state()?.phase;
+   if(phase==='guest')await active.confirmCustomerCompleted();
+   if(state()?.phase==='customer_complete')active.requireBadge();
+   if(state()?.phase!=='locked')throw Error('Customer checkout is not ready to return');
+   returnForm.hidden=false;
+   returnMessage.textContent='Customer information is saved. Scan the original staff badge to continue.';
+   returnBadge.value='';returnBadge.focus();
+  }catch(_){
+   returnMessage.textContent='The customer has not finished yet. Leave the iPad with the customer, or check the customer screen.';
+  }
+ };
+ returnForm.addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(transition)return;
+  const badge=returnBadge.value.trim();
+  if(!badge){returnMessage.textContent='Scan the original staff badge to continue.';return}
+  transition=true;returnMessage.textContent='Verifying badge…';
+  try{
+   await bridge.resumeWithBadge(badge);
+   returnBadge.value='';
+   message('Cashier resumed. Confirm cash only after you receive it.');
+  }catch(_){
+   returnBadge.value='';
+   returnMessage.textContent='Badge was not authorized for this checkout.';
+  }finally{transition=false}
+ });
+ keepCustomer.onclick=()=>{returnForm.hidden=true;returnMessage.textContent='';};
+ if(resume)resume.hidden=true;
+ document.body.dataset.checkoutDeviceMode='swivel';
+ const hint=document.querySelector('.live-cart-hint');
+ if(hint)hint.textContent='Scan everything first, then use your staff badge and PIN to hand this iPad to the customer.';
+ resetOverlay();
+ window.PersenPOSSwivel=Object.freeze({
+  mode:()=> 'swivel',
+  active:()=>!!state(),
+  ownsCheckout:checkoutId=>state()?.checkoutId===checkoutId&&state()?.phase==='payment',
+  finishSale:payment=>bridge?.finishSale(payment)
+ });
 })();
