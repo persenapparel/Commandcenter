@@ -100,18 +100,46 @@ create or replace function public.pos_staff_resume_shift(
 returns jsonb
 language plpgsql security definer set search_path = ''
 as $$
-declare v_staff public.pos_staff_credentials%rowtype;
+declare
+ v_uid uuid := auth.uid();
+ v_staff public.pos_staff_credentials%rowtype;
+ v_attempt public.pos_staff_auth_attempts%rowtype;
 begin
+ if v_uid is null then
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
+ end if;
+ insert into public.pos_staff_auth_attempts(auth_user_id)
+ values(v_uid) on conflict(auth_user_id) do nothing;
+ select * into v_attempt from public.pos_staff_auth_attempts
+ where auth_user_id=v_uid for update;
+ if v_attempt.blocked_until > now() then
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
+ end if;
+ if v_attempt.window_started < now()-interval '15 minutes' then
+  update public.pos_staff_auth_attempts
+  set attempts=0,window_started=now(),blocked_until=null
+  where auth_user_id=v_uid;
+ end if;
  select c.* into v_staff
  from public.pos_staff_shifts s
  join public.pos_staff_credentials c on c.id=s.staff_id
- where s.id=p_shift_id and s.auth_user_id=auth.uid()
+ where s.id=p_shift_id and s.auth_user_id=v_uid
  and s.revoked_at is null and s.expires_at>now()
  and c.enabled=true and c.credential_version=s.credential_version
  and s.secret_digest=extensions.digest(coalesce(p_shift_secret,''),'sha256')
  and c.badge_digest=extensions.digest(coalesce(p_badge,''),'sha256');
- if not found then raise exception 'Invalid or expired employee shift' using errcode='28000'; end if;
- return jsonb_build_object('staff_id',v_staff.id,'first_name',v_staff.first_name,'role',v_staff.staff_role);
+ if not found then
+  -- Do not RAISE here: an exception would roll back the throttle update.
+  update public.pos_staff_auth_attempts
+  set attempts=attempts+1,
+      blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
+  where auth_user_id=v_uid;
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
+ end if;
+ update public.pos_staff_auth_attempts set attempts=0,blocked_until=null
+ where auth_user_id=v_uid;
+ return jsonb_build_object('ok',true,'staff_id',v_staff.id,
+  'first_name',v_staff.first_name,'role',v_staff.staff_role);
 end;
 $$;
 revoke all on function public.pos_staff_resume_shift(uuid,text,text) from public,anon;
