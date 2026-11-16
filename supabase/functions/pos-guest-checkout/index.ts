@@ -5,12 +5,11 @@
 // through an exact-source postMessage handshake; no capability is put in a URL,
 // storage, DOM node, log, or cache.
 const STAGING_URL='https://naaqcspvbntzdtwuchrr.supabase.co';
-const GUEST_ORIGIN=STAGING_URL;
 const BASE_PATH='/functions/v1/pos-guest-checkout';
 const MAX_BODY=8192;
 const CHECKOUT_ID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
 const CAPABILITY=/^[a-f0-9]{64}$/;
-function response(status,body,type,document=false){
+function response(status,body,type,document=false,origin=''){
  const headers=new Headers();
  headers.set('Content-Type',type);
  headers.set('Cache-Control','no-store, no-cache, must-revalidate');
@@ -18,11 +17,24 @@ function response(status,body,type,document=false){
  headers.set('Referrer-Policy','no-referrer');
  headers.set('X-Content-Type-Options','nosniff');
  if(document)headers.set('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors https://persen-pos-staging.pages.dev https://*.persen-pos-staging.pages.dev; base-uri 'none'; form-action 'none'; object-src 'none'");
+ if(allowedGuestOrigin(origin)){
+  headers.set('Access-Control-Allow-Origin',origin);
+  headers.set('Access-Control-Allow-Methods','POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers','Authorization, Content-Type');
+  headers.set('Access-Control-Max-Age','60');
+  headers.set('Vary','Origin');
+ }
  return new Response(body,{status,headers});
 }
-function json(status,body){return response(status,JSON.stringify(body),'application/json; charset=utf-8');}
-function text(status,body,type,document=false){return response(status,body,type,document);}
+function json(status,body,origin=''){return response(status,JSON.stringify(body),'application/json; charset=utf-8',false,origin);}
+function text(status,body,type,document=false,origin=''){return response(status,body,type,document,origin);}
 function object(value){return value!==null&&typeof value==='object'&&!Array.isArray(value);}
+function allowedGuestOrigin(value){
+ try{const url=new URL(value),host=url.hostname.toLowerCase();
+  return url.protocol==='https:'&&!url.username&&!url.password&&!url.search&&!url.hash&&url.pathname==='/'&&
+   (host==='commandcenter-4yg.pages.dev'||host.endsWith('.commandcenter-4yg.pages.dev'));
+ }catch(_){return false;}
+}
 function configured(){const url=(Deno.env.get('SUPABASE_URL')||'').replace(/\/$/,'');
  const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
  return url===STAGING_URL&&service.length>20?{url,service}:null;}
@@ -61,5 +73,28 @@ window.addEventListener('message',onMessage);try{window.parent.postMessage({type
 })();`;}
 async function callPrivateRpc(config,name,body){const response=await fetch(config.url+'/rest/v1/rpc/'+name,{method:'POST',redirect:'error',credentials:'omit',signal:AbortSignal.timeout(8000),headers:{apikey:config.service,authorization:'Bearer '+config.service,'content-type':'application/json','cache-control':'no-store'},body:JSON.stringify(body)});if(!response.ok)throw Error('unavailable');return await response.json();}
 function customerSnapshot(value,checkoutId){if(!object(value)||value.checkoutId!==checkoutId||!Array.isArray(value.items)||value.items.length<1||value.items.length>80||typeof value.total!=='string'||value.total.length>40)return null;const items=[];for(const item of value.items){if(!object(item)||typeof item.name!=='string'||!Number.isInteger(item.quantity)||item.quantity<1||typeof item.lineTotal!=='string')return null;items.push({name:item.name.slice(0,120),quantity:item.quantity,lineTotal:item.lineTotal.slice(0,40)});}return {checkoutId,items,total:value.total.slice(0,40)};}
-Deno.serve(async request=>{const url=new URL(request.url),route=routePath(url.pathname);if(request.method==='GET'&&route==='/')return text(200,page(),'text/html; charset=utf-8',true);if(request.method==='GET'&&route==='/guest.js')return text(200,guestScript(),'text/javascript; charset=utf-8');if(request.method==='GET'&&route==='/guest.css')return text(200,stylesheet(),'text/css; charset=utf-8');if(request.method==='OPTIONS')return text(405,'','text/plain; charset=utf-8');if(request.method!=='POST'||!route||!route.startsWith('/guest-checkout/')||request.headers.get('origin')!==GUEST_ORIGIN||!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')||''))return json(404,{error:'Checkout unavailable'});const action=route.slice('/guest-checkout/'.length);if(action!=='view'&&action!=='submit')return json(404,{error:'Checkout unavailable'});const authorization=request.headers.get('authorization')||'',capability=authorization.startsWith('Bearer ')?authorization.slice(7):'';if(!CAPABILITY.test(capability))return json(401,{error:'Checkout unavailable'});let input;try{input=await readRequest(request);}catch(_){return json(400,{error:'Checkout unavailable'});}const config=configured();if(!config)return json(503,{error:'Checkout unavailable'});try{if(action==='view'){const value=await callPrivateRpc(config,'pos_handoff_guest_view',{p_checkout:input.checkoutId,p_capability:capability});const snapshot=customerSnapshot(value,input.checkoutId);return snapshot?json(200,snapshot):json(403,{error:'Checkout unavailable'});}const answers={...input};delete answers.checkoutId;const value=await callPrivateRpc(config,'pos_handoff_guest_submit',{p_checkout:input.checkoutId,p_capability:capability,p_answers:answers});return value?.accepted===true?json(200,{accepted:true}):json(403,{error:'Checkout unavailable'});}catch(_){return json(503,{error:'Checkout unavailable'});}});
+Deno.serve(async request=>{
+ const url=new URL(request.url),route=routePath(url.pathname),origin=request.headers.get('origin')||'';
+ if(request.method==='OPTIONS'){
+  if(!route||!route.startsWith('/guest-checkout/')||!allowedGuestOrigin(origin))return json(404,{error:'Checkout unavailable'});
+  return text(204,'','text/plain; charset=utf-8',false,origin);
+ }
+ if(request.method!=='POST'||!route||!route.startsWith('/guest-checkout/')||!allowedGuestOrigin(origin)||!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')||''))return json(404,{error:'Checkout unavailable'});
+ const action=route.slice('/guest-checkout/'.length);
+ if(action!=='view'&&action!=='submit')return json(404,{error:'Checkout unavailable'},origin);
+ const authorization=request.headers.get('authorization')||'',capability=authorization.startsWith('Bearer ')?authorization.slice(7):'';
+ if(!CAPABILITY.test(capability))return json(401,{error:'Checkout unavailable'},origin);
+ let input;try{input=await readRequest(request);}catch(_){return json(400,{error:'Checkout unavailable'},origin);}
+ const config=configured();if(!config)return json(503,{error:'Checkout unavailable'},origin);
+ try{
+  if(action==='view'){
+   const value=await callPrivateRpc(config,'pos_handoff_guest_view',{p_checkout:input.checkoutId,p_capability:capability});
+   const snapshot=customerSnapshot(value,input.checkoutId);
+   return snapshot?json(200,snapshot,origin):json(403,{error:'Checkout unavailable'},origin);
+  }
+  const answers={...input};delete answers.checkoutId;
+  const value=await callPrivateRpc(config,'pos_handoff_guest_submit',{p_checkout:input.checkoutId,p_capability:capability,p_answers:answers});
+  return value?.accepted===true?json(200,{accepted:true},origin):json(403,{error:'Checkout unavailable'},origin);
+ }catch(_){return json(503,{error:'Checkout unavailable'},origin);}
+});
 
