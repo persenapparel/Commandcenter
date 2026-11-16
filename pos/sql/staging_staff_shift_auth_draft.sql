@@ -67,8 +67,17 @@ begin
   where auth_user_id=v_uid;
   v_attempt.attempts:=0;
  end if;
+ -- Reject invalid sizes before digest/crypt to bound credential processing cost.
+ if p_badge is null or length(p_badge) not between 16 and 256
+    or p_pin is null or length(p_pin) not between 4 and 128 then
+  update public.pos_staff_auth_attempts
+  set attempts=attempts+1,
+      blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
+  where auth_user_id=v_uid;
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
+ end if;
  select * into v_staff from public.pos_staff_credentials
- where auth_user_id=v_uid and badge_digest=extensions.digest(coalesce(p_badge,''),'sha256')
+ where auth_user_id=v_uid and badge_digest=extensions.digest(p_badge,'sha256')
  and enabled=true;
  if not found or p_badge is null or length(p_badge) not between 16 and 256
     or p_pin is null or length(p_pin) not between 4 and 128 or
@@ -126,6 +135,15 @@ begin
   set attempts=0,window_started=now(),blocked_until=null
   where auth_user_id=v_uid;
  end if;
+ -- Reject invalid sizes before hashing untrusted badge or shift secrets.
+ if p_shift_secret is null or length(p_shift_secret) <> 64
+    or p_badge is null or length(p_badge) not between 16 and 256 then
+  update public.pos_staff_auth_attempts
+  set attempts=attempts+1,
+      blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
+  where auth_user_id=v_uid;
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
+ end if;
  select c.* into v_staff
  from public.pos_staff_shifts s
  join public.pos_staff_credentials c on c.id=s.staff_id
@@ -143,8 +161,8 @@ begin
   where auth_user_id=v_uid;
   return jsonb_build_object('ok',false,'error','Invalid employee credentials');
  end if;
- update public.pos_staff_auth_attempts set attempts=0,blocked_until=null
- where auth_user_id=v_uid;
+ -- A successful badge-only resume must not erase failed PIN attempts.
+ -- Otherwise an existing shift could reset the PIN brute-force counter.
  return jsonb_build_object('ok',true,'staff_id',v_staff.id,
   'first_name',v_staff.first_name,'role',v_staff.staff_role);
 end;
