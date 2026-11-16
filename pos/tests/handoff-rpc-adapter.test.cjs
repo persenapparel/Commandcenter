@@ -70,3 +70,32 @@ test('browser cannot invent completed status or paid sale',async()=>{
  await assert.rejects(a.getStatus(id),/not verified/);
  await assert.rejects(a.verifyPaid(id),/not verified/);
 });
+
+test('new cashier checkout uses shift-bound owner-granted register RPC, never owner login',async()=>{
+ const register='77777777-7777-4777-8777-777777777777';
+ const args=[];
+ const client={rpc:async(name,payload)=>{
+  args.push({name,payload});
+  if(name==='pos_staff_begin_checkout')return {data:id,error:null};
+  throw Error('Owner-only RPC must not be used');
+ }};
+ const a=createHandoffRpcAdapter({client,shiftId:shift,shiftSecret:secret});
+ const items=[{stock_id:wrong,qty:1,unit_cents:2500,taxable:true}];
+ assert.deepEqual(await a.beginStaffCheckout({
+  registerId:register,items,discountBps:0,taxMilli:0,eventId:null
+ }),{checkoutId:id});
+ assert.deepEqual(args,[{name:'pos_staff_begin_checkout',payload:{
+  p_shift_id:shift,p_shift_secret:secret,p_register:register,
+  p_items:items,p_discount_bps:0,p_tax_milli:0,p_event:null
+ }}]);
+});
+test('failed staff checkout never claims the cashier or exposes a token',async()=>{
+ const a=createHandoffRpcAdapter({
+  client:{rpc:async()=>({data:null,error:{message:'Unauthorized'}})},
+  shiftId:shift,shiftSecret:secret
+ });
+ await assert.rejects(a.beginStaffCheckout({
+  registerId:wrong,items:[{qty:1}]
+ }),/Employee checkout unavailable/);
+ assert.equal(a.current(),null);
+});
