@@ -143,8 +143,8 @@ begin
   where auth_user_id=v_uid;
   return jsonb_build_object('ok',false,'error','Invalid employee credentials');
  end if;
- update public.pos_staff_auth_attempts set attempts=0,blocked_until=null
- where auth_user_id=v_uid;
+ -- A successful badge-only resume must not erase failed PIN attempts.
+ -- Otherwise an existing shift could reset the PIN brute-force counter.
  return jsonb_build_object('ok',true,'staff_id',v_staff.id,
   'first_name',v_staff.first_name,'role',v_staff.staff_role);
 end;
