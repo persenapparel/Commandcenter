@@ -24,7 +24,10 @@ function response(status,body,type,document=false,origin=''){
   headers.set('Access-Control-Max-Age','60');
   headers.set('Vary','Origin');
  }
- return new Response(body,{status,headers});
+ // Fetch forbids a body for 204/205/304 responses.  A browser sends OPTIONS
+ // before the credential-bearing customer request, so the preflight must be
+ // truly empty rather than an empty string.
+ return new Response(status===204||status===205||status===304?null:body,{status,headers});
 }
 function json(status,body,origin=''){return response(status,JSON.stringify(body),'application/json; charset=utf-8',false,origin);}
 function text(status,body,type,document=false,origin=''){return response(status,body,type,document,origin);}
@@ -71,7 +74,12 @@ async function begin(){loading();try{const snapshot=await request('view',{checko
 function onMessage(event){if(started||event.source!==window.parent||event.data?.type!=='persen:checkout-bootstrap:v1'||!cashierOrigin(event.origin))return;const nextId=event.data.checkoutId,nextToken=event.data.capability;if(!validId(nextId)||!validToken(nextToken))return;started=true;window.removeEventListener('message',onMessage);checkoutId=nextId;token=nextToken;void begin()}
 window.addEventListener('message',onMessage);try{window.parent.postMessage({type:'persen:checkout-ready:v1'},'*')}catch(_){unavailable()}
 })();`;}
-async function callPrivateRpc(config,name,body){const response=await fetch(config.url+'/rest/v1/rpc/'+name,{method:'POST',redirect:'error',credentials:'omit',signal:AbortSignal.timeout(8000),headers:{apikey:config.service,authorization:'Bearer '+config.service,'content-type':'application/json','cache-control':'no-store'},body:JSON.stringify(body)});if(!response.ok)throw Error('unavailable');return await response.json();}
+async function callPrivateRpc(config,name,body){const response=await fetch(config.url+'/rest/v1/rpc/'+name,{method:'POST',redirect:'error',credentials:'omit',signal:AbortSignal.timeout(8000),headers:{apikey:config.service,authorization:'Bearer '+config.service,'content-type':'application/json','cache-control':'no-store'},body:JSON.stringify(body)});
+ // A guest capability may be expired, revoked, replayed, or scoped to another
+ // checkout.  Those are ordinary authorization denials, not an Edge failure.
+ // Returning null lets the caller give the same generic 403 for every case.
+ if(!response.ok)return null;
+ return await response.json();}
 function customerSnapshot(value,checkoutId){if(!object(value)||value.checkoutId!==checkoutId||!Array.isArray(value.items)||value.items.length<1||value.items.length>80||typeof value.total!=='string'||value.total.length>40)return null;const items=[];for(const item of value.items){if(!object(item)||typeof item.name!=='string'||!Number.isInteger(item.quantity)||item.quantity<1||typeof item.lineTotal!=='string')return null;items.push({name:item.name.slice(0,120),quantity:item.quantity,lineTotal:item.lineTotal.slice(0,40)});}return {checkoutId,items,total:value.total.slice(0,40)};}
 Deno.serve(async request=>{
  const url=new URL(request.url),route=routePath(url.pathname),origin=request.headers.get('origin')||'';
