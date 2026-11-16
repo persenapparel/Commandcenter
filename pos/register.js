@@ -751,6 +751,34 @@ by('epson-enroll-method').addEventListener('change',()=>{
 });
 
 
+by('owner-badge-enrollment').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const form=event.currentTarget,out=by('owner-badge-message'),button=by('enroll-owner-badge');
+ if(!db||!user){out.textContent='Sign in as the owner before setting up a staging badge.';return}
+ const fields=new FormData(form);
+ const firstName=String(fields.get('first_name')||'').trim();
+ const badge=String(fields.get('badge')||'').trim();
+ const pin=String(fields.get('pin')||'');
+ const confirm=String(fields.get('pin_confirm')||'');
+ if(badge.length<16||pin.length<6||pin!==confirm||!firstName){
+  out.textContent='Use a 16+ character badge code and matching 6+ digit PIN.';return;
+ }
+ button.disabled=true;out.textContent='Saving protected owner badge…';
+ try{
+  const result=await check(db.rpc('pos_owner_enroll_staff_self',{
+   p_badge:badge,p_pin:pin,p_first_name:firstName
+  }));
+  if(result?.enrolled!==true)throw Error('Owner badge was not enrolled');
+  form.reset();
+  out.textContent='Owner badge saved for staging. You can now use Hand to Customer.';
+ }catch(_){
+  form.querySelector('[name=pin]').value='';
+  form.querySelector('[name=pin_confirm]').value='';
+  out.textContent='Owner badge was not saved. Confirm this is your staging owner account and try a different badge code.';
+ }finally{button.disabled=false}
+});
+
+
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
 // A non-blocking, accessible one-second scan confirmation. It never captures scanner focus.
 let scanConfirmationTimer;
