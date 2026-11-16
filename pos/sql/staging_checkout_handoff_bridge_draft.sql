@@ -19,6 +19,18 @@ create table if not exists public.pos_checkout_handoffs (
  constraint pos_guest_capability_phase check
    (phase <> 'guest' or (capability_digest is not null and capability_expires_at is not null))
 );
+-- Customer acknowledgment is private, minimal, and inaccessible from Data API.
+create table if not exists public.pos_checkout_signatures (
+ checkout_id uuid primary key references public.pos_checkouts(id),
+ typed_name text,
+ accessibility_exception boolean not null default false,
+ acknowledged_at timestamptz not null default now(),
+ check ((accessibility_exception and typed_name is null) or
+        (not accessibility_exception and length(typed_name) between 1 and 160))
+);
+alter table public.pos_checkout_signatures enable row level security;
+revoke all on public.pos_checkout_signatures from public,anon,authenticated;
+
 create unique index if not exists pos_one_active_handoff_per_register
  on public.pos_checkout_handoffs(register_id)
  where phase in ('claimed','guest','cashier');
@@ -208,8 +220,9 @@ begin
      customer_step='review',progress_updated_at=now(),
      status='contact_received',updated_at=now()
  where id=p_checkout;
- -- Do not store raw signature in the guest capability or this handoff table;
- -- future audited signatures must use protected, retention-limited storage.
+ -- Only the protected signature table stores the limited typed acknowledgment.
+ insert into public.pos_checkout_signatures(checkout_id,typed_name,accessibility_exception)
+ values(p_checkout,case when v_exception then null else v_signature end,v_exception);
  update public.pos_checkout_handoffs
  set phase='guest',capability_digest=null,capability_expires_at=null,
      updated_at=now()
@@ -242,7 +255,9 @@ begin
  if not found then raise exception 'Checkout authorization denied'; end if;
  v_proof:=public.pos_staff_resume_shift(p_shift_id,p_shift_secret,p_badge);
  if coalesce((v_proof->>'ok')::boolean,false) is not true then
-  raise exception 'Checkout authorization denied';
+  -- Return failure instead of raising; otherwise PostgreSQL rolls back the
+  -- nested badge attempt counter and defeats the PIN/badge throttle.
+  return jsonb_build_object('verified',false,'error','Checkout authorization denied');
  end if;
  update public.pos_checkout_handoffs
  set phase='cashier',resumed_at=now(),updated_at=now()
