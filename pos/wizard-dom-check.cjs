@@ -30,7 +30,12 @@ assert.ok(cashier.includes('@persenapparel')&&!cashier.includes('copy-apple-cash
 assert.ok(js.includes('identifier:')&&js.includes('@persenapparel')&&!js.includes('apple_cash_info'),'Customer payment references missing');
 assert.ok(sql.includes('public.pos_set_customer_progress(')&&sql.includes('help_requested boolean not null default false'),'SQL draft must support assistance');
 assert.ok(!/jsonb_build_object\([^)]*phone/i.test(sql.slice(sql.indexOf('public.pos_set_customer_progress'),sql.indexOf('public.pos_submit_customer'))),'Step updates should not include customer contact details');
-const cashierStatusSource=cashierJs.slice(cashierJs.indexOf('async function status()'),cashierJs.indexOf('async function begin()'));
+const statusStart=cashierJs.indexOf('async function status()');
+const checkoutStart=cashierJs.indexOf('async function beginAuthorizedCheckout()',statusStart);
+const legacyStart=cashierJs.indexOf('async function begin()',statusStart);
+const statusEnd=checkoutStart>statusStart?checkoutStart:legacyStart;
+assert.ok(statusStart>=0 && statusEnd>statusStart,'Cashier polling boundaries must be valid');
+const cashierStatusSource=cashierJs.slice(statusStart,statusEnd);
 assert.ok(!/\bdraw\(\)/.test(cashierStatusSource),'Customer polling must not rebuild cart inputs');
 assert.ok(cashierJs.includes('syncCheckoutUI();renderCash();'),'Polling should only update lightweight checkout controls');
 assert.ok(cashierJs.includes('button.disabled=remaining<=0||!priced')&&cashierJs.includes('tile.disabled=!ready.length')&&cashierJs.includes('price>0'),'Unpriced inventory must never be offered as a selectable product');
