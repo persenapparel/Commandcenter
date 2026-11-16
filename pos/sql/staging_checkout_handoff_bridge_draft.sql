@@ -8,7 +8,7 @@ create table if not exists public.pos_checkout_handoffs (
  register_id uuid not null references public.pos_registers(id),
  shift_id uuid not null references public.pos_staff_shifts(id),
  auth_user_id uuid not null references auth.users(id),
- phase text not null check (phase in ('claimed','guest','cashier','closed')),
+ phase text not null check (phase in ('claimed','guest','customer_complete','cashier','closed')),
  capability_digest bytea,
  capability_expires_at timestamptz,
  guest_issued_at timestamptz,
@@ -33,7 +33,7 @@ revoke all on public.pos_checkout_signatures from public,anon,authenticated;
 
 create unique index if not exists pos_one_active_handoff_per_register
  on public.pos_checkout_handoffs(register_id)
- where phase in ('claimed','guest','cashier');
+ where phase in ('claimed','guest','customer_complete','cashier');
 alter table public.pos_checkout_handoffs enable row level security;
 revoke all on public.pos_checkout_handoffs from public,anon,authenticated;
 
@@ -224,7 +224,7 @@ begin
  insert into public.pos_checkout_signatures(checkout_id,typed_name,accessibility_exception)
  values(p_checkout,case when v_exception then null else v_signature end,v_exception);
  update public.pos_checkout_handoffs
- set phase='guest',capability_digest=null,capability_expires_at=null,
+ set phase='customer_complete',capability_digest=null,capability_expires_at=null,
      updated_at=now()
  where checkout_id=p_checkout;
  return jsonb_build_object('accepted',true);
@@ -250,7 +250,7 @@ begin
  if not found then raise exception 'Checkout authorization denied'; end if;
  select * into v_handoff from public.pos_checkout_handoffs
  where checkout_id=p_checkout and shift_id=p_shift_id and auth_user_id=v_uid
- and phase='guest' and capability_digest is null
+ and phase='customer_complete' and capability_digest is null
  for update;
  if not found then raise exception 'Checkout authorization denied'; end if;
  v_proof:=public.pos_staff_resume_shift(p_shift_id,p_shift_secret,p_badge);
