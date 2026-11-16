@@ -42,25 +42,53 @@
   overlay.hidden=true;
   document.body.classList.remove('swivel-customer-active');
  }
- function clearGuest(){
+ function clearGuest({keepLocked=false}={}){
   try{guestFrame?.dispose?.()}catch(_){}
   guestFrame=null;
   host.replaceChildren();
-  resetOverlay();
+  if(!keepLocked)resetOverlay();
+  else{
+   overlay.hidden=false;
+   lock.hidden=true;
+   returnForm.hidden=true;
+   document.body.classList.add('swivel-customer-active');
+  }
  }
  function renderCustomerLock(){
+  lock.hidden=false;
+  returnForm.querySelector('h2').textContent='Cashier access';
+  returnForm.querySelector('p').textContent='Turn the iPad back toward the cashier and scan the original staff badge to continue to payment.';
+  $('swivel-return-submit').textContent='Resume cashier';
   overlay.hidden=false;
   document.body.classList.add('swivel-customer-active');
   returnForm.hidden=true;
   returnMessage.textContent='';
  }
- function ensureBridge(){
-  if(bridge)return bridge;
+ function renderNextSaleLock(){
+  clearGuest({keepLocked:true});
+  overlay.hidden=false;
+  lock.hidden=true;
+  document.body.classList.add('swivel-customer-active');
+  returnForm.hidden=false;
+  returnForm.querySelector('h2').textContent='Persen Apparel · Register locked';
+  returnForm.querySelector('p').textContent='Thank you! Sale completed. Scan your staff badge to unlock the next order. No PIN required again this shift.';
+  $('swivel-return-submit').textContent='Unlock register';
+  returnMessage.textContent='Your checkout is finished. Employee badge required for the next sale.';
+  returnBadge.value='';
+  returnBadge.focus();
+ }
+ function ensureFreshGuestFrame(){
+  if(guestFrame)return guestFrame;
   cashier=cashierOrigin();
   entry=guestEntry(config.guestEntryUrl);
   guestFrame=secure.createIsolatedGuestFrame({
    window,container:host,cashierOrigin:cashier,guestOrigin:entry.origin,guestEntryUrl:entry.href
   });
+  return guestFrame;
+ }
+ function ensureBridge(){
+  if(bridge)return bridge;
+  ensureFreshGuestFrame();
   bridge=secure.createStagingHandoffBridge({
    client:api.secureHandoffClient,
    getStaffCheckoutRequest:()=>api.getStaffCheckoutRequest(),
@@ -77,11 +105,12 @@
     await api.restoreHandoffCheckout(payload);
     resetOverlay();
    },
+   unlockRegisterForNextSale:()=>api.reopenRegisterAfterVerifiedBadge(),
    finishAuthoritativeSale:payload=>api.finishHandoffSale(payload),
-   clearGuest:async()=>{clearGuest();},
+   clearGuest:async()=>{clearGuest({keepLocked:true});},
    showHome:async()=>{
     await api.showHandoffHome();
-    bridge=null;
+    renderNextSaleLock();
    }
   });
   return bridge;
@@ -98,6 +127,9 @@
   if(transition)return;
   transition=true;start.disabled=true;
   try{
+   // The previous customer's frame was destroyed after the verified sale.
+   // Always prepare a fresh, credential-free frame for each next order.
+   ensureFreshGuestFrame();
    const active=ensureBridge();
    await active.handToCustomer();
    message('Customer checkout is ready. Turn the iPad toward the customer.');
@@ -163,9 +195,16 @@
   if(!badge){returnMessage.textContent='Scan the original staff badge to continue.';return}
   transition=true;returnMessage.textContent='Verifying badge…';
   try{
-   await bridge.resumeWithBadge(badge);
-   returnBadge.value='';
-   message('Cashier resumed. Confirm cash only after you receive it.');
+   if(state()?.phase==='home'&&bridge?.state?.().locked){
+    const verified=await bridge.unlockNextSale(badge);
+    returnBadge.value='';
+    resetOverlay();
+    message('Hello, '+verified.firstName+'! Register unlocked for the next sale.');
+   }else{
+    await bridge.resumeWithBadge(badge);
+    returnBadge.value='';
+    message('Cashier resumed. Confirm cash only after you receive it.');
+   }
   }catch(_){
    returnBadge.value='';
    returnMessage.textContent='Badge was not authorized for this checkout.';

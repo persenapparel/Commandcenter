@@ -19,6 +19,7 @@ function fake(overrides={}) {
   if(name==='pos_handoff_status')return {data:{ok:true,checkoutId:ORDER,status}};
   if(name==='pos_staff_complete_cash')return {data:'55555555-5555-4555-8555-555555555555'};
   if(name==='pos_staff_finish_order')return {data:true};
+  if(name==='pos_staff_resume_shift')return {data:{ok:args.p_badge==='correct-badge-value-123456',first_name:'Alex',role:'owner'}};
   if(name==='pos_handoff_verify_paid')return {data:{checkoutId:ORDER,completed:paid}};
   if(name==='pos_handoff_revoke')return {data:true};
   throw Error('Unexpected RPC '+name);
@@ -37,6 +38,7 @@ function fake(overrides={}) {
    calls.push('guest');
   },
   restoreCashier:async()=>calls.push('restore'),
+  unlockRegisterForNextSale:async()=>{calls.push('reopen');return true},
   finishAuthoritativeSale:async({checkoutId})=>{paid=true;return {checkoutId,completed:true}}, 
   clearGuest:async()=>calls.push('clear'),
   showHome:async()=>calls.push('home'),
@@ -73,7 +75,7 @@ test('single iPad secure sequence is shift -> claim -> lock -> guest -> badge ->
  assert.equal(bridge.state().checkout.phase,'home');
  assert.deepEqual(calls.slice(-4),['pos_handoff_verify_paid','pos_handoff_revoke','clear','home']);
  assert.equal(rpcArgs.find(x=>x.name==='pos_handoff_verify_paid').args.p_shift_id,SHIFT);
- await assert.rejects(bridge.finishSale({}),/not in payment/);
+ await assert.rejects(bridge.finishSale({}),/badge locked/);
 });
 test('lock failure never issues guest capability or opens guest screen',async()=>{
  const {bridge,calls,setLock}=fake();setLock(false);
@@ -167,4 +169,52 @@ test('cash recording stays locked until original employee resumes checkout',asyn
  assert.equal(call.args.p_shift_secret,SECRET);
  assert.equal(call.args.p_tender_cents,2500);
  assert.ok(calls.includes('pos_staff_complete_cash'));
+});
+
+
+test('one PIN per shift and original badge required before second order',async()=>{
+ const {bridge,calls,setStatus}=fake();
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();
+ setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}});
+ await bridge.finishSale({cashCents:2500});
+ assert.equal(bridge.state().checkout.phase,'home');
+ assert.equal(bridge.state().locked,true);
+ await assert.rejects(bridge.handToCustomer(),/badge/);
+ await assert.rejects(bridge.unlockNextSale('wrong-badge-value-123456'),/not verified/);
+ assert.equal(bridge.state().locked,true);
+ const greeting=await bridge.unlockNextSale('correct-badge-value-123456');
+ assert.deepEqual(greeting,{firstName:'Alex'});
+ assert.equal(calls.filter(name=>name==='reopen').length,1);
+ assert.equal(bridge.state().checkout.phase,'cashier');
+ assert.equal(bridge.state().locked,false);
+ assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
+ assert.equal(calls.filter(name=>name==='pos_staff_resume_shift').length,2);
+ await bridge.handToCustomer();
+ assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
+ assert.equal(calls.filter(name=>name==='pos_staff_begin_checkout').length,2);
+});
+test('idle unlock is denied without a completed sale',async()=>{
+ const {bridge}=fake();
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await assert.rejects(bridge.unlockNextSale('correct-badge-value-123456'),/No locked completed sale/);
+});
+
+
+test('if register cannot reopen after correct badge, next sale remains locked',async()=>{
+ const {bridge,setStatus,calls}=fake({unlockRegisterForNextSale:async()=>false});
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}});
+ await bridge.finishSale({cashCents:2500});
+ await assert.rejects(bridge.unlockNextSale('correct-badge-value-123456'),/reopening failed/);
+ assert.equal(bridge.state().locked,true);
+ assert.equal(bridge.state().checkout.phase,'home');
+ await assert.rejects(bridge.handToCustomer(),/badge/);
+ assert.equal(calls.filter(name=>name==='pos_staff_begin_checkout').length,1);
 });

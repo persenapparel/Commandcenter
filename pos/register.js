@@ -321,6 +321,18 @@ async function finishSecureHandoffSale({checkoutId}){
  secureHandoffSavedSale=saved;
  return {checkoutId,completed:true};
 }
+function reopenRegisterAfterVerifiedBadge(){
+ // The secure bridge calls this only after server validation of the
+ // original shift badge. The opaque cashier lock stays visible until done.
+ if(!db||!user||!register||busy||checkout||pendingCash)
+  throw Error('Next-sale register is not ready');
+ if(!stock.some(readyToSell))
+  throw Error('No ready-to-sell products available for the next sale');
+ setRegisterOpen(true);
+ if(document.body.classList.contains('pos-register-closed'))
+  throw Error('Register did not reopen after badge verification');
+ return true;
+}
 async function showSecureHandoffHome(){
  if(!secureHandoffSavedSale)throw Error('Finished checkout receipt is unavailable');
  const saved=secureHandoffSavedSale;
@@ -347,6 +359,7 @@ window.PersenPOSRegister=Object.freeze({
  restoreHandoffCheckout:restoreSecureHandoffCheckout,
  finishHandoffSale:finishSecureHandoffSale,
  showHandoffHome:showSecureHandoffHome,
+ reopenRegisterAfterVerifiedBadge,
  notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
@@ -397,8 +410,8 @@ async function status(){
   syncCheckoutUI();renderCash();
  }catch(e){notice('Connection lost: '+e.message)}finally{statusRunning=false}
 }
-async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=0;const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
-async function cancel(){if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();syncCashierStage();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
+async function begin(){if(window.PersenPOSSwivel?.active?.())return notice('Use the secure employee handoff. Owner-only checkout cannot bypass an active employee shift.');if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=0;const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
+async function cancel(){if(window.PersenPOSSwivel?.active?.())return notice('Secure customer checkout stays locked to the original employee.');if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();syncCashierStage();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 async function cash(){
  if(!checkout||checkout.status!=='contact_received'||busy)return;
  if(checkout.payment_preference&&checkout.payment_preference!=='cash')return notice('This payment method only displays instructions. Do not record it as cash.');
