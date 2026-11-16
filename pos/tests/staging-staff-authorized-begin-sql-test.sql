@@ -25,7 +25,7 @@ DECLARE
  v_reg uuid:='77777777-7777-4777-8777-777777777777';
  v_item uuid:='66666666-6666-4666-8666-666666666666';
  v_shift uuid; v_secret text; v_login jsonb; v_checkout uuid;
- v_grant jsonb; v_token text;
+ v_grant jsonb; v_token text; v_sale uuid;
  v_items jsonb;
 BEGIN
  v_items:=jsonb_build_array(jsonb_build_object(
@@ -137,6 +137,63 @@ BEGIN
  v_grant:=public.pos_handoff_verify_paid(v_checkout,v_shift,v_secret);
  IF v_grant->>'completed' IS DISTINCT FROM 'false'
  THEN RAISE EXCEPTION 'Payment verification accepted an unpaid order'; END IF;
+
+ -- This customer supplied no phone number; isolated guest contact is optional.
+ -- Payment must still be tied to the original authenticated employee shift.
+ PERFORM set_config('request.jwt.claim.sub',v_outsider::text,true);
+ BEGIN
+  PERFORM public.pos_staff_complete_cash(v_shift,v_secret,v_checkout,2500,'{}','{}',null);
+  RAISE EXCEPTION 'Other employee completed original sale';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Other employee completed original sale' THEN RAISE; END IF;
+ END;
+ PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
+ BEGIN
+  PERFORM public.pos_staff_complete_cash(v_shift,'invalid',v_checkout,2500,'{}','{}',null);
+  RAISE EXCEPTION 'Invalid shift secret completed sale';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Invalid shift secret completed sale' THEN RAISE; END IF;
+ END;
+ BEGIN
+  PERFORM public.pos_staff_complete_cash(v_shift,v_secret,v_checkout,2499,'{}','{}',null);
+  RAISE EXCEPTION 'Underpayment was recorded';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Underpayment was recorded' THEN RAISE; END IF;
+ END;
+ v_sale:=public.pos_staff_complete_cash(v_shift,v_secret,v_checkout,2500,'{}','{}',null);
+ IF NOT EXISTS(select 1 from public.pos_sales
+  where id=v_sale and checkout_id=v_checkout and owner_id=v_owner
+    and total_cents=2500 and tendered_cents=2500 and change_cents=0)
+ THEN RAISE EXCEPTION 'Staff cash sale not saved against register owner'; END IF;
+ IF NOT EXISTS(select 1 from public.stock_items where id=v_item and quantity=8)
+ THEN RAISE EXCEPTION 'Staff cash did not decrement exact stock once'; END IF;
+ IF public.pos_staff_complete_cash(v_shift,v_secret,v_checkout,2500,'{}','{}',null) IS DISTINCT FROM v_sale
+ THEN RAISE EXCEPTION 'Same-tender repeat did not preserve idempotent sale'; END IF;
+ BEGIN
+  PERFORM public.pos_staff_complete_cash(v_shift,v_secret,v_checkout,3000,'{}','{}',null);
+  RAISE EXCEPTION 'Different tender caused duplicate sale';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Different tender caused duplicate sale' THEN RAISE; END IF;
+ END;
+ v_grant:=public.pos_handoff_verify_paid(v_checkout,v_shift,v_secret);
+ IF v_grant->>'completed' IS DISTINCT FROM 'false'
+ THEN RAISE EXCEPTION 'Cash alone was treated as finished order'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',v_outsider::text,true);
+ BEGIN
+  PERFORM public.pos_staff_finish_order(v_shift,v_secret,v_checkout);
+  RAISE EXCEPTION 'Other employee finished original sale';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Other employee finished original sale' THEN RAISE; END IF;
+ END;
+ PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
+ IF public.pos_staff_finish_order(v_shift,v_secret,v_checkout) IS DISTINCT FROM true
+ THEN RAISE EXCEPTION 'Authorized staff could not finish sale'; END IF;
+ IF public.pos_staff_finish_order(v_shift,v_secret,v_checkout) IS DISTINCT FROM true
+ THEN RAISE EXCEPTION 'Repeated Finish Order not idempotent'; END IF;
+ v_grant:=public.pos_handoff_verify_paid(v_checkout,v_shift,v_secret);
+ IF v_grant->>'completed' IS DISTINCT FROM 'true'
+ THEN RAISE EXCEPTION 'Completed staff cash sale not server verified'; END IF;
+
  PERFORM set_config('request.jwt.claim.sub',v_owner::text,true);
  IF public.pos_staff_set_register_access(v_reg,v_staff,false) IS DISTINCT FROM true
  THEN RAISE EXCEPTION 'Owner failed to revoke cashier access'; END IF;
@@ -156,6 +213,6 @@ BEGIN
  EXCEPTION WHEN others THEN
   IF SQLERRM='Revoked cashier created another checkout' THEN RAISE; END IF;
  END;
- RAISE NOTICE 'PASS: independent staff checkout, status, scoped submit, original badge resume, unpaid guard, revocation';
+ RAISE NOTICE 'PASS: independent staff checkout, guest submit, original badge, shift-bound staff cash, stock, idempotent finish, revocation';
 END $test$;
 ROLLBACK;
