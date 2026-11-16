@@ -4,8 +4,13 @@ const {createIsolatedGuestFrame}=require('../isolated-guest-frame.cjs');
 const checkout='22222222-2222-4222-8222-222222222222';
 const cap='a'.repeat(64);
 function mock(){
- const sent=[];let frame=null;
- const window={location:{origin:'https://cashier.example.test'},document:{
+ const sent=[];let frame=null;let onMessage=null;let timer=null;
+ const window={location:{origin:'https://cashier.example.test'},
+  addEventListener:(type,fn)=>{if(type==='message')onMessage=fn},
+  removeEventListener:(type,fn)=>{if(type==='message'&&onMessage===fn)onMessage=null},
+  setTimeout:fn=>{timer=fn;return 1},
+  clearTimeout:()=>{timer=null},
+  document:{
   createElement:tag=>{
    assert.equal(tag,'iframe');
    const attrs={};
@@ -22,8 +27,10 @@ function mock(){
    return frame;
   }
  }};
- const container={appendChild:()=>{frame.emit('load')}};
- return {window,container,sent,getFrame:()=>frame};
+ const container={appendChild:()=>{}};
+ return {window,container,sent,getFrame:()=>frame,
+  ready:(origin='https://customer.example.test',source=frame.contentWindow)=>
+   onMessage?.({origin,source,data:{type:'persen:checkout-ready:v1'}})};
 }
 test('exactly one checkout token is transferred to known separate guest origin, never navigation or storage',async()=>{
  const t=mock();
@@ -31,7 +38,13 @@ test('exactly one checkout token is transferred to known separate guest origin, 
   cashierOrigin:'https://cashier.example.test',
   guestOrigin:'https://customer.example.test'});
  assert.equal(session.active(),false);
- await session.open({checkoutId:checkout,capability:cap});
+ const opening=session.open({checkoutId:checkout,capability:cap});
+ t.ready('https://untrusted.example.test');
+ assert.equal(t.sent.length,0);
+ t.ready('https://customer.example.test',{});
+ assert.equal(t.sent.length,0);
+ t.ready();
+ await opening;
  assert.equal(session.active(),true);
  assert.deepEqual(t.sent,[{data:{type:'persen:checkout-bootstrap:v1',
   checkoutId:checkout,capability:cap},origin:'https://customer.example.test'}]);
