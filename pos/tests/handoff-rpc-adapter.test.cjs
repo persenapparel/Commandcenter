@@ -79,3 +79,43 @@ test('staff checkout blocked during claimed customer handoff',async()=>{
  await a.claim(id);
  await assert.rejects(a.beginStaffCheckout({registerId:id,items:[{qty:1}]}),/Another checkout/);
 });
+
+
+test('staff cash and Finish Order require original claimed checkout and shift-bound RPCs',async()=>{
+ const calls=[],saleId='55555555-5555-4555-8555-555555555555';
+ const client={rpc:async(name,args)=>{
+  calls.push({name,args});
+  if(name==='pos_handoff_claim')return {data:{ok:true,checkoutId:id,phase:'claimed'}};
+  if(name==='pos_staff_complete_cash')return {data:saleId};
+  if(name==='pos_staff_finish_order')return {data:true};
+  throw Error('Unexpected RPC: '+name);
+ }};
+ const a=createHandoffRpcAdapter({client,shiftId:shift,shiftSecret:secret});
+ await assert.rejects(a.completeCash(id,{tenderCents:2500}),/not claimed/);
+ await a.claim(id);
+ await assert.rejects(a.completeCash(wrong,{tenderCents:2500}),/not claimed/);
+ await assert.rejects(a.completeCash(id,{tenderCents:2499.5}),/Invalid/);
+ await assert.rejects(a.completeCash(id,{tenderCents:2500,changeBreakdown:[]}),/Invalid/);
+ assert.deepEqual(await a.completeCash(id,{tenderCents:2500,receivedBreakdown:{},changeBreakdown:{}}),
+   {checkoutId:id,saleId});
+ assert.equal(await a.finishOrder(id),true);
+ await assert.rejects(a.finishOrder(wrong),/not claimed/);
+ assert.deepEqual(calls.map(x=>x.name),['pos_handoff_claim','pos_staff_complete_cash','pos_staff_finish_order']);
+ for(const {args} of calls){
+  assert.equal(args.p_shift_id,shift);
+  assert.equal(args.p_shift_secret,secret);
+ }
+ assert.equal(calls[1].args.p_tender_cents,2500);
+ assert.equal(calls[1].args.p_checkout,id);
+ assert.equal(calls[2].args.p_checkout,id);
+});
+test('staff payment fails closed on server denial and forged sale result',async()=>{
+ const a=createHandoffRpcAdapter({client:{rpc:async name=>(
+  name==='pos_handoff_claim'?{data:{ok:true,checkoutId:id,phase:'claimed'}}:
+  name==='pos_staff_complete_cash'?{data:wrong.slice(0,10)}:{error:{message:'denied'}}
+ )},shiftId:shift,shiftSecret:secret});
+ await a.claim(id);
+ await assert.rejects(a.completeCash(id,{tenderCents:2500}),/not verified/);
+ await assert.rejects(a.finishOrder(id),/not verified/);
+ assert.equal(a.current(),id);
+});

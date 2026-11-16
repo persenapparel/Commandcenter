@@ -42,7 +42,24 @@ begin
   enabled=true,
   credential_version=public.pos_staff_credentials.credential_version+1
  returning id into v_staff_id;
- -- Rotating a badge/PIN immediately invalidates every old shift.
+ -- A badge for the signed-in owner receives only that owner's active
+ -- register grant; it never grants another employee or a different owner.
+ insert into public.pos_staff_register_grants(
+  register_id,staff_id,owner_id,granted_by,active
+ )
+ select r.id,v_staff_id,v_uid,v_uid,true
+ from public.pos_registers r
+ where r.owner_id=v_uid and r.active=true
+ on conflict(register_id,staff_id) do update
+ set active=true,granted_by=excluded.granted_by
+ where public.pos_staff_register_grants.owner_id=excluded.owner_id
+   and public.pos_staff_register_grants.staff_id=excluded.staff_id;
+ -- Rotating credentials also burns any outstanding checkout capabilities.
+ update public.pos_checkout_handoffs h
+ set phase='closed',capability_digest=null,capability_expires_at=null,
+     closed_at=now(),updated_at=now()
+ where h.shift_id in(select id from public.pos_staff_shifts where staff_id=v_staff_id)
+   and h.phase<>'closed';
  update public.pos_staff_shifts
  set revoked_at=now()
  where staff_id=v_staff_id and revoked_at is null;

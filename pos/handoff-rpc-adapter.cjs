@@ -104,6 +104,33 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
    throw Error('Guest authorization revocation unverified');
   active=null;
  }
- return Object.freeze({beginStaffCheckout,claim,issue,resume,getStatus,verifyPaid,revoke,current:()=>active});
+ // A resumed cashier may record cash and finish only for its exact claimed checkout.
+ // Never fall back to the owner-only payment RPCs.
+ async function completeCash(checkoutId,{tenderCents,receivedBreakdown={},changeBreakdown={},expectedDrawerVersion=null}={}) {
+  same(checkoutId);
+  if(!Number.isInteger(tenderCents)||tenderCents<0||tenderCents>1000000 ||
+     !receivedBreakdown||typeof receivedBreakdown!=='object'||Array.isArray(receivedBreakdown)||
+     !changeBreakdown||typeof changeBreakdown!=='object'||Array.isArray(changeBreakdown)||
+     (expectedDrawerVersion!==null&&(!Number.isInteger(expectedDrawerVersion)||expectedDrawerVersion<0)))
+   throw Error('Invalid staff cash request');
+  const {data,error}=await client.rpc('pos_staff_complete_cash',{
+   p_shift_id:shiftId,p_shift_secret:shiftSecret,p_checkout:checkoutId,
+   p_tender_cents:tenderCents,p_received_breakdown:receivedBreakdown,
+   p_change_breakdown:changeBreakdown,p_expected_drawer_version:expectedDrawerVersion
+  });
+  if(error||typeof data!=='string'||! /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(data))
+   throw Error('Staff cash payment not verified');
+  return Object.freeze({checkoutId,saleId:data});
+ }
+ async function finishOrder(checkoutId) {
+  same(checkoutId);
+  const {data,error}=await client.rpc('pos_staff_finish_order',{
+   p_shift_id:shiftId,p_shift_secret:shiftSecret,p_checkout:checkoutId
+  });
+  if(error||data!==true)throw Error('Staff Finish Order not verified');
+  return true;
+ }
+ return Object.freeze({beginStaffCheckout,claim,issue,resume,getStatus,verifyPaid,
+  completeCash,finishOrder,revoke,current:()=>active});
 }
 module.exports={createHandoffRpcAdapter};

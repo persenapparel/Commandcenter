@@ -13,8 +13,16 @@ test('staging owner badge enrollment is owner-only and never exposes PIN data',(
  assert.match(sql,/revoke all on function public\.pos_owner_enroll_staff_self[\s\S]*from public,anon/);
  assert.match(sql,/grant execute on function public\.pos_owner_enroll_staff_self[\s\S]*to authenticated/);
  assert.doesNotMatch(sql,/grant execute[\s\S]*to anon/);
+ assert.match(sql,/insert into public\.pos_staff_register_grants/);
+ assert.match(sql,/where r\.owner_id=v_uid and r\.active=true/);
+ assert.match(sql,/update public\.pos_checkout_handoffs/);
+ assert.match(sql,/capability_digest=null,capability_expires_at=null/);
  assert.match(html,/id="owner-badge-enrollment"/);
  assert.match(html,/name="badge"[^>]*minlength="16"/);
+ assert.match(html,/id="generate-owner-badge"/);
+ assert.match(js,/by\('generate-owner-badge'\)\.addEventListener\('click'/);
+ assert.match(js,/crypto\.getRandomValues\(bytes\)/);
+ assert.match(js,/const bytes=new Uint8Array\(16\)/);
  assert.match(html,/name="pin"[^>]*autocomplete="new-password"/);
  assert.match(js,/db\.rpc\('pos_owner_enroll_staff_self'/);
  assert.match(js,/form\.reset\(\)/);

@@ -17,6 +17,8 @@ function fake(overrides={}) {
   if(name==='pos_handoff_issue_guest')return {data:{checkoutId:ORDER,capability:TOKEN}};
   if(name==='pos_handoff_resume')return {data:{verified:args.p_badge==='correct-badge-value-123456',checkoutId:ORDER}};
   if(name==='pos_handoff_status')return {data:{ok:true,checkoutId:ORDER,status}};
+  if(name==='pos_staff_complete_cash')return {data:'55555555-5555-4555-8555-555555555555'};
+  if(name==='pos_staff_finish_order')return {data:true};
   if(name==='pos_handoff_verify_paid')return {data:{checkoutId:ORDER,completed:paid}};
   if(name==='pos_handoff_revoke')return {data:true};
   throw Error('Unexpected RPC '+name);
@@ -144,4 +146,25 @@ test('browser-supplied completion status cannot skip authoritative staff RPC',as
  setStatus('contact_received');
  await bridge.confirmCustomerCompleted();
  assert.equal(bridge.state().checkout.phase,'customer_complete');
+});
+
+test('cash recording stays locked until original employee resumes checkout',async()=>{
+ const {bridge,calls,rpcArgs,setStatus}=fake();
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();
+ await assert.rejects(bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}}),/not authorized/);
+ setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await assert.rejects(bridge.recordCash({checkoutId:'33333333-3333-4333-8333-333333333333',
+   payment:{tenderCents:2500}}),/not authorized/);
+ const proof=await bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}});
+ assert.equal(proof.checkoutId,ORDER);
+ assert.equal(proof.saleId,'55555555-5555-4555-8555-555555555555');
+ const call=rpcArgs.find(x=>x.name==='pos_staff_complete_cash');
+ assert.equal(call.args.p_checkout,ORDER);
+ assert.equal(call.args.p_shift_id,SHIFT);
+ assert.equal(call.args.p_shift_secret,SECRET);
+ assert.equal(call.args.p_tender_cents,2500);
+ assert.ok(calls.includes('pos_staff_complete_cash'));
 });
