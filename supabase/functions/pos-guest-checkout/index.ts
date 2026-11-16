@@ -1,0 +1,108 @@
+// Staging-only isolated customer checkout endpoint.
+//
+// The page and bearer-token API live on the Supabase staging origin, never on
+// the cashier Pages origin. A customer receives only a one-checkout capability
+// through an exact-source postMessage handshake; no capability is put in a URL,
+// storage, DOM node, log, or cache.
+const STAGING_URL='https://naaqcspvbntzdtwuchrr.supabase.co';
+const BASE_PATH='/functions/v1/pos-guest-checkout';
+const MAX_BODY=8192;
+const CHECKOUT_ID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
+const CAPABILITY=/^[a-f0-9]{64}$/;
+function response(status,body,type,document=false,origin=''){
+ const headers=new Headers();
+ headers.set('Content-Type',type);
+ headers.set('Cache-Control','no-store, no-cache, must-revalidate');
+ headers.set('Pragma','no-cache');
+ headers.set('Referrer-Policy','no-referrer');
+ headers.set('X-Content-Type-Options','nosniff');
+ if(document)headers.set('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors https://persen-pos-staging.pages.dev https://*.persen-pos-staging.pages.dev; base-uri 'none'; form-action 'none'; object-src 'none'");
+ if(allowedGuestOrigin(origin)){
+  headers.set('Access-Control-Allow-Origin',origin);
+  headers.set('Access-Control-Allow-Methods','POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers','Authorization, Content-Type');
+  headers.set('Access-Control-Max-Age','60');
+  headers.set('Vary','Origin');
+ }
+ // Fetch forbids a body for 204/205/304 responses.  A browser sends OPTIONS
+ // before the credential-bearing customer request, so the preflight must be
+ // truly empty rather than an empty string.
+ return new Response(status===204||status===205||status===304?null:body,{status,headers});
+}
+function json(status,body,origin=''){return response(status,JSON.stringify(body),'application/json; charset=utf-8',false,origin);}
+function text(status,body,type,document=false,origin=''){return response(status,body,type,document,origin);}
+function object(value){return value!==null&&typeof value==='object'&&!Array.isArray(value);}
+function allowedGuestOrigin(value){
+ try{const url=new URL(value),host=url.hostname.toLowerCase();
+  return url.protocol==='https:'&&!url.username&&!url.password&&!url.search&&!url.hash&&url.pathname==='/'&&
+   (host==='commandcenter-4yg.pages.dev'||host.endsWith('.commandcenter-4yg.pages.dev'));
+ }catch(_){return false;}
+}
+function configured(){const url=(Deno.env.get('SUPABASE_URL')||'').replace(/\/$/,'');
+ const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
+ return url===STAGING_URL&&service.length>20?{url,service}:null;}
+function routePath(path){
+ for(const prefix of [BASE_PATH,'/pos-guest-checkout']){
+  if(path===prefix)return '/';
+  if(path.startsWith(prefix+'/'))return path.slice(prefix.length);
+ }
+ return null;
+}
+async function readRequest(request){const length=request.headers.get('content-length');
+ if(length!==null&&(!/^\d{1,5}$/.test(length)||Number(length)>MAX_BODY))throw Error('invalid');
+ const raw=await request.text();if(raw.length>MAX_BODY)throw Error('invalid');
+ const data=JSON.parse(raw);if(!object(data)||!CHECKOUT_ID.test(data.checkoutId||''))throw Error('invalid');
+ return data;}
+function page(){return ['<!doctype html>','<html lang="en"><head>','<meta charset="utf-8">','<meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="robots" content="noindex,nofollow">','<title>Persen Apparel · Customer Checkout</title>','<link rel="stylesheet" href="'+BASE_PATH+'/guest.css">','<script defer src="'+BASE_PATH+'/guest.js"></script>','</head><body>','<header><strong>PERSEN APPAREL</strong><span>Customer checkout</span></header>','<div id="checkout" role="main" aria-live="polite">Preparing your checkout…</div>','</body></html>'].join('\n');}
+function stylesheet(){return ':root{color-scheme:light}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f4f7fb;color:#12325a;font:17px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{display:flex;justify-content:space-between;gap:1rem;padding:1rem 1.15rem;background:#0c2547;color:#fff;letter-spacing:.03em}header span{font-size:.9rem;opacity:.88}main{max-width:700px;margin:1rem auto;background:#fff;padding:1.35rem;border-radius:16px;box-shadow:0 8px 26px #15325218}h1{margin-top:0;font-size:1.45rem}ul{padding-left:1.3rem}li{margin:.55rem 0}label{display:block;margin:1rem 0;font-weight:650}input{display:block;width:100%;margin:.42rem 0 0;padding:.78rem;border:1px solid #bdcad8;border-radius:8px;font:inherit}input[type=checkbox]{display:inline-block;width:auto;margin-right:.55rem;vertical-align:middle}button{width:100%;margin-top:.8rem;padding:.9rem 1rem;border:0;border-radius:9px;background:#0c2547;color:#fff;font:inherit;font-weight:700}button:disabled{opacity:.55}.error{min-height:1.35em;color:#a11;font-weight:600}';}
+function guestScript(){return `(()=>{'use strict';
+const BASE='/functions/v1/pos-guest-checkout';
+const root=document.getElementById('checkout');
+const validId=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value);
+const validToken=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
+function cashierOrigin(value){try{const u=new URL(value),h=u.hostname.toLowerCase();return u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'&&(h==='persen-pos-staging.pages.dev'||h.endsWith('.persen-pos-staging.pages.dev'));}catch(_){return false}}
+let token='',checkoutId='',started=false,submitted=false,busy=false;
+const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node};
+function unavailable(){root.replaceChildren(el('main'));const panel=root.firstChild;panel.append(el('h1','Checkout is temporarily unavailable'),el('p','Please return the iPad to your cashier. No sale was completed.'))}
+function loading(){root.replaceChildren(el('main'));root.firstChild.append(el('h1','Preparing your checkout'),el('p','Please wait while your order is loaded.'))}
+function controller(){const c=new AbortController(),timer=setTimeout(()=>c.abort(),8000);return{signal:c.signal,done:()=>clearTimeout(timer)}}
+async function request(action,body){if(!token||busy)throw Error('Checkout unavailable');busy=true;const abort=controller();try{const response=await fetch(BASE+'/guest-checkout/'+action,{method:'POST',credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:abort.signal,headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body)});if(!response||!response.ok)throw Error('Checkout unavailable');const result=await response.json();if(!result||typeof result!=='object'||Array.isArray(result))throw Error('Checkout unavailable');return result;}finally{abort.done();busy=false}}
+function validSnapshot(value){return value&&value.checkoutId===checkoutId&&Array.isArray(value.items)&&value.items.length>0&&value.items.length<=80&&typeof value.total==='string'&&value.items.every(item=>item&&typeof item.name==='string'&&item.name.length<=120&&Number.isInteger(item.quantity)&&item.quantity>0&&typeof item.lineTotal==='string'&&item.lineTotal.length<=40)}
+function complete(){token='';root.replaceChildren(el('main'));const panel=root.firstChild;panel.append(el('h1','Your information is all set!'),el('p','Please turn the iPad back to your cashier to finish checking out.'),el('p','Your sale is not finished yet. The cashier will verify payment.'))}
+function review(snapshot){root.replaceChildren(el('main'));const panel=root.firstChild;panel.append(el('h1','Review your order'));const list=el('ul');for(const item of snapshot.items)list.append(el('li',item.name+' × '+item.quantity+' — '+item.lineTotal));panel.append(list,el('p','Total: '+snapshot.total));const form=el('form'),email=el('input'),phone=el('input'),marketing=el('input'),exception=el('input'),signature=el('input'),error=el('p'),submit=el('button','Submit information');const field=(caption,input)=>{const label=el('label',caption);label.append(input);form.append(label)};email.type='email';email.autocomplete='email';email.maxLength=250;phone.type='tel';phone.autocomplete='tel';phone.maxLength=40;marketing.type='checkbox';exception.type='checkbox';signature.type='text';signature.autocomplete='off';signature.maxLength=120;field('Email (optional)',email);field('Phone (optional)',phone);field('I agree to receive marketing messages (optional)',marketing);field('I cannot provide a signature (accessibility exception)',exception);field('Signature (type your name, or select the accessibility exception)',signature);error.className='error';error.setAttribute('role','alert');submit.type='submit';form.append(error,submit);form.addEventListener('submit',async event=>{event.preventDefault();if(busy||submitted)return;const signed=signature.value.trim(),excepted=exception.checked===true;if(!signed&&!excepted){error.textContent='Please sign or choose the accessibility exception.';return}submitted=true;submit.disabled=true;try{const result=await request('submit',{checkoutId,email:email.value.trim(),phone:phone.value.trim(),marketingConsent:marketing.checked===true,signature:excepted?null:signed,signatureException:excepted});if(result.accepted!==true)throw Error('Checkout unavailable');complete()}catch(_){token='';error.textContent='Unable to submit. Please return the iPad to your cashier.'}finally{busy=false}});panel.append(form)}
+async function begin(){loading();try{const snapshot=await request('view',{checkoutId});if(!validSnapshot(snapshot))throw Error('Checkout unavailable');review(snapshot)}catch(_){token='';unavailable()}}
+function onMessage(event){if(started||event.source!==window.parent||event.data?.type!=='persen:checkout-bootstrap:v1'||!cashierOrigin(event.origin))return;const nextId=event.data.checkoutId,nextToken=event.data.capability;if(!validId(nextId)||!validToken(nextToken))return;started=true;window.removeEventListener('message',onMessage);checkoutId=nextId;token=nextToken;void begin()}
+window.addEventListener('message',onMessage);try{window.parent.postMessage({type:'persen:checkout-ready:v1'},'*')}catch(_){unavailable()}
+})();`;}
+async function callPrivateRpc(config,name,body){const response=await fetch(config.url+'/rest/v1/rpc/'+name,{method:'POST',redirect:'error',credentials:'omit',signal:AbortSignal.timeout(8000),headers:{apikey:config.service,authorization:'Bearer '+config.service,'content-type':'application/json','cache-control':'no-store'},body:JSON.stringify(body)});
+ // A guest capability may be expired, revoked, replayed, or scoped to another
+ // checkout.  Those are ordinary authorization denials, not an Edge failure.
+ // Returning null lets the caller give the same generic 403 for every case.
+ if(!response.ok)return null;
+ return await response.json();}
+function customerSnapshot(value,checkoutId){if(!object(value)||value.checkoutId!==checkoutId||!Array.isArray(value.items)||value.items.length<1||value.items.length>80||typeof value.total!=='string'||value.total.length>40)return null;const items=[];for(const item of value.items){if(!object(item)||typeof item.name!=='string'||!Number.isInteger(item.quantity)||item.quantity<1||typeof item.lineTotal!=='string')return null;items.push({name:item.name.slice(0,120),quantity:item.quantity,lineTotal:item.lineTotal.slice(0,40)});}return {checkoutId,items,total:value.total.slice(0,40)};}
+Deno.serve(async request=>{
+ const url=new URL(request.url),route=routePath(url.pathname),origin=request.headers.get('origin')||'';
+ if(request.method==='OPTIONS'){
+  if(!route||!route.startsWith('/guest-checkout/')||!allowedGuestOrigin(origin))return json(404,{error:'Checkout unavailable'});
+  return text(204,'','text/plain; charset=utf-8',false,origin);
+ }
+ if(request.method!=='POST'||!route||!route.startsWith('/guest-checkout/')||!allowedGuestOrigin(origin)||!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')||''))return json(404,{error:'Checkout unavailable'});
+ const action=route.slice('/guest-checkout/'.length);
+ if(action!=='view'&&action!=='submit')return json(404,{error:'Checkout unavailable'},origin);
+ const authorization=request.headers.get('authorization')||'',capability=authorization.startsWith('Bearer ')?authorization.slice(7):'';
+ if(!CAPABILITY.test(capability))return json(401,{error:'Checkout unavailable'},origin);
+ let input;try{input=await readRequest(request);}catch(_){return json(400,{error:'Checkout unavailable'},origin);}
+ const config=configured();if(!config)return json(503,{error:'Checkout unavailable'},origin);
+ try{
+  if(action==='view'){
+   const value=await callPrivateRpc(config,'pos_handoff_guest_view',{p_checkout:input.checkoutId,p_capability:capability});
+   const snapshot=customerSnapshot(value,input.checkoutId);
+   return snapshot?json(200,snapshot,origin):json(403,{error:'Checkout unavailable'},origin);
+  }
+  const answers={...input};delete answers.checkoutId;
+  const value=await callPrivateRpc(config,'pos_handoff_guest_submit',{p_checkout:input.checkoutId,p_capability:capability,p_answers:answers});
+  return value?.accepted===true?json(200,{accepted:true},origin):json(403,{error:'Checkout unavailable'},origin);
+ }catch(_){return json(503,{error:'Checkout unavailable'},origin);}
+});
+

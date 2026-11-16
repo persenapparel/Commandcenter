@@ -36,7 +36,8 @@ test('exactly one checkout token is transferred to known separate guest origin, 
  const t=mock();
  const session=createIsolatedGuestFrame({window:t.window,container:t.container,
   cashierOrigin:'https://cashier.example.test',
-  guestOrigin:'https://customer.example.test'});
+  guestOrigin:'https://customer.example.test',
+  guestEntryUrl:'https://customer.example.test/pos-guest/'});
  assert.equal(session.active(),false);
  const opening=session.open({checkoutId:checkout,capability:cap});
  t.ready('https://untrusted.example.test');
@@ -48,7 +49,7 @@ test('exactly one checkout token is transferred to known separate guest origin, 
  assert.equal(session.active(),true);
  assert.deepEqual(t.sent,[{data:{type:'persen:checkout-bootstrap:v1',
   checkoutId:checkout,capability:cap},origin:'https://customer.example.test'}]);
- assert.equal(t.getFrame().src,'https://customer.example.test/');
+ assert.equal(t.getFrame().src,'https://customer.example.test/pos-guest/');
  assert.equal(t.getFrame().attrs.sandbox,'allow-scripts allow-forms allow-same-origin');
  assert.equal(t.getFrame().attrs.referrerpolicy,'no-referrer');
  assert.ok(!Object.values(t.getFrame().attrs).join(' ').includes(cap));
@@ -63,6 +64,8 @@ test('reject same-origin, HTTP and wrong cashier contexts',()=>{
  assert.throws(()=>createIsolatedGuestFrame({...base,guestOrigin:'https://cashier.example.test'}),/Isolated/);
  assert.throws(()=>createIsolatedGuestFrame({...base,guestOrigin:'http://customer.example.test'}),/Isolated/);
  assert.throws(()=>createIsolatedGuestFrame({...base,cashierOrigin:'https://different.example.test',guestOrigin:'https://customer.example.test'}),/Isolated/);
+ assert.throws(()=>createIsolatedGuestFrame({...base,guestOrigin:'https://customer.example.test',guestEntryUrl:'https://customer.example.test/not-a-guest-page'}),/Isolated/);
+ assert.throws(()=>createIsolatedGuestFrame({...base,guestOrigin:'https://customer.example.test',guestEntryUrl:'https://cashier.example.test/pos-guest/'}),/Isolated/);
 });
 test('reject invalid token before iframe is created',async()=>{
  const t=mock();

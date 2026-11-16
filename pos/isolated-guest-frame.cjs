@@ -7,13 +7,17 @@
  * header and exact-origin postMessage, but MUST NOT be used on a frame
  * which could run content from the cashier origin.
  */
-function createIsolatedGuestFrame({window,container,cashierOrigin,guestOrigin}) {
+function createIsolatedGuestFrame({window,container,cashierOrigin,guestOrigin,guestEntryUrl}) {
  if(!window || !container || typeof container.appendChild!=='function')
   throw Error('Customer frame dependencies missing');
  const cashier=new URL(cashierOrigin),guest=new URL(guestOrigin);
+ const entry=guestEntryUrl===undefined?new URL('/',guest.origin):new URL(guestEntryUrl);
  const clean=u=>u.protocol==='https:' && !u.username&&!u.password&&
   !u.search&&!u.hash&&u.pathname==='/';
- if(!clean(cashier)||!clean(guest)||cashier.origin===guest.origin ||
+ const cleanEntry=entry.protocol==='https:' && !entry.username&&!entry.password&&
+  !entry.search&&!entry.hash&&entry.origin===guest.origin &&
+  ['/', '/pos-guest/', '/pos-guest/index.html'].includes(entry.pathname);
+ if(!clean(cashier)||!clean(guest)||!cleanEntry||cashier.origin===guest.origin ||
     window.location?.origin!==cashier.origin)
   throw Error('Isolated, clean HTTPS cashier and guest origins required');
  let current=null,pendingReject=null;
@@ -68,7 +72,7 @@ function createIsolatedGuestFrame({window,container,cashierOrigin,guestOrigin}) 
    pendingReject=rejectLocked;
    window.addEventListener('message',onReady);
    timer=window.setTimeout(()=>rejectLocked(Error('Guest checkout ready timeout')),10000);
-   frame.src=guest.origin+'/';
+   frame.src=entry.href;
    try{container.appendChild(frame)}
    catch(_){rejectLocked(Error('Guest frame could not be mounted'))}
   });

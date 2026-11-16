@@ -255,6 +255,11 @@ async function finishOrder(){
  busy=true;checkoutVersion++;by('finish-order').disabled=true;
  try{
   const id=checkout.id;
+  const secure=window.PersenPOSSwivel;
+  if(secure&&typeof secure.ownsCheckout==='function'&&secure.ownsCheckout(id)){
+   await secure.finishSale({cashCents:cashCents()});
+   return;
+  }
   const result=await check(db.rpc('pos_finish_order',{p_checkout:id}));
   if(result!==true)throw Error('Could not confirm customer handoff');
   const saved=await saleForCheckout(id);
@@ -265,6 +270,83 @@ async function finishOrder(){
   notice('Could not finish order: '+e.message+'. Do not start another checkout until this is resolved.');
  }finally{busy=false;await status()}
 }
+// The secure handoff runtime gets a deliberately small adapter rather than the
+// cashier Supabase client, user object, or live cart globals. It may create a
+// checkout and coordinate the locked screen, but cannot read or expose staff
+// secrets from the surrounding owner session.
+let secureHandoffSavedSale=null;
+function secureHandoffRequest(){
+ if(!db||!user||!register||busy||checkout||pendingCash||!Array.isArray(cart)||!cart.length)
+  throw Error('Register is not ready for a secure customer handoff');
+ const discountBps=C.discountBps(by('discount').value);
+ if(discountBps!==0)throw Error('Secure customer handoff requires a 0% discount in this staging build.');
+ return {
+  registerId:register.id,
+  items:cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,
+   unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable})),
+  discountBps:0,taxMilli:0,eventId:by('event-select').value||null
+ };
+}
+function lockSecureHandoffCheckout(checkoutId){
+ if(typeof checkoutId!=='string'||!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(checkoutId))
+  throw Error('Invalid secure checkout');
+ if(checkout&&checkout.id!==checkoutId)throw Error('Another checkout is already open');
+ checkout={id:checkoutId,status:'awaiting_customer'};
+ checkoutVersion++;
+ document.body.classList.add('checkout-active');
+ syncCashierStage();syncCheckoutUI();draw();
+}
+async function restoreSecureHandoffCheckout({checkoutId}){
+ if(typeof checkoutId!=='string'||!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(checkoutId))
+  throw Error('Invalid secure checkout');
+ const rows=await check(db.from('pos_checkouts').select(
+  'id,status,cash_handoff_complete,created_at,total_cents,payment_preference,receipt_print,receipt_email,customer_step,help_requested,progress_updated_at'
+ ).eq('id',checkoutId).limit(1));
+ const current=rows?.[0];
+ if(!current||current.id!==checkoutId||current.status!=='contact_received')
+  throw Error('Customer checkout is not ready for cashier payment');
+ checkout=current;
+ checkoutVersion++;
+ document.body.classList.remove('swivel-customer-active');
+ syncCashierStage();syncCheckoutUI();draw();
+}
+async function finishSecureHandoffSale({checkoutId}){
+ if(!checkout||checkout.id!==checkoutId||checkout.status!=='completed')
+  throw Error('Secure checkout is not ready to finish');
+ const result=await check(db.rpc('pos_finish_order',{p_checkout:checkoutId}));
+ if(result!==true)throw Error('Could not confirm customer handoff');
+ const saved=await saleForCheckout(checkoutId);
+ if(!saved)throw Error('Order was finished but receipt details are unavailable. Refresh to recover.');
+ secureHandoffSavedSale=saved;
+ return {checkoutId,completed:true};
+}
+async function showSecureHandoffHome(){
+ if(!secureHandoffSavedSale)throw Error('Finished checkout receipt is unavailable');
+ const saved=secureHandoffSavedSale;
+ await showCompletedSale(saved);
+ secureHandoffSavedSale=null;
+}
+const secureHandoffRpcNames=new Set([
+ 'pos_staff_start_shift','pos_staff_begin_checkout','pos_handoff_claim',
+ 'pos_handoff_issue_guest','pos_handoff_status','pos_handoff_resume',
+ 'pos_handoff_verify_paid','pos_handoff_revoke'
+]);
+const secureHandoffClient=Object.freeze({
+ rpc:(name,args)=>{
+  if(!secureHandoffRpcNames.has(name)||!db)throw Error('Secure handoff RPC unavailable');
+  return db.rpc(name,args);
+ }
+});
+window.PersenPOSRegister=Object.freeze({
+ ready:()=>!!db&&!!user&&!!register,
+ secureHandoffClient,
+ getStaffCheckoutRequest:secureHandoffRequest,
+ lockHandoffCheckout:lockSecureHandoffCheckout,
+ restoreHandoffCheckout:restoreSecureHandoffCheckout,
+ finishHandoffSale:finishSecureHandoffSale,
+ showHandoffHome:showSecureHandoffHome,
+ notice:message=>notice(String(message||'').slice(0,240))
+});
 async function status(){
  if(!register||busy||statusRunning)return;
  statusRunning=true;const version=checkoutVersion;
@@ -666,6 +748,34 @@ by('epson-enroll-random').addEventListener('click',()=>{
 });
 by('epson-enroll-method').addEventListener('change',()=>{
  by('epson-enroll-value').value='';by('epson-enroll-value').type='password';
+});
+
+
+by('owner-badge-enrollment').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const form=event.currentTarget,out=by('owner-badge-message'),button=by('enroll-owner-badge');
+ if(!db||!user){out.textContent='Sign in as the owner before setting up a staging badge.';return}
+ const fields=new FormData(form);
+ const firstName=String(fields.get('first_name')||'').trim();
+ const badge=String(fields.get('badge')||'').trim();
+ const pin=String(fields.get('pin')||'');
+ const confirm=String(fields.get('pin_confirm')||'');
+ if(badge.length<16||pin.length<6||pin!==confirm||!firstName){
+  out.textContent='Use a 16+ character badge code and matching 6+ digit PIN.';return;
+ }
+ button.disabled=true;out.textContent='Saving protected owner badge…';
+ try{
+  const result=await check(db.rpc('pos_owner_enroll_staff_self',{
+   p_badge:badge,p_pin:pin,p_first_name:firstName
+  }));
+  if(result?.enrolled!==true)throw Error('Owner badge was not enrolled');
+  form.reset();
+  out.textContent='Owner badge saved for staging. You can now use Hand to Customer.';
+ }catch(_){
+  form.querySelector('[name=pin]').value='';
+  form.querySelector('[name=pin_confirm]').value='';
+  out.textContent='Owner badge was not saved. Confirm this is your staging owner account and try a different badge code.';
+ }finally{button.disabled=false}
 });
 
 

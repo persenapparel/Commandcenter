@@ -7,7 +7,7 @@ const suites=[
  ['admin.html','admin.js',['save-products','refresh']],
  ['display.html','display.js',['wizard-back','wizard-next','wizard-help','wizard-finish','wizard-skip-optional']],
  ['admin.html','epson-center.js',['epson-refresh']],
- ['register.html','swivel-mode.js',['swivel-resume']]
+ ['register.html','swivel-mode.js',['swivel-resume','swivel-lock','swivel-shift-cancel','swivel-keep-customer']]
 ];
 let checked=0;
 for(const [page,script,buttons] of suites){
@@ -29,15 +29,26 @@ for(const [file,tokens] of expectations){const code=read(file);for(const token o
 assert.ok(read('register.html').includes('id="scan-form"')&&read('register.js').includes("by('scan-form').addEventListener"),'Barcode submit requires actual input handler');
 const registerHtml=read('register.html'),registerJs=read('register.js');
 const swivel=read('swivel-mode.js');
-for(const id of ['swivel-lock','swivel-unlock-submit','swivel-keep-customer']){
- assert.ok(!swivel.includes("$('"+id+"')"),'Retired unsafe swivel control must not be rebound: '+id);
+for(const id of ['swivel-shift-dialog','swivel-shift-form','swivel-badge','swivel-pin',
+ 'swivel-guest-host','swivel-return-form','swivel-return-badge']) {
+ assert.ok(registerHtml.includes('id="'+id+'"'),'Secure swivel control missing: '+id);
 }
-assert.ok(swivel.includes('start.onclick=deny')&&swivel.includes('resume.onclick=deny')&&swivel.includes("frame.removeAttribute('src')"),'Handoff and cashier resume must remain fail closed and clear the customer frame');
+assert.ok(swivel.includes('secure.createIsolatedGuestFrame')&&
+  swivel.includes('api.secureHandoffClient')&&
+  swivel.includes("shiftForm.addEventListener('submit'")&&
+  swivel.includes("returnForm.addEventListener('submit'"),'Secure isolated badge handoff must be wired');
+assert.ok(!registerHtml.includes('id="swivel-customer-frame"')&&
+  !registerHtml.includes('id="swivel-password"')&&
+  !registerHtml.includes('id="swivel-unlock-submit"'),'Retired same-origin password handoff must stay removed');
+assert.ok(!swivel.includes('display.html?pair=')&&!swivel.includes('frame.removeAttribute'),
+ 'Legacy pairing iframe must not be revived');
 for(const id of ['pair-setup','pair-quick','pair-copy','pair-share','pair-link-panel','pair']){
  assert.ok(!registerHtml.includes('id="'+id+'"'),'Obsolete two-iPad UI must stay removed: '+id);
 }
 assert.ok(!registerJs.includes("by('pair')"),'Legacy pairing event handler must stay removed');
 const build=read('build-pages.mjs');
+assert.ok(build.includes("writeFile(join(dest,'secure-handoff-browser.js')"),'Secure handoff bundle must be generated into the staging POS output');
+assert.ok(build.includes("handoff-config.js"),'Staging handoff config must be generated into the POS output');
 assert.ok(!build.includes("'test-fake-supabase.js'")&&!build.includes("'browser-full-flow-test.cjs'"),'Mock test files must not deploy');
 const epsonCenter=read('epson-center.js');
 assert.ok(!/\.rpc\(|\.insert\(|\.update\(|\.delete\(/.test(epsonCenter),'Epson browser center must be read-only');

@@ -126,21 +126,25 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   }
   assert.equal(await cashier.locator('input[name="checkout-device-mode"][value="dual"]').count(),0);
  });
- await step('Single-iPad handoff fails closed until secure isolation is implemented',async()=>{
+ await step('Single-iPad handoff requires staff badge before isolated customer screen can open',async()=>{
   const before=await state(cashier);
   const original={checkouts:before.tables.pos_checkouts.length,sales:before.tables.pos_sales.length,printJobs:before.tables.pos_print_jobs.length};
   assert.equal(await cashier.locator('#start').innerText(),'Hand to Customer →');
   assert.equal(await cashier.locator('#start').isDisabled(),false);
   await cashier.locator('#start').click();
-  await txt(cashier,'#notice','Customer handoff is temporarily unavailable: secure customer isolation is required.');
-  assert.equal(await cashier.locator('#swivel-overlay').isVisible(),false,'Customer overlay must remain closed');
-  assert.equal(await cashier.locator('#swivel-customer-frame').getAttribute('src'),null,'Customer frame src must be removed so no customer session can load');
-  assert.equal(await cashier.locator('#workspace').isVisible(),true,'Cashier still controls the iPad');
-  assert.equal(await cashier.locator('#cart .cart-row').count(),2,'Cart must survive a blocked handoff');
+  await visible(cashier,'#swivel-shift-dialog');
+  assert.equal(await cashier.locator('#swivel-badge').count(),1);
+  assert.equal(await cashier.locator('#swivel-pin').count(),1);
+  assert.equal(await cashier.locator('#swivel-overlay').isVisible(),false,'Customer overlay must remain closed until a verified staff shift starts');
+  assert.equal(await cashier.locator('#swivel-customer-frame').count(),0,'Retired same-origin customer frame must not exist');
+  assert.equal(await cashier.locator('#swivel-guest-host iframe').count(),0,'No guest frame may load before server staff verification');
+  assert.equal(await cashier.locator('#workspace').isVisible(),true,'Cashier still controls the iPad before handoff');
+  assert.equal(await cashier.locator('#cart .cart-row').count(),2,'Cart must survive the badge gate');
   const after=await state(cashier);
-  assert.equal(after.tables.pos_checkouts.length,original.checkouts,'Blocked handoff must not create checkout');
-  assert.equal(after.tables.pos_sales.length,original.sales,'Blocked handoff must not create sale');
-  assert.equal(after.tables.pos_print_jobs.length,original.printJobs,'Blocked handoff must not queue receipt');
+  assert.equal(after.tables.pos_checkouts.length,original.checkouts,'Badge gate must not create checkout');
+  assert.equal(after.tables.pos_sales.length,original.sales,'Badge gate must not create sale');
+  assert.equal(after.tables.pos_print_jobs.length,original.printJobs,'Badge gate must not queue receipt');
+  await cashier.locator('#swivel-shift-cancel').click();
  });
  await step('Epson Center remains read-only and legacy NELKO browser worker stays disabled',async()=>{
   await visible(admin,'#print-center');
@@ -155,5 +159,5 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}
  if(failures.length){console.error('POS functional failures:',JSON.stringify(failures,null,2));process.exitCode=1}
- else console.log('PASS: Mock cashier catalog/cart/scanner, blocked single-iPad handoff and read-only Epson monitor verified. No successful customer checkout, badge authentication, hardware commands or email delivery tested.');
+ else console.log('PASS: Mock cashier catalog/cart/scanner, badge-gated isolated handoff shell and read-only Epson monitor verified. No successful customer checkout, badge authentication, hardware commands or email delivery tested.');
 })().catch(e=>{console.error(e);try{server.close()}catch{}process.exitCode=1});
