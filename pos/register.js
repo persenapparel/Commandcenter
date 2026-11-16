@@ -363,6 +363,9 @@ window.PersenPOSRegister=Object.freeze({
  notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
+ // Secure swivel owns checkout state while a staff shift is active.
+ // Never let legacy owner polling overwrite or expose a locked checkout.
+ if(window.PersenPOSSwivel?.active?.())return;
  if(!register||busy||statusRunning)return;
  statusRunning=true;const version=checkoutVersion;
  try{
