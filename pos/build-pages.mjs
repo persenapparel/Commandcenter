@@ -24,6 +24,45 @@ for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','pos.js','pos-co
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
 await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
+const guestFallback='https://codex-pos-guest-edge-staging.commandcenter-4yg.pages.dev/pos-guest/';
+function secureGuestEntry(value){
+ const entry=new URL(value),host=entry.hostname.toLowerCase();
+ if(entry.protocol!=='https:'||entry.username||entry.password||entry.search||entry.hash||
+    entry.pathname!=='/pos-guest/'||
+    !(host==='commandcenter-4yg.pages.dev'||host.endsWith('.commandcenter-4yg.pages.dev')))
+  throw Error('POS guest entry must be the approved isolated staging customer origin');
+ return entry.href;
+}
+const guestEntry=secureGuestEntry(process.env.POS_GUEST_ENTRY_URL||guestFallback);
+await writeFile(join(dest,'handoff-config.js'),
+ `window.PersenPOSHandoffConfig=Object.freeze(${JSON.stringify({guestEntryUrl:guestEntry})});\n`);
+function bundleModule(source,resolver=''){
+ return `(function(){const module={exports:{}};const exports=module.exports;${resolver}\n${source}\nreturn module.exports;})()`;
+}
+const [adapterSource,coordinatorSource,bridgeSource,frameSource]=await Promise.all([
+ 'handoff-rpc-adapter.cjs','checkout-handoff-coordinator.cjs',
+ 'staging-handoff-bridge.cjs','isolated-guest-frame.cjs'
+].map(file=>readFile(join('pos',file),'utf8')));
+const adapterModule=bundleModule(adapterSource);
+const coordinatorModule=bundleModule(coordinatorSource);
+const frameModule=bundleModule(frameSource);
+const bridgeModule=bundleModule(bridgeSource,
+ `const require=name=>{if(name==='./handoff-rpc-adapter.cjs')return adapter;if(name==='./checkout-handoff-coordinator.cjs')return coordinator;throw Error('Unexpected secure handoff module: '+name);};`);
+const secureHandoffBundle=[
+ "'use strict';",
+ '(()=>{',
+ `const adapter=${adapterModule};`,
+ `const coordinator=${coordinatorModule};`,
+ `const frame=${frameModule};`,
+ `const bridge=${bridgeModule};`,
+ 'window.PersenPOSSecureHandoff=Object.freeze({',
+ ' createStagingHandoffBridge:bridge.createStagingHandoffBridge,',
+ ' createIsolatedGuestFrame:frame.createIsolatedGuestFrame',
+ '});',
+ '})();',
+ ''
+].join('\n');
+await writeFile(join(dest,'secure-handoff-browser.js'),secureHandoffBundle);
 for(const f of ['register.html','display.html','index.html','print-station.html','admin.html','inventory.html']){
  let s=await readFile(join('pos',f),'utf8');
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
