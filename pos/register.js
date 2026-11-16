@@ -256,7 +256,8 @@ async function finishOrder(){
  try{
   const id=checkout.id;
   const secure=window.PersenPOSSwivel;
-  if(secure&&typeof secure.ownsCheckout==='function'&&secure.ownsCheckout(id)){
+  if(secure&&typeof secure.active==='function'&&secure.active()){
+   if(!secure.ownsCheckout?.(id))throw Error('Checkout remains locked to original employee');
    await secure.finishSale({cashCents:cashCents()});
    return;
   }
@@ -313,8 +314,8 @@ async function restoreSecureHandoffCheckout({checkoutId}){
 async function finishSecureHandoffSale({checkoutId}){
  if(!checkout||checkout.id!==checkoutId||checkout.status!=='completed')
   throw Error('Secure checkout is not ready to finish');
- const result=await check(db.rpc('pos_finish_order',{p_checkout:checkoutId}));
- if(result!==true)throw Error('Could not confirm customer handoff');
+ // The bridge has already used the authorized staff Finish Order RPC.
+ // Server verification still happens before guest revocation and home.
  const saved=await saleForCheckout(checkoutId);
  if(!saved)throw Error('Order was finished but receipt details are unavailable. Refresh to recover.');
  secureHandoffSavedSale=saved;
@@ -329,7 +330,8 @@ async function showSecureHandoffHome(){
 const secureHandoffRpcNames=new Set([
  'pos_staff_start_shift','pos_staff_begin_checkout','pos_handoff_claim',
  'pos_handoff_issue_guest','pos_handoff_status','pos_handoff_resume',
- 'pos_handoff_verify_paid','pos_handoff_revoke'
+ 'pos_handoff_verify_paid','pos_handoff_revoke',
+  'pos_staff_complete_cash','pos_staff_finish_order'
 ]);
 const secureHandoffClient=Object.freeze({
  rpc:(name,args)=>{
@@ -407,9 +409,23 @@ async function cash(){
   if(!['ready','exact','exact_unconfigured'].includes(plan.status))throw Error('Cannot confirm: '+plan.status+'. Check your cash drawer.');
   const id=checkout.id;
   rememberCash(id);
-  await check(db.rpc('pos_complete_cash',{p_checkout:id,p_tender_cents:tendered,p_received_breakdown:manualTender?tenderBills:{},p_change_breakdown:plan.breakdown||{},p_expected_drawer_version:drawerVersion}));
+  const secure=window.PersenPOSSwivel;
+   let expectedSaleId=null;
+   if(secure&&typeof secure.active==='function'&&secure.active()){
+    if(!secure.ownsCheckout?.(id))throw Error('Checkout remains locked to original employee');
+    const proof=await secure.recordCash({tenderCents:tendered,
+     receivedBreakdown:manualTender?tenderBills:{},
+     changeBreakdown:plan.breakdown||{},expectedDrawerVersion:drawerVersion});
+    if(!proof||proof.checkoutId!==id||typeof proof.saleId!=='string')
+     throw Error('Staff cash authorization unavailable');
+    expectedSaleId=proof.saleId;
+   }else{
+    await check(db.rpc('pos_complete_cash',{p_checkout:id,p_tender_cents:tendered,
+     p_received_breakdown:manualTender?tenderBills:{},p_change_breakdown:plan.breakdown||{},
+     p_expected_drawer_version:drawerVersion}));
+   }
   const saved=await saleForCheckout(id);
-  if(!saved)throw Error('Checking whether this sale was recorded. Keep this checkout open.');
+  if(!saved||(expectedSaleId&&saved.id!==expectedSaleId))throw Error('Checking whether this sale was recorded. Keep this checkout open.');
   showPaidAwaitingHandoff(saved,{...checkout,status:'completed',cash_handoff_complete:false});
  }catch(e){
   notice('Cash payment could not be confirmed: '+e.message+'. Do not start another order until status is checked.');
