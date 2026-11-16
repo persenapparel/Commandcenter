@@ -17,6 +17,7 @@ function createIsolatedGuestFrame({window,container,cashierOrigin,guestOrigin}) 
     window.location?.origin!==cashier.origin)
   throw Error('Isolated, clean HTTPS cashier and guest origins required');
  let current=null;
+ let cancelPending=null;
  async function open({checkoutId,capability}) {
   if(current)throw Error('Guest frame is already open');
   if(typeof checkoutId!=='string' || !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(checkoutId) ||
@@ -32,17 +33,26 @@ function createIsolatedGuestFrame({window,container,cashierOrigin,guestOrigin}) 
   // Never place the bearer in src, name, URL fragment, DOM attributes,
   // sessionStorage, localStorage, or window globals.
   const ready=new Promise((resolve,reject)=>{
-   const onLoad=()=>{
+   let settled=false;
+   const settle=(error)=>{
+    if(settled)return;
+    settled=true;
     frame.removeEventListener('load',onLoad);
-    if(current!==frame){reject(Error('Guest frame replaced'));return}
+    if(cancelPending===cancel)cancelPending=null;
+    if(error)reject(error);else resolve();
+   };
+   const cancel=()=>settle(Error('Guest frame disposed before bootstrap'));
+   cancelPending=cancel;
+   const onLoad=()=>{
+    if(current!==frame){settle(Error('Guest frame replaced'));return}
     try{
      // Exact target origin avoids sending credentials to navigated frames.
      frame.contentWindow.postMessage(
       {type:'persen:checkout-bootstrap:v1',checkoutId,capability},
       guest.origin
      );
-     resolve();
-    }catch(_){reject(Error('Guest bootstrap unavailable'))}
+     settle();
+    }catch(_){settle(Error('Guest bootstrap unavailable'))}
    };
    frame.addEventListener('load',onLoad,{once:true});
    frame.src=guest.origin+'/';
@@ -53,6 +63,7 @@ function createIsolatedGuestFrame({window,container,cashierOrigin,guestOrigin}) 
  }
  function dispose(){
   const old=current;current=null;
+  if(cancelPending)cancelPending();
   if(old){old.removeAttribute('src');old.remove();}
  }
  return Object.freeze({open,dispose,active:()=>!!current});
