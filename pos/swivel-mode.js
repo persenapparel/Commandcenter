@@ -49,10 +49,27 @@
   resetOverlay();
  }
  function renderCustomerLock(){
+  lock.hidden=false;
+  returnForm.querySelector('h2').textContent='Cashier access';
+  returnForm.querySelector('p').textContent='Turn the iPad back toward the cashier and scan the original staff badge to continue to payment.';
+  $('swivel-return-submit').textContent='Resume cashier';
   overlay.hidden=false;
   document.body.classList.add('swivel-customer-active');
   returnForm.hidden=true;
   returnMessage.textContent='';
+ }
+ function renderNextSaleLock(){
+  clearGuest();
+  overlay.hidden=false;
+  lock.hidden=true;
+  document.body.classList.add('swivel-customer-active');
+  returnForm.hidden=false;
+  returnForm.querySelector('h2').textContent='Persen Apparel · Register locked';
+  returnForm.querySelector('p').textContent='Thank you! Sale completed. Scan your staff badge to unlock the next order. No PIN required again this shift.';
+  $('swivel-return-submit').textContent='Unlock register';
+  returnMessage.textContent='Your checkout is finished. Employee badge required for the next sale.';
+  returnBadge.value='';
+  returnBadge.focus();
  }
  function ensureBridge(){
   if(bridge)return bridge;
@@ -81,7 +98,7 @@
    clearGuest:async()=>{clearGuest();},
    showHome:async()=>{
     await api.showHandoffHome();
-    bridge=null;
+    renderNextSaleLock();
    }
   });
   return bridge;
@@ -163,9 +180,16 @@
   if(!badge){returnMessage.textContent='Scan the original staff badge to continue.';return}
   transition=true;returnMessage.textContent='Verifying badge…';
   try{
-   await bridge.resumeWithBadge(badge);
-   returnBadge.value='';
-   message('Cashier resumed. Confirm cash only after you receive it.');
+   if(state()?.phase==='home'&&bridge?.state?.().locked){
+    const verified=await bridge.unlockNextSale(badge);
+    returnBadge.value='';
+    resetOverlay();
+    message('Hello, '+verified.firstName+'! Register unlocked for the next sale.');
+   }else{
+    await bridge.resumeWithBadge(badge);
+    returnBadge.value='';
+    message('Cashier resumed. Confirm cash only after you receive it.');
+   }
   }catch(_){
    returnBadge.value='';
    returnMessage.textContent='Badge was not authorized for this checkout.';
