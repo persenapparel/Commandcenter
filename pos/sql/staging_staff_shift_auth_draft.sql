@@ -67,9 +67,9 @@ begin
   where auth_user_id=v_uid;
   v_attempt.attempts:=0;
  end if;
- -- Reject invalid sizes before digest/crypt to bound credential processing cost.
- if p_badge is null or length(p_badge) not between 16 and 256
-    or p_pin is null or length(p_pin) not between 4 and 128 then
+ -- Bound UTF-8 byte length (not character count) before digest/crypt to avoid\n -- oversized multibyte input reaching expensive credential operations.
+ if p_badge is null or octet_length(p_badge) not between 16 and 256
+    or p_pin is null or octet_length(p_pin) not between 4 and 128 then
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
       blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
@@ -82,8 +82,8 @@ begin
  -- Lock the enrolled credential before accepting the PIN and rotating shifts.
  -- Concurrent disable/version rotation or another login must not race issuance.
  for update;
- if not found or p_badge is null or length(p_badge) not between 16 and 256
-    or p_pin is null or length(p_pin) not between 4 and 128 or
+ if not found or p_badge is null or octet_length(p_badge) not between 16 and 256
+    or p_pin is null or octet_length(p_pin) not between 4 and 128 or
     v_staff.pin_hash is null or
     extensions.crypt(p_pin,v_staff.pin_hash) is distinct from v_staff.pin_hash then
   update public.pos_staff_auth_attempts
@@ -138,9 +138,9 @@ begin
   set attempts=0,window_started=now(),blocked_until=null
   where auth_user_id=v_uid;
  end if;
- -- Reject invalid sizes before hashing untrusted badge or shift secrets.
- if p_shift_secret is null or length(p_shift_secret) <> 64
-    or p_badge is null or length(p_badge) not between 16 and 256 then
+ -- Reject oversized UTF-8 byte sequences before hashing untrusted inputs.
+ if p_shift_secret is null or octet_length(p_shift_secret) <> 64
+    or p_badge is null or octet_length(p_badge) not between 16 and 256 then
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
       blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
@@ -158,8 +158,8 @@ begin
  -- Serialize successful resume against concurrent shift revocation and
  -- credential disable/rotation. No guest checkout authorization is implied.
  for update of s,c;
- if not found or p_shift_secret is null or length(p_shift_secret) <> 64
-    or p_badge is null or length(p_badge) not between 16 and 256 then
+ if not found or p_shift_secret is null or octet_length(p_shift_secret) <> 64
+    or p_badge is null or octet_length(p_badge) not between 16 and 256 then
   -- Do not RAISE here: an exception would roll back the throttle update.
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
