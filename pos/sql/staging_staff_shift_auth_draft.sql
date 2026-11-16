@@ -55,6 +55,12 @@ declare
  v_expiry timestamptz := now() + interval '8 hours';
 begin
  if v_uid is null then raise exception 'Authentication required' using errcode='28000'; end if;
+ -- Reject oversized scanner/PIN input before digest or password verification.
+ -- Keep a generic error and never include scanned material in diagnostics.
+ if p_badge is null or length(p_badge) not between 16 and 256
+    or p_pin is null or length(p_pin) not between 4 and 128 then
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
+ end if;
  insert into public.pos_staff_auth_attempts(auth_user_id)
  values(v_uid) on conflict(auth_user_id) do nothing;
  select * into v_attempt from public.pos_staff_auth_attempts
@@ -106,6 +112,10 @@ declare
  v_attempt public.pos_staff_auth_attempts%rowtype;
 begin
  if v_uid is null then
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
+ end if;
+ if p_shift_secret is null or length(p_shift_secret) <> 64
+    or p_badge is null or length(p_badge) not between 16 and 256 then
   return jsonb_build_object('ok',false,'error','Invalid employee credentials');
  end if;
  insert into public.pos_staff_auth_attempts(auth_user_id)
