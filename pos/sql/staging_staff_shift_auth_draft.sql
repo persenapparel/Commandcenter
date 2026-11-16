@@ -67,7 +67,8 @@ begin
   where auth_user_id=v_uid;
   v_attempt.attempts:=0;
  end if;
- -- Bound UTF-8 byte length (not character count) before digest/crypt to avoid\n -- oversized multibyte input reaching expensive credential operations.
+ -- Bound UTF-8 byte length (not character count) before digest/crypt to avoid
+ -- oversized multibyte input reaching expensive credential operations.
  if p_badge is null or octet_length(p_badge) not between 16 and 256
     or p_pin is null or octet_length(p_pin) not between 4 and 128 then
   update public.pos_staff_auth_attempts
@@ -138,10 +139,11 @@ begin
   set attempts=0,window_started=now(),blocked_until=null
   where auth_user_id=v_uid;
  end if;
- -- Reject oversized UTF-8 byte sequences before hashing untrusted inputs.
+ -- Reject missing and malformed inputs before hashing or looking up a shift.
  if p_shift_id is null or p_shift_secret is null
     or octet_length(p_shift_secret) <> 64
-    or p_shift_secret !~ '^[0-9a-f]{64}
+    or p_shift_secret !~ '^[0-9a-f]{64}$'
+    or p_badge is null or octet_length(p_badge) not between 16 and 256 then
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
       blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
@@ -160,51 +162,6 @@ begin
  -- credential disable/rotation. No guest checkout authorization is implied.
  for update of s,c;
  if not found then
-  -- Do not RAISE here: an exception would roll back the throttle update.
-  update public.pos_staff_auth_attempts
-  set attempts=attempts+1,
-      blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
-  where auth_user_id=v_uid;
-  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
- end if;
- -- A successful badge-only resume must not erase failed PIN attempts.
- -- Otherwise an existing shift could reset the PIN brute-force counter.
- return jsonb_build_object('ok',true,'staff_id',v_staff.id,
-  'first_name',v_staff.first_name,'role',v_staff.staff_role);
-end;
-$$;
-revoke all on function public.pos_staff_resume_shift(uuid,text,text) from public,anon;
-grant execute on function public.pos_staff_resume_shift(uuid,text,text) to authenticated;
-
--- No checkout authorization is granted by these RPCs alone. Server-side
--- checkout/RLS integration MUST validate shift and checkout ownership.
--- Rollback (staging only, after checking dependencies):
--- drop function if exists public.pos_staff_resume_shift(uuid,text,text);
--- drop function if exists public.pos_staff_start_shift(text,text);
--- drop table if exists public.pos_staff_auth_attempts;
--- drop table if exists public.pos_staff_shifts;
--- drop table if exists public.pos_staff_credentials;
-
-    or p_badge is null or octet_length(p_badge) not between 16 and 256 then
-  update public.pos_staff_auth_attempts
-  set attempts=attempts+1,
-      blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
-  where auth_user_id=v_uid;
-  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
- end if;
- select c.* into v_staff
- from public.pos_staff_shifts s
- join public.pos_staff_credentials c on c.id=s.staff_id
- where s.id=p_shift_id and s.auth_user_id=v_uid
- and s.revoked_at is null and s.expires_at>now()
- and c.enabled=true and c.credential_version=s.credential_version
- and s.secret_digest=extensions.digest(coalesce(p_shift_secret,''),'sha256')
- and c.badge_digest=extensions.digest(coalesce(p_badge,''),'sha256')
- -- Serialize successful resume against concurrent shift revocation and
- -- credential disable/rotation. No guest checkout authorization is implied.
- for update of s,c;
- if not found or p_shift_secret is null or octet_length(p_shift_secret) <> 64
-    or p_badge is null or octet_length(p_badge) not between 16 and 256 then
   -- Do not RAISE here: an exception would roll back the throttle update.
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
