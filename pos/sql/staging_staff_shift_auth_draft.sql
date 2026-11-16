@@ -151,7 +151,10 @@ begin
  and s.revoked_at is null and s.expires_at>now()
  and c.enabled=true and c.credential_version=s.credential_version
  and s.secret_digest=extensions.digest(coalesce(p_shift_secret,''),'sha256')
- and c.badge_digest=extensions.digest(coalesce(p_badge,''),'sha256');
+ and c.badge_digest=extensions.digest(coalesce(p_badge,''),'sha256')
+ -- Serialize successful resume against concurrent shift revocation and
+ -- credential disable/rotation. No guest checkout authorization is implied.
+ for update of s,c;
  if not found or p_shift_secret is null or length(p_shift_secret) <> 64
     or p_badge is null or length(p_badge) not between 16 and 256 then
   -- Do not RAISE here: an exception would roll back the throttle update.
