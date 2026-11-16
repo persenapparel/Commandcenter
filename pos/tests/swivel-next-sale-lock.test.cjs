@@ -12,6 +12,11 @@ test('guest cleanup keeps opaque cashier cover until branded badge lock',()=>{
  assert.match(ui,/lock\.hidden=true/);
  assert.match(ui,/Register locked/);
  assert.match(ui,/bridge\.unlockNextSale\(badge\)/);
+ assert.match(ui,/unlockRegisterForNextSale:\(\)=>api\.reopenRegisterAfterVerifiedBadge\(\)/);
+ assert.match(bridge,/const reopened=await unlockRegisterForNextSale\(\)/);
+ assert.match(bridge,/if\(reopened!==true\)throw Error\('Verified register reopening failed'\)/);
+ assert.match(register,/function reopenRegisterAfterVerifiedBadge\(\)/);
+ assert.match(register,/setRegisterOpen\(true\);/);
  assert.doesNotMatch(ui,/bridge=null;/);
  assert.match(ui,/function ensureFreshGuestFrame\(\)/);
  assert.match(ui,/ensureFreshGuestFrame\(\);\s*const active=ensureBridge\(\)/);
