@@ -320,6 +320,7 @@ async function status(){
 // Owner-only staging checkout creation. A staff-aware version still requires
 // authenticated enrollment, register ownership and server-side cashier audit.
 async function beginAuthorizedCheckout(){
+ const createCheckout=arguments[0]?.createCheckout;
  if(busy||checkout||pendingCash||!cart.length||!register||!user)
   throw Error('Register is not ready for a new checkout');
  busy=true;checkoutVersion++;
@@ -327,10 +328,16 @@ async function beginAuthorizedCheckout(){
   const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,
    unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));
   const bps=C.discountBps(by('discount').value),tax=0;
-  const id=await check(db.rpc('pos_begin_checkout',{
-   p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,
-   p_event:by('event-select').value||null
-  }));
+  const eventId=by('event-select').value||null;
+  const id=typeof createCheckout==='function'
+   ? (await createCheckout({
+     registerId:register.id,items:payload,discountBps:bps,
+     taxMilli:tax,eventId
+   })).checkoutId
+   : await check(db.rpc('pos_begin_checkout',{
+     p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,
+     p_event:eventId
+    }));
   if(typeof id!=='string'||!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id))
    throw Error('Server did not return a valid checkout');
   checkout={id,status:'awaiting_customer'};
