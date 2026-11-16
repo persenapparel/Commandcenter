@@ -25,6 +25,7 @@ DECLARE
  v_reg uuid:='77777777-7777-4777-8777-777777777777';
  v_item uuid:='66666666-6666-4666-8666-666666666666';
  v_shift uuid; v_secret text; v_login jsonb; v_checkout uuid;
+ v_grant jsonb; v_token text;
  v_items jsonb;
 BEGIN
  v_items:=jsonb_build_array(jsonb_build_object(
@@ -85,9 +86,27 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.stock_items
   WHERE id=v_item AND quantity=9)
  THEN RAISE EXCEPTION 'Checkout creation prematurely changed inventory'; END IF;
+ v_grant:=public.pos_handoff_claim(v_checkout,v_shift,v_secret);
+ IF v_grant->>'phase'<>'claimed' THEN
+   RAISE EXCEPTION 'Employee checkout claim rejected'; END IF;
+ v_grant:=public.pos_handoff_issue_guest(v_checkout,v_shift,v_secret);
+ v_token:=v_grant->>'capability';
+ IF length(v_token)<>64 THEN RAISE EXCEPTION 'Employee guest token not issued'; END IF;
+ v_grant:=public.pos_handoff_guest_view(v_checkout,v_token);
+ IF v_grant->>'checkoutId' IS DISTINCT FROM v_checkout::text
+ THEN RAISE EXCEPTION 'Employee guest capability not checkout scoped'; END IF;
  PERFORM set_config('request.jwt.claim.sub',v_owner::text,true);
  IF public.pos_staff_set_register_access(v_reg,v_staff,false) IS DISTINCT FROM true
  THEN RAISE EXCEPTION 'Owner failed to revoke cashier access'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.pos_checkout_handoffs
+  WHERE checkout_id=v_checkout AND phase='closed' AND capability_digest IS NULL)
+ THEN RAISE EXCEPTION 'Owner grant revocation did not destroy active guest token'; END IF;
+ BEGIN
+  PERFORM public.pos_handoff_guest_view(v_checkout,v_token);
+  RAISE EXCEPTION 'Revoked guest token remained valid';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Revoked guest token remained valid' THEN RAISE; END IF;
+ END;
  PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
  BEGIN
   PERFORM public.pos_staff_begin_checkout(v_shift,v_secret,v_reg,v_items,0,0,null);
