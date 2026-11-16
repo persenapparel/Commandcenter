@@ -15,6 +15,8 @@ test('checkout claim -> guest issue -> original badge resume -> revoke',async()=
   if(name==='pos_handoff_claim') return {data:{ok:true,checkoutId:id,phase:'claimed'}};
   if(name==='pos_handoff_issue_guest')return {data:{checkoutId:id,capability:'b'.repeat(64)}};
   if(name==='pos_handoff_resume') return {data:{verified:true,checkoutId:id}};
+  if(name==='pos_handoff_status') return {data:{ok:true,checkoutId:id,status:'contact_received'}};
+  if(name==='pos_handoff_verify_paid') return {data:{checkoutId:id,completed:true}};
   if(name==='pos_handoff_revoke') return {data:true};
   throw Error('Unexpected RPC');
  }};
@@ -28,10 +30,13 @@ test('checkout claim -> guest issue -> original badge resume -> revoke',async()=
  assert.equal(grant.capability,'b'.repeat(64));
  await assert.rejects(a.resume({checkoutId:wrong,badge:'c'.repeat(32)}));
  assert.deepEqual(await a.resume({checkoutId:id,badge:'c'.repeat(32)}),{verified:true,checkoutId:id});
+ assert.equal(await a.getStatus(id),'contact_received');
+ assert.deepEqual(await a.verifyPaid(id),{completed:true,checkoutId:id});
  await grant.revoke();
  assert.equal(a.current(),null);
  assert.deepEqual(names,['pos_handoff_claim','pos_handoff_issue_guest',
-  'pos_handoff_resume','pos_handoff_revoke']);
+  'pos_handoff_resume','pos_handoff_status','pos_handoff_verify_paid',
+  'pos_handoff_revoke']);
 });
 test('failed revocation leaves checkout claimed and rejects new checkout',async()=>{
  const client={rpc:async(name)=>{
@@ -51,4 +56,17 @@ test('invalid shift and forged result cannot unlock cashier',async()=>{
   :{verified:true,checkoutId:wrong}})},shiftId:shift,shiftSecret:secret});
  await a.claim(id);
  await assert.rejects(a.resume({checkoutId:id,badge:'e'.repeat(32)}),/not authorized/);
+});
+
+test('browser cannot invent completed status or paid sale',async()=>{
+ const client={rpc:async(name)=>{
+  if(name==='pos_handoff_claim')return {data:{ok:true,checkoutId:id,phase:'claimed'}};
+  if(name==='pos_handoff_status')return {data:{ok:true,checkoutId:wrong,status:'contact_received'}};
+  if(name==='pos_handoff_verify_paid')return {data:{checkoutId:id,completed:false}};
+  return {error:{message:'blocked'}};
+ }};
+ const a=createHandoffRpcAdapter({client,shiftId:shift,shiftSecret:secret});
+ await a.claim(id);
+ await assert.rejects(a.getStatus(id),/not verified/);
+ await assert.rejects(a.verifyPaid(id),/not verified/);
 });
