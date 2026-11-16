@@ -19,6 +19,10 @@ test('staging owner badge enrollment is owner-only and never exposes PIN data',(
  assert.match(sql,/capability_digest=null,capability_expires_at=null/);
  assert.match(html,/id="owner-badge-enrollment"/);
  assert.match(html,/name="badge"[^>]*minlength="16"/);
+ assert.match(html,/id="generate-owner-badge"/);
+ assert.match(js,/by\('generate-owner-badge'\)\.addEventListener\('click'/);
+ assert.match(js,/crypto\.getRandomValues\(bytes\)/);
+ assert.match(js,/const bytes=new Uint8Array\(16\)/);
  assert.match(html,/name="pin"[^>]*autocomplete="new-password"/);
  assert.match(js,/db\.rpc\('pos_owner_enroll_staff_self'/);
  assert.match(js,/form\.reset\(\)/);
