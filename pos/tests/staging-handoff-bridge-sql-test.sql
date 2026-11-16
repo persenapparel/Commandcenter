@@ -95,12 +95,9 @@ begin
   raise exception 'Incorrect badge resumed checkout'; end if;
  select attempts into v_after from public.pos_staff_auth_attempts where auth_user_id=v_uid;
  if v_after<=v_before then raise exception 'Bad badge throttle did not persist'; end if;
- begin
-  perform public.pos_handoff_resume(v_checkout,v_shift,'wrong',repeat('B',32));
-  raise exception 'Wrong shift secret resumed checkout';
- exception when others then
-  if sqlerrm='Wrong shift secret resumed checkout' then raise; end if;
- end;
+ v_result:=public.pos_handoff_resume(v_checkout,v_shift,'wrong',repeat('B',32));
+ if v_result->>'verified' is distinct from 'false' then
+  raise exception 'Wrong shift secret resumed checkout'; end if;
  v_result:=public.pos_handoff_resume(v_checkout,v_shift,v_secret,repeat('B',32));
  if v_result->>'verified' is distinct from 'true' then
   raise exception 'Original shift badge failed to resume'; end if;
