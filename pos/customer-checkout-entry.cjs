@@ -23,11 +23,12 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
       customer.origin === cashier.origin || customer.username || customer.password ||
       customer.search || customer.hash) throw Error('Unsafe customer browsing context');
   if (window.opener) throw Error('Customer opener must be severed');
+  if (window.parent === window) throw Error('Customer must run in isolated embedded context');
   let started = false;
   let disposed = false;
   const onMessage = event => {
     if (disposed || started || event.origin !== cashier.origin ||
-        event.source === window || !event.data ||
+        event.source !== window.parent || !event.data ||
         event.data.type !== 'persen:checkout-bootstrap:v1') return;
     // The parent can only bootstrap after server-side cashier lock; this
     // check is enforced by the server and cannot be trusted from a message.
