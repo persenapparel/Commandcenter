@@ -42,11 +42,17 @@
   overlay.hidden=true;
   document.body.classList.remove('swivel-customer-active');
  }
- function clearGuest(){
+ function clearGuest({keepLocked=false}={}){
   try{guestFrame?.dispose?.()}catch(_){}
   guestFrame=null;
   host.replaceChildren();
-  resetOverlay();
+  if(!keepLocked)resetOverlay();
+  else{
+   overlay.hidden=false;
+   lock.hidden=true;
+   returnForm.hidden=true;
+   document.body.classList.add('swivel-customer-active');
+  }
  }
  function renderCustomerLock(){
   lock.hidden=false;
@@ -59,7 +65,7 @@
   returnMessage.textContent='';
  }
  function renderNextSaleLock(){
-  clearGuest();
+  clearGuest({keepLocked:true});
   overlay.hidden=false;
   lock.hidden=true;
   document.body.classList.add('swivel-customer-active');
@@ -95,7 +101,7 @@
     resetOverlay();
    },
    finishAuthoritativeSale:payload=>api.finishHandoffSale(payload),
-   clearGuest:async()=>{clearGuest();},
+   clearGuest:async()=>{clearGuest({keepLocked:true});},
    showHome:async()=>{
     await api.showHandoffHome();
     renderNextSaleLock();
