@@ -34,15 +34,16 @@ function createHandoffCoordinator({
       const started=await beginCheckout();
       if (!started || !started.checkoutId) throw Error('Checkout not started');
       checkoutId=started.checkoutId;
+      // Claim/lock before minting any guest token. This is intentionally
+      // ordered: an unsuccessful cashier lock must never create a credential
+      // the customer can reuse. The server must verify checkout ownership.
+      const locked=await lockCashier(checkoutId);
+      if (locked!==true) throw Error('Cashier credentials not cleared');
       const grant=await issueCheckoutCapability(checkoutId);
       if (!grant || grant.checkoutId!==checkoutId ||
           typeof grant.capability!=='string' || !grant.capability ||
           typeof grant.revoke!=='function') throw Error('Invalid scoped guest grant');
       guestRevoker=grant.revoke;
-      // Fail closed: do not expose a guest context until the cashier session
-      // is removed and independently verified absent by the auth adapter.
-      const locked=await lockCashier(checkoutId);
-      if (locked!==true) throw Error('Cashier credentials not cleared');
       phase='guest';
       await openIsolatedGuest({checkoutId,capability:grant.capability});
       return {phase};

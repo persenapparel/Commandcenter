@@ -99,6 +99,19 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f pos/sql-integration-test.sql
           psql -v ON_ERROR_STOP=1 -f pos/epson-t20iv-staging.sql
           psql -v ON_ERROR_STOP=1 -f pos/tests/epson-staging-schema-test.sql
+          # Draft checkout security bridge runs only against disposable PostgreSQL.
+          psql -v ON_ERROR_STOP=1 -c 'create role service_role nologin'
+          psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_shift_auth_draft.sql
+          psql -v ON_ERROR_STOP=1 -f pos/sql/staging_checkout_handoff_bridge_draft.sql
+          psql -v ON_ERROR_STOP=1 -f pos/tests/staging-handoff-bridge-sql-test.sql
+      - name: Build separate credential-free customer-origin project (CI placeholders only)
+        run: |
+          node pos/build-guest-pages.mjs
+          test -f pos-guest-dist/index.html
+          test -f pos-guest-dist/guest.js
+          test -f pos-guest-dist/_headers
+          test ! -e pos-guest-dist/config.js
+          ! grep -qi "service_role\\|sb_secret_" pos-guest-dist/guest.js
       - name: Build separate static POS project
         run: |
           node pos/build-pages.mjs

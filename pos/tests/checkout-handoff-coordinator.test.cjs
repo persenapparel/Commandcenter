@@ -7,7 +7,7 @@ test('one checkout stays locked until verified customer response and shift badge
  let status='awaiting_customer';
  const c=createHandoffCoordinator({
   beginCheckout:async()=>({checkoutId:'order1'}),
-  issueCheckoutCapability:async id=>({checkoutId:id,capability:'secret',revoke:async()=>calls.push('revoke')}),
+  issueCheckoutCapability:async id=>{calls.push('issue');return {checkoutId:id,capability:'secret',revoke:async()=>calls.push('revoke')}},
   lockCashier:async()=>{calls.push('lock');return true},
   openIsolatedGuest:async()=>calls.push('guest'),
   verifyShiftBadge:async({badge,checkoutId})=>({verified:badge==='valid',checkoutId}),
@@ -19,7 +19,7 @@ test('one checkout stays locked until verified customer response and shift badge
  });
  await assert.rejects(c.badgeResume('valid'));
  await c.handToCustomer();
- assert.deepEqual(calls,['lock','guest']);
+ assert.deepEqual(calls,['lock','issue','guest']);
  await assert.rejects(c.customerCompleted());
  status='contact_received';
  await c.customerCompleted();
@@ -29,15 +29,15 @@ test('one checkout stays locked until verified customer response and shift badge
  await c.badgeResume('valid');
  assert.equal(c.state().phase,'payment');
  await c.finishSale({cashCents:2000});
- assert.deepEqual(calls,['lock','guest','resume','revoke','clear','home']);
+ assert.deepEqual(calls,['lock','issue','guest','resume','revoke','clear','home']);
  assert.equal(c.state().phase,'home');
  await assert.rejects(c.finishSale({}));
 });
 test('failed credential lock never exposes customer',async()=>{
- let opened=false,revoked=false;
+ let opened=false,revoked=false,issued=false;
  const c=createHandoffCoordinator({
   beginCheckout:async()=>({checkoutId:'order2'}),
-  issueCheckoutCapability:async id=>({checkoutId:id,capability:'secret',revoke:async()=>{revoked=true}}),
+  issueCheckoutCapability:async id=>{issued=true;return {checkoutId:id,capability:'secret',revoke:async()=>{revoked=true}}},
   lockCashier:async()=>false,
   openIsolatedGuest:async()=>{opened=true},
   verifyShiftBadge:async()=>null,
@@ -49,7 +49,8 @@ test('failed credential lock never exposes customer',async()=>{
  });
  await assert.rejects(c.handToCustomer());
  assert.equal(opened,false);
- assert.equal(revoked,true);
+ assert.equal(issued,false,'never mint guest token before cashier lock');
+ assert.equal(revoked,false,'no capability existed to revoke');
  assert.equal(c.state().phase,'locked');
 });
 
@@ -77,4 +78,20 @@ test('completed sale cannot be submitted again if guest revocation fails',async(
  assert.equal(finishes,1);
  assert.equal(cleared,1,'local guest context must clear even when revocation fails');
  assert.equal(homes,0,'never show unlocked home after failed revocation');
+});
+
+test('guest capability issuance failure after lock never opens customer',async()=>{
+ const calls=[];
+ const c=createHandoffCoordinator({
+  beginCheckout:async()=>({checkoutId:'failure'}),
+  lockCashier:async()=>{calls.push('lock');return true},
+  issueCheckoutCapability:async()=>{calls.push('issue');throw Error('Server grant unavailable')},
+  openIsolatedGuest:async()=>calls.push('guest'),
+  verifyShiftBadge:async()=>null,getCheckoutStatus:async()=>null,
+  resumeCashier:async()=>{},finishVerifiedSale:async()=>null,
+  clearGuestContext:async()=>{},showBrandedHome:async()=>{}
+ });
+ await assert.rejects(c.handToCustomer(),/Server grant unavailable/);
+ assert.deepEqual(calls,['lock','issue']);
+ assert.equal(c.state().phase,'locked');
 });
