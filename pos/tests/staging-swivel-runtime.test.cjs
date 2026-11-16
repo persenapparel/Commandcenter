@@ -7,6 +7,7 @@ function env(){
   hidden:false,inert:false,onclick:denied,value:'',
   addEventListener(){},removeAttribute(){},
   setAttribute(){},append(...nodes){this.children=(this.children||[]).concat(nodes)},
+  appendChild(node){this.children=(this.children||[]).concat(node)},
   focus(){},blur(){},querySelector(){return null}
  });
  for(const id of ['start','swivel-overlay','workspace','swivel-customer-frame',
