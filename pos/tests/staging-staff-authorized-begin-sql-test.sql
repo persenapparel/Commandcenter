@@ -95,6 +95,48 @@ BEGIN
  v_grant:=public.pos_handoff_guest_view(v_checkout,v_token);
  IF v_grant->>'checkoutId' IS DISTINCT FROM v_checkout::text
  THEN RAISE EXCEPTION 'Employee guest capability not checkout scoped'; END IF;
+ -- The employee identity differs from the register owner. Authoritative
+ -- status must work for the original shift only; no browser status forgery.
+ v_grant:=public.pos_handoff_status(v_checkout,v_shift,v_secret);
+ IF v_grant->>'status' IS DISTINCT FROM 'awaiting_customer'
+ THEN RAISE EXCEPTION 'Original staff checkout status not authorized'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',v_outsider::text,true);
+ BEGIN
+  PERFORM public.pos_handoff_status(v_checkout,v_shift,v_secret);
+  RAISE EXCEPTION 'Other employee could read original checkout';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Other employee could read original checkout' THEN RAISE; END IF;
+ END;
+ PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
+ -- Submit a scoped fake-data guest answer and atomically burn guest token.
+ v_grant:=public.pos_handoff_guest_submit(v_checkout,v_token,
+   '{"signature":"CI Guest","signatureException":false,
+     "marketingConsent":false,"email":"","phone":""}'::jsonb);
+ IF v_grant->>'accepted' IS DISTINCT FROM 'true'
+ THEN RAISE EXCEPTION 'Scoped guest submit failed'; END IF;
+ BEGIN
+  PERFORM public.pos_handoff_guest_view(v_checkout,v_token);
+  RAISE EXCEPTION 'Submitted guest token remained reusable';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Submitted guest token remained reusable' THEN RAISE; END IF;
+ END;
+ v_grant:=public.pos_handoff_status(v_checkout,v_shift,v_secret);
+ IF v_grant->>'status' IS DISTINCT FROM 'contact_received'
+ THEN RAISE EXCEPTION 'Original staff could not read customer completion'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',v_outsider::text,true);
+ BEGIN
+  PERFORM public.pos_handoff_resume(v_checkout,v_shift,v_secret,repeat('S',32));
+  RAISE EXCEPTION 'Another employee resumed original checkout';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Another employee resumed original checkout' THEN RAISE; END IF;
+ END;
+ PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
+ v_grant:=public.pos_handoff_resume(v_checkout,v_shift,v_secret,repeat('S',32));
+ IF v_grant->>'verified' IS DISTINCT FROM 'true'
+ THEN RAISE EXCEPTION 'Original employee badge resume rejected'; END IF;
+ v_grant:=public.pos_handoff_verify_paid(v_checkout,v_shift,v_secret);
+ IF v_grant->>'completed' IS DISTINCT FROM 'false'
+ THEN RAISE EXCEPTION 'Payment verification accepted an unpaid order'; END IF;
  PERFORM set_config('request.jwt.claim.sub',v_owner::text,true);
  IF public.pos_staff_set_register_access(v_reg,v_staff,false) IS DISTINCT FROM true
  THEN RAISE EXCEPTION 'Owner failed to revoke cashier access'; END IF;
@@ -114,6 +156,6 @@ BEGIN
  EXCEPTION WHEN others THEN
   IF SQLERRM='Revoked cashier created another checkout' THEN RAISE; END IF;
  END;
- RAISE NOTICE 'PASS: independent cashier account, owner grant, pricing, discount, revocation';
+ RAISE NOTICE 'PASS: independent staff checkout, status, scoped submit, original badge resume, unpaid guard, revocation';
 END $test$;
 ROLLBACK;
