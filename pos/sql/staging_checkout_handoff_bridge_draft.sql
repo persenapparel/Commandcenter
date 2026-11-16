@@ -299,3 +299,66 @@ grant execute on function public.pos_handoff_revoke(uuid,uuid,text) to authentic
 -- NOT DONE: cashiers need staff-aware checkout/cart/payment RPCs; protected
 -- anonymous guest HTTPS gateway; isolated origin; safe signature storage;
 -- hosted negative tests; and full iPad Safari browser E2E.
+
+-- These read-only, authenticated cashier RPCs replace trusting a browser
+-- callback to say that guest collection or actual payment succeeded.
+-- They do NOT process a payment and never return customer personal data.
+create or replace function public.pos_handoff_status(
+ p_checkout uuid,p_shift_id uuid,p_shift_secret text
+) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare v_uid uuid:=auth.uid();v_status text;
+begin
+ if v_uid is null or p_shift_secret is null or
+    p_shift_secret !~ '^[a-f0-9]{64}$' then
+  raise exception 'Checkout authorization denied';
+ end if;
+ select c.status into v_status
+ from public.pos_checkout_handoffs h
+ join public.pos_checkouts c on c.id=h.checkout_id
+ join public.pos_staff_shifts s on s.id=h.shift_id
+ join public.pos_staff_credentials staff on staff.id=s.staff_id
+ where h.checkout_id=p_checkout and h.shift_id=p_shift_id
+   and h.auth_user_id=v_uid and c.owner_id=v_uid
+   and h.phase in ('guest','customer_complete','cashier')
+   and s.auth_user_id=v_uid and s.revoked_at is null and s.expires_at>now()
+   and staff.enabled=true and staff.credential_version=s.credential_version
+   and s.secret_digest=extensions.digest(p_shift_secret,'sha256');
+ if not found then raise exception 'Checkout authorization denied'; end if;
+ return jsonb_build_object('ok',true,'checkoutId',p_checkout,'status',v_status);
+end $$;
+revoke all on function public.pos_handoff_status(uuid,uuid,text) from public,anon;
+grant execute on function public.pos_handoff_status(uuid,uuid,text) to authenticated;
+
+-- The POS retains its explicit cash-recording and Finish Order steps.
+-- This RPC proves that those steps actually completed in the database
+-- BEFORE the guest token is revoked and the iPad returns home.
+create or replace function public.pos_handoff_verify_paid(
+ p_checkout uuid,p_shift_id uuid,p_shift_secret text
+) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare v_uid uuid:=auth.uid();v_saved uuid;
+begin
+ if v_uid is null or p_shift_secret is null or
+    p_shift_secret !~ '^[a-f0-9]{64}$' then
+  raise exception 'Checkout authorization denied';
+ end if;
+ select sale.id into v_saved
+ from public.pos_checkout_handoffs h
+ join public.pos_checkouts c on c.id=h.checkout_id
+ join public.pos_staff_shifts s on s.id=h.shift_id
+ join public.pos_staff_credentials staff on staff.id=s.staff_id
+ join public.pos_sales sale on sale.checkout_id=c.id
+ where h.checkout_id=p_checkout and h.shift_id=p_shift_id
+   and h.auth_user_id=v_uid and c.owner_id=v_uid
+   and h.phase='cashier' and c.status='completed'
+   and c.cash_handoff_complete=true
+   and sale.owner_id=v_uid and sale.payment_method='cash'
+   and s.auth_user_id=v_uid and s.revoked_at is null and s.expires_at>now()
+   and staff.enabled=true and staff.credential_version=s.credential_version
+   and s.secret_digest=extensions.digest(p_shift_secret,'sha256');
+ return jsonb_build_object('checkoutId',p_checkout,
+    'completed',v_saved is not null);
+end $$;
+revoke all on function public.pos_handoff_verify_paid(uuid,uuid,text) from public,anon;
+grant execute on function public.pos_handoff_verify_paid(uuid,uuid,text) to authenticated;
