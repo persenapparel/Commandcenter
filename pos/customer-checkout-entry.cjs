@@ -23,11 +23,13 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
       customer.origin === cashier.origin || customer.username || customer.password ||
       customer.search || customer.hash) throw Error('Unsafe customer browsing context');
   if (window.opener) throw Error('Customer opener must be severed');
+  if (window.parent === window) throw Error('Customer must run in isolated embedded context');
   let started = false;
   let disposed = false;
+  let activeGuest = null;
   const onMessage = event => {
     if (disposed || started || event.origin !== cashier.origin ||
-        event.source === window || !event.data ||
+        event.source !== window.parent || !event.data ||
         event.data.type !== 'persen:checkout-bootstrap:v1') return;
     // The parent can only bootstrap after server-side cashier lock; this
     // check is enforced by the server and cannot be trusted from a message.
@@ -45,6 +47,7 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
       const controller = createCustomerCheckout({
         root, guestApi: guest, origin: customer.origin, cashierOrigin: cashier.origin
       });
+      activeGuest = guest;
       started = true;
       window.removeEventListener('message', onMessage);
       void controller.start();
@@ -57,6 +60,10 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
     dispose() {
       disposed = true;
       window.removeEventListener('message', onMessage);
+      // A removed/locked customer context must not retain a usable bearer.
+      // This is local cleanup only; the backend must also revoke the token.
+      if (activeGuest) activeGuest.revokeLocal();
+      activeGuest = null;
     }
   };
 }
