@@ -52,3 +52,30 @@ test('invalid shift and forged result cannot unlock cashier',async()=>{
  await a.claim(id);
  await assert.rejects(a.resume({checkoutId:id,badge:'e'.repeat(32)}),/not authorized/);
 });
+
+test('staff checkout uses original shift and rejects forged checkout response',async()=>{
+ const calls=[];
+ const client={rpc:async(name,args)=>{
+  calls.push({name,args});
+  return {data:id};
+ }};
+ const a=createHandoffRpcAdapter({client,shiftId:shift,shiftSecret:secret});
+ await assert.rejects(a.beginStaffCheckout({registerId:id,items:[],discountBps:0}),/Invalid/);
+ await assert.rejects(a.beginStaffCheckout({registerId:id,items:[{qty:1}],discountBps:100}),/zero discount/);
+ assert.deepEqual(await a.beginStaffCheckout({registerId:id,items:[{qty:1}]}),{checkoutId:id});
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].name,'pos_staff_begin_checkout');
+ assert.equal(calls[0].args.p_shift_id,shift);
+ assert.equal(calls[0].args.p_shift_secret,secret);
+ assert.equal(calls[0].args.p_discount_bps,0);
+ assert.equal(calls[0].args.p_tax_milli,0);
+ const forged=createHandoffRpcAdapter({client:{rpc:async()=>({data:wrong.slice(0,12)})},shiftId:shift,shiftSecret:secret});
+ await assert.rejects(forged.beginStaffCheckout({registerId:id,items:[{qty:1}]}),/unavailable/);
+});
+test('staff checkout blocked during claimed customer handoff',async()=>{
+ const client={rpc:async(name)=>name==='pos_handoff_claim'?
+  {data:{ok:true,checkoutId:id,phase:'claimed'}}:{data:wrong}};
+ const a=createHandoffRpcAdapter({client,shiftId:shift,shiftSecret:secret});
+ await a.claim(id);
+ await assert.rejects(a.beginStaffCheckout({registerId:id,items:[{qty:1}]}),/Another checkout/);
+});
