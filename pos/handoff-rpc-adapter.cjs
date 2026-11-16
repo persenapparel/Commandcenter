@@ -130,7 +130,21 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
   if(error||data!==true)throw Error('Staff Finish Order not verified');
   return true;
  }
+ // After a verified completed sale, unlock the next sale by re-scanning the
+ // original employee badge. No second PIN and no new shift is created.
+ async function verifyIdleBadge(badge) {
+  if(active)throw Error('Guest checkout must be closed before register unlock');
+  if(typeof badge!=='string'||badge.length<16||badge.length>256)
+   throw Error('Invalid employee badge');
+  const result=await rpc('pos_staff_resume_shift',{
+   p_shift_id:shiftId,p_shift_secret:shiftSecret,p_badge:badge
+  });
+  if(result.ok!==true||typeof result.first_name!=='string'||
+     result.first_name.length<1||result.first_name.length>80)
+   throw Error('Original employee badge not verified');
+  return Object.freeze({verified:true,firstName:result.first_name});
+ }
  return Object.freeze({beginStaffCheckout,claim,issue,resume,getStatus,verifyPaid,
-  completeCash,finishOrder,revoke,current:()=>active});
+  completeCash,finishOrder,verifyIdleBadge,revoke,current:()=>active});
 }
 module.exports={createHandoffRpcAdapter};
