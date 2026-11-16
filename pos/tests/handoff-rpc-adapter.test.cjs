@@ -119,3 +119,32 @@ test('staff payment fails closed on server denial and forged sale result',async(
  await assert.rejects(a.finishOrder(id),/not verified/);
  assert.equal(a.current(),id);
 });
+
+
+test('post-sale badge-only unlock verifies original active shift and never creates a second shift',async()=>{
+ const calls=[];
+ const client={rpc:async(name,args)=>{
+  calls.push({name,args});
+  if(name==='pos_staff_resume_shift')return {data:{ok:args.p_badge==='correct-owner-badge-1234567890',first_name:'Alex',role:'owner'}};
+  if(name==='pos_handoff_claim')return {data:{ok:true,checkoutId:id,phase:'claimed'}};
+  throw Error('Unexpected RPC '+name);
+ }};
+ const a=createHandoffRpcAdapter({client,shiftId:shift,shiftSecret:secret});
+ await assert.rejects(a.verifyIdleBadge('short'),/Invalid employee badge/);
+ await assert.rejects(a.verifyIdleBadge('wrong-owner-badge-123456789'),/not verified/);
+ const unlocked=await a.verifyIdleBadge('correct-owner-badge-1234567890');
+ assert.deepEqual(unlocked,{verified:true,firstName:'Alex'});
+ const last=calls.at(-1);
+ assert.equal(last.name,'pos_staff_resume_shift');
+ assert.equal(last.args.p_shift_id,shift);
+ assert.equal(last.args.p_shift_secret,secret);
+ assert.ok(!calls.some(c=>c.name==='pos_staff_start_shift'));
+ await a.claim(id);
+ await assert.rejects(a.verifyIdleBadge('correct-owner-badge-1234567890'),/Guest checkout must be closed/);
+});
+test('network failure and forged idle resume responses never unlock',async()=>{
+ for(const response of [{error:{message:'offline'}},{data:{ok:false,first_name:'Alex'}},{data:{ok:true,first_name:''}}]){
+  const a=createHandoffRpcAdapter({client:{rpc:async()=>response},shiftId:shift,shiftSecret:secret});
+  await assert.rejects(a.verifyIdleBadge('correct-owner-badge-1234567890'));
+ }
+});
