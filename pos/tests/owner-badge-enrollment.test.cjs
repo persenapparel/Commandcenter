@@ -1,0 +1,22 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const sql=fs.readFileSync('pos/sql/staging_owner_badge_enrollment_draft.sql','utf8');
+const html=fs.readFileSync('pos/register.html','utf8');
+const js=fs.readFileSync('pos/register.js','utf8');
+test('staging owner badge enrollment is owner-only and never exposes PIN data',()=>{
+ assert.match(sql,/create or replace function public\.pos_owner_enroll_staff_self/);
+ assert.match(sql,/auth\.uid\(\)/);
+ assert.match(sql,/not public\.is_persen_admin\(\)/);
+ assert.match(sql,/extensions\.crypt\(v_pin,extensions\.gen_salt\('bf',12\)\)/);
+ assert.match(sql,/credential_version=public\.pos_staff_credentials\.credential_version\+1/);
+ assert.match(sql,/set revoked_at=now\(\)/);
+ assert.match(sql,/revoke all on function public\.pos_owner_enroll_staff_self[\s\S]*from public,anon/);
+ assert.match(sql,/grant execute on function public\.pos_owner_enroll_staff_self[\s\S]*to authenticated/);
+ assert.doesNotMatch(sql,/grant execute[\s\S]*to anon/);
+ assert.match(html,/id="owner-badge-enrollment"/);
+ assert.match(html,/name="badge"[^>]*minlength="16"/);
+ assert.match(html,/name="pin"[^>]*autocomplete="new-password"/);
+ assert.match(js,/db\.rpc\('pos_owner_enroll_staff_self'/);
+ assert.match(js,/form\.reset\(\)/);
+ assert.match(js,/form\.querySelector\('\[name=pin\]'\)\.value=''/);
+});
