@@ -6,6 +6,7 @@ const SHIFT='44444444-4444-4444-8444-444444444444';
 const TOKEN='b'.repeat(64);
 const SECRET='a'.repeat(64);
 function fake(overrides={}) {
+ let paid=false;
  const calls=[],rpcArgs=[],shift=()=>({ok:true,shift_id:SHIFT,shift_secret:SECRET,
   first_name:'Alex',role:'owner',expires_at:'2099-01-01T00:00:00Z'});
  const client={rpc:async(name,args)=>{
@@ -15,6 +16,8 @@ function fake(overrides={}) {
   if(name==='pos_handoff_claim')return {data:{ok:true,phase:'claimed',checkoutId:ORDER}};
   if(name==='pos_handoff_issue_guest')return {data:{checkoutId:ORDER,capability:TOKEN}};
   if(name==='pos_handoff_resume')return {data:{verified:args.p_badge==='correct-badge-value-123456',checkoutId:ORDER}};
+  if(name==='pos_handoff_status')return {data:{ok:true,checkoutId:ORDER,status}};
+  if(name==='pos_handoff_verify_paid')return {data:{checkoutId:ORDER,completed:paid}};
   if(name==='pos_handoff_revoke')return {data:true};
   throw Error('Unexpected RPC '+name);
  }};
@@ -31,9 +34,8 @@ function fake(overrides={}) {
    assert.equal(checkoutId,ORDER);assert.equal(capability,TOKEN);
    calls.push('guest');
   },
-  getAuthoritativeCheckoutStatus:async()=>status,
   restoreCashier:async()=>calls.push('restore'),
-  finishAuthoritativeSale:async({checkoutId})=>({checkoutId,completed:true}),
+  finishAuthoritativeSale:async({checkoutId})=>{paid=true;return {checkoutId,completed:true}}, 
   clearGuest:async()=>calls.push('clear'),
   showHome:async()=>calls.push('home'),
   ...overrides
@@ -67,7 +69,8 @@ test('single iPad secure sequence is shift -> claim -> lock -> guest -> badge ->
  assert.equal(bridge.state().checkout.phase,'payment');
  await bridge.finishSale({cashCents:2500});
  assert.equal(bridge.state().checkout.phase,'home');
- assert.deepEqual(calls.slice(-4),['restore','pos_handoff_revoke','clear','home']);
+ assert.deepEqual(calls.slice(-4),['pos_handoff_verify_paid','pos_handoff_revoke','clear','home']);
+ assert.equal(rpcArgs.find(x=>x.name==='pos_handoff_verify_paid').args.p_shift_id,SHIFT);
  await assert.rejects(bridge.finishSale({}),/not in payment/);
 });
 test('lock failure never issues guest capability or opens guest screen',async()=>{
@@ -111,4 +114,34 @@ test('staff handoff refuses a forged discount before checkout creation and stays
 });
 test('missing staff checkout request prevents any owner-account fallback',()=>{
  assert.throws(()=>fake({getStaffCheckoutRequest:null}),/Missing staging handoff dependency: getStaffCheckoutRequest/);
+});
+
+test('a fake successful UI response cannot finish an unpaid order',async()=>{
+ const {bridge,calls,setStatus}=fake({
+  finishAuthoritativeSale:async({checkoutId})=>({checkoutId,completed:true})
+ });
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();
+ setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();
+ bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await assert.rejects(bridge.finishSale({cashCents:2500}),/not verified/);
+ assert.equal(calls.includes('pos_handoff_verify_paid'),true);
+ assert.equal(calls.includes('pos_handoff_revoke'),false);
+ assert.equal(calls.includes('home'),false);
+ assert.equal(bridge.state().checkout.phase,'payment');
+});
+test('browser-supplied completion status cannot skip authoritative staff RPC',async()=>{
+ const {bridge,setStatus,calls}=fake({
+  getAuthoritativeCheckoutStatus:async()=> 'contact_received'
+ });
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();
+ await assert.rejects(bridge.confirmCustomerCompleted(),/not verified/);
+ assert.equal(bridge.state().checkout.phase,'guest');
+ assert.ok(calls.includes('pos_handoff_status'));
+ setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();
+ assert.equal(bridge.state().checkout.phase,'customer_complete');
 });

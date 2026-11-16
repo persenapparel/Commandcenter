@@ -10,12 +10,12 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
 const SECRET=/^[0-9a-f]{64}$/i;
 function createStagingHandoffBridge({
  client, getStaffCheckoutRequest, lockAndVerifyCashier, openGuest,
- getAuthoritativeCheckoutStatus, restoreCashier,
+ restoreCashier,
  finishAuthoritativeSale, clearGuest, showHome
 }) {
  if(!client || typeof client.rpc!=='function')throw Error('Authenticated RPC client required');
  const tasks={getStaffCheckoutRequest,lockAndVerifyCashier,openGuest,
-  getAuthoritativeCheckoutStatus,restoreCashier,finishAuthoritativeSale,
+  restoreCashier,finishAuthoritativeSale,
   clearGuest,showHome};
  for(const [name,fn] of Object.entries(tasks))if(typeof fn!=='function')
   throw Error('Missing staging handoff dependency: '+name);
@@ -56,10 +56,18 @@ function createStagingHandoffBridge({
     lockCashier:lockAndVerifyCashier,
     issueCheckoutCapability:checkoutId=>adapter.issue(checkoutId),
     openIsolatedGuest:openGuest,
-    getCheckoutStatus:getAuthoritativeCheckoutStatus,
+    // Status must be checked against the original shift on the server;
+    // a browser callback cannot declare that the guest completed checkout.
+    getCheckoutStatus:checkoutId=>adapter.getStatus(checkoutId),
     verifyShiftBadge:({checkoutId,badge})=>adapter.resume({checkoutId,badge}),
     resumeCashier:restoreCashier,
-    finishVerifiedSale:finishAuthoritativeSale,
+    // The UI may initiate simulated payment, but cannot declare success.
+    // Always ask the server to verify this exact checkout is paid AND
+    // explicitly finished before revoking the guest and going home.
+    finishVerifiedSale:async({checkoutId,payment})=>{
+     await finishAuthoritativeSale({checkoutId,payment});
+     return adapter.verifyPaid(checkoutId);
+    },
     clearGuestContext:clearGuest,
     showBrandedHome:showHome
    });
