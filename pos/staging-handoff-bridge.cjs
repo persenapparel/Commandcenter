@@ -9,12 +9,12 @@ const {createHandoffCoordinator}=require('./checkout-handoff-coordinator.cjs');
 const UUID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
 const SECRET=/^[0-9a-f]{64}$/i;
 function createStagingHandoffBridge({
- client, beginAuthorizedCheckout, lockAndVerifyCashier, openGuest,
+ client, getStaffCheckoutRequest, lockAndVerifyCashier, openGuest,
  getAuthoritativeCheckoutStatus, restoreCashier,
  finishAuthoritativeSale, clearGuest, showHome
 }) {
  if(!client || typeof client.rpc!=='function')throw Error('Authenticated RPC client required');
- const tasks={beginAuthorizedCheckout,lockAndVerifyCashier,openGuest,
+ const tasks={getStaffCheckoutRequest,lockAndVerifyCashier,openGuest,
   getAuthoritativeCheckoutStatus,restoreCashier,finishAuthoritativeSale,
   clearGuest,showHome};
  for(const [name,fn] of Object.entries(tasks))if(typeof fn!=='function')
@@ -45,8 +45,11 @@ function createStagingHandoffBridge({
      role:auth.role,expiresAt:auth.expires_at});
    coordinator=createHandoffCoordinator({
     beginCheckout:async()=>{
-     const opened=await beginAuthorizedCheckout();
-     const checkoutId=typeof opened==='string'?opened:opened?.checkoutId;
+     // The owner-only checkout RPC must never be used for employee handoff.
+     // The adapter binds this creation to the authenticated original shift.
+     const request=await getStaffCheckoutRequest();
+     const opened=await adapter.beginStaffCheckout(request);
+     const checkoutId=opened.checkoutId;
      if(!UUID.test(checkoutId||''))throw Error('Invalid checkout creation result');
      return adapter.claim(checkoutId);
     },
