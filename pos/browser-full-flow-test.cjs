@@ -159,5 +159,5 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}
  if(failures.length){console.error('POS functional failures:',JSON.stringify(failures,null,2));process.exitCode=1}
- else console.log('PASS: Mock cashier catalog/cart/scanner, blocked single-iPad handoff and read-only Epson monitor verified. No successful customer checkout, badge authentication, hardware commands or email delivery tested.');
+ else console.log('PASS: Mock cashier catalog/cart/scanner, badge-gated isolated handoff shell and read-only Epson monitor verified. No successful customer checkout, badge authentication, hardware commands or email delivery tested.');
 })().catch(e=>{console.error(e);try{server.close()}catch{}process.exitCode=1});
