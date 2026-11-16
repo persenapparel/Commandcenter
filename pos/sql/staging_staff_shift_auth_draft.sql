@@ -82,6 +82,11 @@ begin
  end if;
  update public.pos_staff_auth_attempts set attempts=0,blocked_until=null
  where auth_user_id=v_uid;
+ -- A new successful PIN authentication rotates prior shifts for this employee.
+ -- This prevents an older stolen shift token from remaining valid after re-login.
+ update public.pos_staff_shifts
+ set revoked_at=now()
+ where staff_id=v_staff.id and revoked_at is null;
  v_secret:=encode(extensions.gen_random_bytes(32),'hex');
  insert into public.pos_staff_shifts(staff_id,auth_user_id,secret_digest,credential_version,expires_at)
  values(v_staff.id,v_uid,extensions.digest(v_secret,'sha256'),v_staff.credential_version,v_expiry);
