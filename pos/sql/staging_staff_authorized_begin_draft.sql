@@ -32,8 +32,19 @@ begin
  ) values(v_reg.id,v_staff.id,v_reg.owner_id,v_owner,p_allowed)
  on conflict(register_id,staff_id) do update
  set active=excluded.active,granted_by=excluded.granted_by;
+ if not p_allowed then
+  -- Revoking register permission also invalidates outstanding guest access
+  -- for this employee on this register. A cashier may not regain access
+  -- simply because a previously issued capability has not timed out.
+  update public.pos_checkout_handoffs h
+  set phase='closed',capability_digest=null,capability_expires_at=null,
+      closed_at=now(),updated_at=now()
+  where h.register_id=v_reg.id and h.phase<>'closed'
+    and h.shift_id in (select id from public.pos_staff_shifts
+                      where staff_id=v_staff.id);
+ end if;
  return true;
-end $$;
+end $;
 revoke all on function public.pos_staff_set_register_access(uuid,uuid,boolean)
  from public,anon;
 grant execute on function public.pos_staff_set_register_access(uuid,uuid,boolean)
@@ -188,3 +199,109 @@ end $$;
 
 revoke all on function public.pos_staff_begin_checkout(uuid,text,uuid,jsonb,integer,integer,uuid) from public,anon;
 grant execute on function public.pos_staff_begin_checkout(uuid,text,uuid,jsonb,integer,integer,uuid) to authenticated;
+
+-- Rewrite only the claim/issue RPCs, preserving the original owner path.
+-- Staff always requires an active shift and explicit register authorization.
+create or replace function public.pos_handoff_claim(
+ p_checkout uuid, p_shift_id uuid, p_shift_secret text
+) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+ v_uid uuid := auth.uid();
+ v_shift public.pos_staff_shifts%rowtype;
+ v_checkout public.pos_checkouts%rowtype;
+begin
+ if v_uid is null or p_shift_secret is null or
+    p_shift_secret !~ '^[0-9a-f]{64}$' then
+  raise exception 'Checkout authorization denied';
+ end if;
+ select s.* into v_shift
+ from public.pos_staff_shifts s
+ join public.pos_staff_credentials c on c.id=s.staff_id
+ where s.id=p_shift_id and s.auth_user_id=v_uid
+   and s.revoked_at is null and s.expires_at > now()
+   and c.enabled and c.auth_user_id=v_uid
+   and c.credential_version=s.credential_version
+   and s.secret_digest=extensions.digest(p_shift_secret,'sha256')
+ for update of s,c;
+ if not found then raise exception 'Checkout authorization denied'; end if;
+ select * into v_checkout
+ from public.pos_checkouts
+ where id=p_checkout
+   and status='awaiting_customer'
+   and created_at > now()-interval '30 minutes'
+ for update;
+ if not found or not exists (
+   select 1 from public.pos_registers r
+   where r.id=v_checkout.register_id
+     and r.owner_id=v_checkout.owner_id and r.active
+     and (
+       (v_checkout.owner_id=v_uid and public.is_persen_admin())
+       or exists (
+         select 1 from public.pos_staff_register_grants g
+         where g.register_id=r.id and g.owner_id=r.owner_id
+           and g.staff_id=v_shift.staff_id and g.active=true
+       )
+     )
+ ) then raise exception 'Checkout authorization denied'; end if;
+ insert into public.pos_checkout_handoffs
+   (checkout_id,register_id,shift_id,auth_user_id,phase)
+ values (v_checkout.id,v_checkout.register_id,v_shift.id,v_uid,'claimed');
+ return jsonb_build_object('ok',true,'checkoutId',v_checkout.id,'phase','claimed');
+end $$;
+
+create or replace function public.pos_handoff_issue_guest(
+ p_checkout uuid, p_shift_id uuid, p_shift_secret text
+) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+ v_uid uuid := auth.uid();
+ v_shift public.pos_staff_shifts%rowtype;
+ v_handoff public.pos_checkout_handoffs%rowtype;
+ v_checkout public.pos_checkouts%rowtype;
+ v_capability text;
+ v_expiry timestamptz := now()+interval '15 minutes';
+begin
+ if v_uid is null or p_shift_secret is null or
+    p_shift_secret !~ '^[0-9a-f]{64}$' then
+  raise exception 'Checkout authorization denied';
+ end if;
+ select s.* into v_shift
+ from public.pos_staff_shifts s
+ join public.pos_staff_credentials c on c.id=s.staff_id
+ where s.id=p_shift_id and s.auth_user_id=v_uid
+   and s.revoked_at is null and s.expires_at>now()
+   and c.enabled and c.auth_user_id=v_uid
+   and c.credential_version=s.credential_version
+   and s.secret_digest=extensions.digest(p_shift_secret,'sha256')
+ for update of s,c;
+ if not found then raise exception 'Checkout authorization denied'; end if;
+ select * into v_checkout from public.pos_checkouts
+ where id=p_checkout and status='awaiting_customer'
+ and created_at>now()-interval '30 minutes' for update;
+ if not found then raise exception 'Checkout authorization denied'; end if;
+ select * into v_handoff from public.pos_checkout_handoffs
+ where checkout_id=p_checkout and shift_id=p_shift_id and auth_user_id=v_uid
+ and phase='claimed' for update;
+ if not found or not exists(
+   select 1 from public.pos_registers r
+   where r.id=v_checkout.register_id
+     and r.owner_id=v_checkout.owner_id and r.active
+     and (
+       (v_checkout.owner_id=v_uid and public.is_persen_admin())
+       or exists(
+         select 1 from public.pos_staff_register_grants g
+         where g.register_id=r.id and g.owner_id=r.owner_id
+         and g.staff_id=v_shift.staff_id and g.active=true
+       )
+     )
+ ) then raise exception 'Checkout authorization denied'; end if;
+ v_capability:=encode(extensions.gen_random_bytes(32),'hex');
+ update public.pos_checkout_handoffs
+ set phase='guest',capability_digest=extensions.digest(v_capability,'sha256'),
+     capability_expires_at=v_expiry,guest_issued_at=now(),updated_at=now()
+ where checkout_id=p_checkout;
+ return jsonb_build_object('checkoutId',p_checkout,'capability',v_capability,
+                           'expiresAt',v_expiry);
+end $$;
+
