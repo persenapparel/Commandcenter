@@ -10,13 +10,11 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
 const SECRET=/^[0-9a-f]{64}$/i;
 function createStagingHandoffBridge({
  client, beginAuthorizedCheckout, lockAndVerifyCashier, openGuest,
- getAuthoritativeCheckoutStatus, restoreCashier,
- finishAuthoritativeSale, clearGuest, showHome
+ restoreCashier, clearGuest, showHome
 }) {
  if(!client || typeof client.rpc!=='function')throw Error('Authenticated RPC client required');
  const tasks={beginAuthorizedCheckout,lockAndVerifyCashier,openGuest,
-  getAuthoritativeCheckoutStatus,restoreCashier,finishAuthoritativeSale,
-  clearGuest,showHome};
+  restoreCashier,clearGuest,showHome};
  for(const [name,fn] of Object.entries(tasks))if(typeof fn!=='function')
   throw Error('Missing staging handoff dependency: '+name);
  let cashier=null,adapter=null,coordinator=null,starting=false;
@@ -53,10 +51,11 @@ function createStagingHandoffBridge({
     lockCashier:lockAndVerifyCashier,
     issueCheckoutCapability:checkoutId=>adapter.issue(checkoutId),
     openIsolatedGuest:openGuest,
-    getCheckoutStatus:getAuthoritativeCheckoutStatus,
+    getCheckoutStatus:checkoutId=>adapter.getStatus(checkoutId),
     verifyShiftBadge:({checkoutId,badge})=>adapter.resume({checkoutId,badge}),
     resumeCashier:restoreCashier,
-    finishVerifiedSale:finishAuthoritativeSale,
+    // This only verifies an ALREADY finished sale; it never submits tender.
+    finishVerifiedSale:({checkoutId})=>adapter.verifyPaid(checkoutId),
     clearGuestContext:clearGuest,
     showBrandedHome:showHome
    });
