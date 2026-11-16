@@ -53,6 +53,12 @@ begin
  exception when others then
   if sqlerrm='Token was reissued' then raise; end if;
  end;
+ v_result:=public.pos_handoff_status(v_checkout,v_shift,v_secret);
+ if v_result->>'status'<>'awaiting_customer' then
+  raise exception 'Staff scoped status must reflect awaiting customer'; end if;
+ v_result:=public.pos_handoff_verify_paid(v_checkout,v_shift,v_secret);
+ if v_result->>'completed'<>'false' then
+  raise exception 'Unpaid sale incorrectly verified'; end if;
  v_result:=public.pos_handoff_guest_view(v_checkout,v_token);
  if v_result->>'checkoutId' is distinct from v_checkout::text
    or jsonb_array_length(v_result->'items')<>1
@@ -75,6 +81,9 @@ begin
     "marketingConsent":false,"signature":"CI Signer",
     "signatureException":false}'::jsonb);
  if v_result->>'accepted'<>'true' then raise exception 'Guest submit failed'; end if;
+ v_result:=public.pos_handoff_status(v_checkout,v_shift,v_secret);
+ if v_result->>'status'<>'contact_received' then
+  raise exception 'Server customer status did not advance'; end if;
  if not exists(select 1 from public.pos_checkout_signatures
    where checkout_id=v_checkout and typed_name='CI Signer'
    and not accessibility_exception) then
@@ -101,6 +110,9 @@ begin
  v_result:=public.pos_handoff_resume(v_checkout,v_shift,v_secret,repeat('B',32));
  if v_result->>'verified' is distinct from 'true' then
   raise exception 'Original shift badge failed to resume'; end if;
+ v_result:=public.pos_handoff_verify_paid(v_checkout,v_shift,v_secret);
+ if v_result->>'completed'<>'false' then
+  raise exception 'Checkout without cash/finish was verified'; end if;
  begin
   perform public.pos_handoff_resume(v_checkout,v_shift,v_secret,repeat('B',32));
   raise exception 'Badge resume replay succeeded';

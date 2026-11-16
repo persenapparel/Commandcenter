@@ -60,6 +60,25 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
    throw Error('Badge is not authorized for checkout');
   return {verified:true,checkoutId};
  }
+ async function getStatus(checkoutId) {
+  same(checkoutId);
+  const result=await rpc('pos_handoff_status',{
+   p_checkout:checkoutId,p_shift_id:shiftId,p_shift_secret:shiftSecret
+  });
+  if(result.ok!==true || result.checkoutId!==checkoutId ||
+     !['awaiting_customer','contact_received','completed','cancelled'].includes(result.status))
+   throw Error('Checkout status not verified');
+  return result.status;
+ }
+ async function verifyPaid(checkoutId) {
+  same(checkoutId);
+  const result=await rpc('pos_handoff_verify_paid',{
+   p_checkout:checkoutId,p_shift_id:shiftId,p_shift_secret:shiftSecret
+  });
+  if(result.checkoutId!==checkoutId || result.completed!==true)
+   throw Error('Cash payment or finish order not verified');
+  return {completed:true,checkoutId};
+ }
  async function revoke(checkoutId) {
   same(checkoutId);
   const result=await client.rpc('pos_handoff_revoke',{
@@ -69,6 +88,6 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
    throw Error('Guest authorization revocation unverified');
   active=null;
  }
- return Object.freeze({claim,issue,resume,revoke,current:()=>active});
+ return Object.freeze({claim,issue,resume,getStatus,verifyPaid,revoke,current:()=>active});
 }
 module.exports={createHandoffRpcAdapter};

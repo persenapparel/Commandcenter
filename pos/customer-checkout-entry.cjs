@@ -66,6 +66,13 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
     }
   };
   window.addEventListener('message', onMessage);
+  // Tell the exact authenticated cashier origin this isolated guest document
+  // is ready. No checkout ID, bearer, staff secret or customer data is sent.
+  // The parent must verify BOTH event.origin and event.source before sending
+  // the one-checkout bootstrap token with an exact target origin.
+  if (typeof window.parent?.postMessage === 'function') {
+    window.parent.postMessage({type:'persen:checkout-ready:v1'},cashier.origin);
+  }
   return {
     dispose() {
       disposed = true;
