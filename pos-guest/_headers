@@ -1,0 +1,6 @@
+/pos-guest/*
+  Cache-Control: no-store, no-cache, must-revalidate
+  Pragma: no-cache
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://naaqcspvbntzdtwuchrr.supabase.co; frame-ancestors https://persen-pos-staging.pages.dev https://*.persen-pos-staging.pages.dev; base-uri 'none'; form-action 'none'; object-src 'none'
