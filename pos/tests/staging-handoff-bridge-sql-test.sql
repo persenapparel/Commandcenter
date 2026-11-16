@@ -113,7 +113,10 @@ begin
    and capability_digest is null) then
   raise exception 'Guest capability not revoked'; end if;
 
- -- Independent checkout for explicit expiry rejection test.
+ -- Independent register avoids violating the existing one-open-checkout
+ -- per-register invariant while checking capability expiry.
+ insert into public.pos_registers(owner_id,label)
+ values(v_uid,'Expiry fixture register') returning id into v_register;
  insert into public.pos_checkouts(register_id,owner_id,items,total_cents)
  values(v_register,v_uid,
   '[{"name":"CI Test Tee","qty":1,"unit_cents":1000}]'::jsonb,1000)
