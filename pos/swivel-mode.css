@@ -16,6 +16,18 @@ body.swivel-customer-active{overflow:hidden!important}
 .swivel-brand span{font-size:11px;color:#d2e0f3}
 #swivel-lock{border:1px solid #8099b8;background:#17375a;color:white;border-radius:10px;min-height:39px;padding:8px 12px;font-size:12px;font-weight:750}
 .swivel-customer-frame{display:block;flex:1;min-height:0;width:100%;border:0;background:white}
+.swivel-guest-host{display:flex;flex:1;min-height:0;width:100%;background:white}
+.swivel-guest-host .swivel-customer-frame{height:100%}
+.swivel-shift-dialog{width:min(92vw,460px);margin:auto;border:0;border-radius:18px;padding:0;color:#142844;background:#f7faff;box-shadow:0 18px 60px #07192d66}
+.swivel-shift-dialog::backdrop{background:#07192daa}
+.swivel-shift-dialog form{display:flex;flex-direction:column;gap:12px;padding:26px}
+.swivel-shift-dialog h2{margin:0;color:#153e6b;font-size:25px}
+.swivel-shift-dialog p{margin:0;color:#365470;line-height:1.45}
+.swivel-shift-dialog label{font-weight:750}
+.swivel-shift-dialog input{min-height:50px;padding:10px;border:1px solid #b4c7db;border-radius:11px;background:#fff;color:#142844;font:inherit}
+.swivel-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.swivel-dialog-actions button{min-height:48px;font-weight:800;border-radius:10px}
+#swivel-shift-message,#swivel-return-message{min-height:20px;font-weight:700;color:#913437}
 .swivel-unlock-form{position:absolute;inset:59px 0 0;background:#f2f6fb;z-index:2;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:12px;padding:28px max(24px,calc((100vw - 440px)/2));overflow:auto}
 .swivel-unlock-form h2{margin:0;font-size:27px;color:#153e6b}
 .swivel-unlock-form p{line-height:1.5;margin:0;font-size:14px;color:#365470}
