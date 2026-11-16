@@ -71,3 +71,59 @@ test('reject invalid token before iframe is created',async()=>{
  await assert.rejects(session.open({checkoutId:checkout,capability:'wrong'}),/Invalid checkout-specific/);
  assert.equal(t.getFrame(),null);
 });
+
+const {mountCustomerCheckout}=require('../customer-checkout-entry.cjs');
+function guestFrameHarness({href='https://customer.example.test/',topLevel=false,sendFails=false}={}) {
+ const sent=[],listeners=new Set();
+ const parent={postMessage:(message,origin)=>{
+  if(sendFails)throw Error('Parent unavailable');
+  sent.push({message,origin});
+ }};
+ const window={
+  location:{href},opener:null,parent,
+  addEventListener:(type,handler)=>{if(type==='message')listeners.add(handler)},
+  removeEventListener:(type,handler)=>{if(type==='message')listeners.delete(handler)}
+ };
+ if(topLevel)window.parent=window;
+ return {window,sent,listeners};
+}
+test('guest entry emits credential-free READY to exact cashier origin after listener registration',()=>{
+ const h=guestFrameHarness();
+ const root={};
+ const mounted=mountCustomerCheckout({
+  window:h.window,root,cashierOrigin:'https://cashier.example.test/',
+  apiOrigin:'https://api.example.test/',fetchImpl:async()=>{}
+ });
+ assert.equal(h.listeners.size,1);
+ assert.deepEqual(h.sent,[{
+  message:{type:'persen:checkout-ready:v1'},
+  origin:'https://cashier.example.test'
+ }]);
+ assert.equal(h.sent[0].message.capability,undefined);
+ mounted.dispose();
+ assert.equal(h.listeners.size,0);
+});
+test('guest entry never emits READY from unsafe same-origin or top-level context',()=>{
+ for(const config of [
+  {href:'https://cashier.example.test/'},
+  {topLevel:true},
+  {href:'http://customer.example.test/'},
+  {href:'https://customer.example.test/?token=should-not-appear'}
+ ]) {
+  const h=guestFrameHarness(config);
+  assert.throws(()=>mountCustomerCheckout({
+   window:h.window,root:{},cashierOrigin:'https://cashier.example.test/',
+   apiOrigin:'https://api.example.test/',fetchImpl:async()=>{}
+  }));
+  assert.equal(h.sent.length,0);
+  assert.equal(h.listeners.size,0);
+ }
+});
+test('guest READY send failure removes bootstrap listener and fails closed',()=>{
+ const h=guestFrameHarness({sendFails:true});
+ assert.throws(()=>mountCustomerCheckout({
+  window:h.window,root:{},cashierOrigin:'https://cashier.example.test/',
+  apiOrigin:'https://api.example.test/',fetchImpl:async()=>{}
+ }),/READY handshake unavailable/);
+ assert.equal(h.listeners.size,0);
+});

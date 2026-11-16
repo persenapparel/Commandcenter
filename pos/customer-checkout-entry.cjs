@@ -65,7 +65,18 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
       // Invalid bootstrap never unlocks cashier or creates a guest session.
     }
   };
+  // The cashier frame refuses to transfer checkout authorization until it
+  // receives READY from this exact guest origin and iframe window. Register
+  // the bootstrap listener first so a fast parent reply cannot be missed.
   window.addEventListener('message', onMessage);
+  try {
+    // READY is public handshake metadata, never a checkout bearer or staff
+    // credential. The parent must still enforce the exact-origin/source check.
+    window.parent.postMessage({type: 'persen:checkout-ready:v1'}, cashier.origin);
+  } catch (_) {
+    window.removeEventListener('message', onMessage);
+    throw Error('Guest checkout READY handshake unavailable');
+  }
   return {
     dispose() {
       disposed = true;
