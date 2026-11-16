@@ -65,6 +65,9 @@ function createStagingHandoffBridge({
     // Always ask the server to verify this exact checkout is paid AND
     // explicitly finished before revoking the guest and going home.
     finishVerifiedSale:async({checkoutId,payment})=>{
+     // Original cashier shift performs the server-authorized Finish Order.
+     // A UI callback cannot declare payment or checkout completion.
+     await adapter.finishOrder(checkoutId);
      await finishAuthoritativeSale({checkoutId,payment});
      return adapter.verifyPaid(checkoutId);
     },
@@ -82,10 +85,17 @@ function createStagingHandoffBridge({
  async function confirmCustomerCompleted(){assertReady();return coordinator.customerCompleted()}
  function requireBadge(){assertReady();return coordinator.showCashierLock()}
  async function resumeWithBadge(badge){assertReady();return coordinator.badgeResume(badge)}
+ async function recordCash({checkoutId,payment}){
+  assertReady();
+  const current=coordinator.state();
+  if(current.phase!=='payment'||current.checkoutId!==checkoutId||current.pending)
+   throw Error('Cashier is not authorized to record this checkout');
+  return adapter.completeCash(checkoutId,payment);
+ }
  async function finishSale(payment){assertReady();return coordinator.finishSale(payment)}
  function state(){return Object.freeze({employee:cashier,
   checkout:coordinator?coordinator.state():null})}
  return Object.freeze({startShift,handToCustomer,confirmCustomerCompleted,
-  requireBadge,resumeWithBadge,finishSale,state});
+  requireBadge,resumeWithBadge,recordCash,finishSale,state});
 }
 module.exports={createStagingHandoffBridge};
