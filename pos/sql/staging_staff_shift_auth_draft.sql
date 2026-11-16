@@ -78,7 +78,10 @@ begin
  end if;
  select * into v_staff from public.pos_staff_credentials
  where auth_user_id=v_uid and badge_digest=extensions.digest(p_badge,'sha256')
- and enabled=true;
+ and enabled=true
+ -- Lock the enrolled credential before accepting the PIN and rotating shifts.
+ -- Concurrent disable/version rotation or another login must not race issuance.
+ for update;
  if not found or p_badge is null or length(p_badge) not between 16 and 256
     or p_pin is null or length(p_pin) not between 4 and 128 or
     v_staff.pin_hash is null or
