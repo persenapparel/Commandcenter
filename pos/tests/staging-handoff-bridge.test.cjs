@@ -19,6 +19,7 @@ function fake(overrides={}) {
   if(name==='pos_handoff_status')return {data:{ok:true,checkoutId:ORDER,status}};
   if(name==='pos_staff_complete_cash')return {data:'55555555-5555-4555-8555-555555555555'};
   if(name==='pos_staff_finish_order')return {data:true};
+  if(name==='pos_staff_resume_shift')return {data:{ok:args.p_badge==='correct-badge-value-123456',first_name:'Alex',role:'owner'}};
   if(name==='pos_handoff_verify_paid')return {data:{checkoutId:ORDER,completed:paid}};
   if(name==='pos_handoff_revoke')return {data:true};
   throw Error('Unexpected RPC '+name);
@@ -167,4 +168,35 @@ test('cash recording stays locked until original employee resumes checkout',asyn
  assert.equal(call.args.p_shift_secret,SECRET);
  assert.equal(call.args.p_tender_cents,2500);
  assert.ok(calls.includes('pos_staff_complete_cash'));
+});
+
+
+test('one PIN per shift and original badge required before second order',async()=>{
+ const {bridge,calls,setStatus}=fake();
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();
+ setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}});
+ await bridge.finishSale({cashCents:2500});
+ assert.equal(bridge.state().checkout.phase,'home');
+ assert.equal(bridge.state().locked,true);
+ await assert.rejects(bridge.handToCustomer(),/badge/);
+ await assert.rejects(bridge.unlockNextSale('wrong-badge-value-123456'),/not verified/);
+ assert.equal(bridge.state().locked,true);
+ const greeting=await bridge.unlockNextSale('correct-badge-value-123456');
+ assert.deepEqual(greeting,{firstName:'Alex'});
+ assert.equal(bridge.state().checkout.phase,'cashier');
+ assert.equal(bridge.state().locked,false);
+ assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
+ assert.equal(calls.filter(name=>name==='pos_staff_resume_shift').length,2);
+ await bridge.handToCustomer();
+ assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
+ assert.equal(calls.filter(name=>name==='pos_staff_begin_checkout').length,2);
+});
+test('idle unlock is denied without a completed sale',async()=>{
+ const {bridge}=fake();
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await assert.rejects(bridge.unlockNextSale('correct-badge-value-123456'),/No locked completed sale/);
 });
