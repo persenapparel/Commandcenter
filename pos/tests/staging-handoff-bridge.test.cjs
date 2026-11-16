@@ -74,7 +74,7 @@ test('single iPad secure sequence is shift -> claim -> lock -> guest -> badge ->
  assert.equal(bridge.state().checkout.phase,'home');
  assert.deepEqual(calls.slice(-4),['pos_handoff_verify_paid','pos_handoff_revoke','clear','home']);
  assert.equal(rpcArgs.find(x=>x.name==='pos_handoff_verify_paid').args.p_shift_id,SHIFT);
- await assert.rejects(bridge.finishSale({}),/not in payment/);
+ await assert.rejects(bridge.finishSale({}),/badge locked/);
 });
 test('lock failure never issues guest capability or opens guest screen',async()=>{
  const {bridge,calls,setLock}=fake();setLock(false);
