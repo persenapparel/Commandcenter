@@ -12,7 +12,7 @@ assert.doesNotMatch(html,/name=["']checkout-device-mode["']|value=["']dual["']/,
 assert.ok(!html.includes('swivel-customer-frame')&&!html.includes('swivel-password'),
  'Retired same-origin frame and password return must stay absent');
 for(const id of ['swivel-shift-dialog','swivel-badge','swivel-pin','swivel-guest-host','swivel-return-badge'])
- assert.match(html,new RegExp('id=["\\']'+id+'["\\']'),'Missing secured handoff control: '+id);
+ assert.ok(html.includes('id="'+id+'"'),'Missing secured handoff control: '+id);
 assert.match(swivel,/secure\.createIsolatedGuestFrame/,'Customer frame must be created by isolated origin helper');
 assert.match(swivel,/api\.secureHandoffClient/,'Handoff must use an approved RPC-only cashier client');
 assert.match(swivel,/active\.handToCustomer\(\)/,'Customer flow must begin through server-backed coordinator');
