@@ -60,7 +60,7 @@ begin
  select * into v_attempt from public.pos_staff_auth_attempts
  where auth_user_id=v_uid for update;
  if v_attempt.blocked_until > now() then
-  raise exception 'Authentication temporarily unavailable' using errcode='28000';
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
  end if;
  if v_attempt.window_started < now()-interval '15 minutes' then
   update public.pos_staff_auth_attempts set attempts=0,window_started=now(),blocked_until=null
@@ -77,14 +77,14 @@ begin
   set attempts=attempts+1,
       blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
   where auth_user_id=v_uid;
-  raise exception 'Invalid employee credentials' using errcode='28000';
+  return jsonb_build_object('ok',false,'error','Invalid employee credentials');
  end if;
  update public.pos_staff_auth_attempts set attempts=0,blocked_until=null
  where auth_user_id=v_uid;
  v_secret:=encode(extensions.gen_random_bytes(32),'hex');
  insert into public.pos_staff_shifts(staff_id,auth_user_id,secret_digest,credential_version,expires_at)
  values(v_staff.id,v_uid,extensions.digest(v_secret,'sha256'),v_staff.credential_version,v_expiry);
- return jsonb_build_object('shift_id',(select id from public.pos_staff_shifts
+ return jsonb_build_object('ok',true,'shift_id',(select id from public.pos_staff_shifts
   where secret_digest=extensions.digest(v_secret,'sha256')),
   'shift_secret',v_secret,'first_name',v_staff.first_name,
   'role',v_staff.staff_role,'expires_at',v_expiry);
