@@ -259,7 +259,11 @@ async function finishOrder(){
   if(result!==true)throw Error('Could not confirm customer handoff');
   const saved=await saleForCheckout(id);
   if(!saved)throw Error('Order was finished but receipt details are unavailable. Refresh to recover.');
-  await showCompletedSale(saved);
+  // In future approved secure staging mode, the original employee and paid
+  // checkout must be reverified before token revocation and home reset.
+  const secure=window.PersenPOSStagingHandoff;
+  if(secure?.active()===true)await secure.finishAfterAuthoritativeOrder(saved);
+  else await showCompletedSale(saved);
  }catch(e){
   by('finish-order').disabled=false;
   notice('Could not finish order: '+e.message+'. Do not start another checkout until this is resolved.');
@@ -313,7 +317,31 @@ async function status(){
   syncCheckoutUI();renderCash();
  }catch(e){notice('Connection lost: '+e.message)}finally{statusRunning=false}
 }
-async function begin(){if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=0;const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
+// Owner-only staging checkout creation. A staff-aware version still requires
+// authenticated enrollment, register ownership and server-side cashier audit.
+async function beginAuthorizedCheckout(){
+ if(busy||checkout||pendingCash||!cart.length||!register||!user)
+  throw Error('Register is not ready for a new checkout');
+ busy=true;checkoutVersion++;
+ try{
+  const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,
+   unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));
+  const bps=C.discountBps(by('discount').value),tax=0;
+  const id=await check(db.rpc('pos_begin_checkout',{
+   p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,
+   p_event:by('event-select').value||null
+  }));
+  if(typeof id!=='string'||!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id))
+   throw Error('Server did not return a valid checkout');
+  checkout={id,status:'awaiting_customer'};
+  syncCashierStage();
+  return id;
+ }finally{busy=false;draw();await status()}
+}
+async function begin(){
+ try{await beginAuthorizedCheckout();notice('Checkout sent to customer display.')}
+ catch(e){notice(e.message)}
+}
 async function cancel(){if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();syncCashierStage();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 async function cash(){
  if(!checkout||checkout.status!=='contact_received'||busy)return;
@@ -919,3 +947,13 @@ by('event-setup-form').onsubmit=async e=>{
 };
 // Refresh on-hand counts without rebuilding an in-progress cart or dialog.
 setInterval(()=>{if(user&&!busy&&!checkout&&!cart.length&&!by('event-setup-dialog').open&&document.visibilityState==='visible')loadStock().catch(e=>notice('Inventory refresh failed: '+e.message));},15000);
+
+/* Future staging-only runtime attachment. This does not enable any button.
+ * Never treat a browser callback or this API as server checkout authorization.
+ * Owner sign-in is still required by the legacy POS cart/payment SQL. */
+window.PersenPOSSecureRegister=Object.freeze({
+ client:()=>user&&register?db:null,
+ beginAuthorizedCheckout,
+ showCompletedSale,
+ ready:()=>Boolean(user&&register&&!busy)
+});
