@@ -10,14 +10,18 @@ const BASE_PATH='/functions/v1/pos-guest-checkout';
 const MAX_BODY=8192;
 const CHECKOUT_ID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
 const CAPABILITY=/^[a-f0-9]{64}$/;
-const noStore={'cache-control':'no-store, no-cache, must-revalidate','pragma':'no-cache',
- 'referrer-policy':'no-referrer','x-content-type-options':'nosniff'};
-
-function headers(type,document=false){return {...noStore,'content-type':type,...(document?{
- 'content-security-policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors https://persen-pos-staging.pages.dev https://*.persen-pos-staging.pages.dev; base-uri 'none'; form-action 'none'; object-src 'none'"
-}: {})};}
-function json(status,body){return new Response(JSON.stringify(body),{status,headers:headers('application/json; charset=utf-8')});}
-function text(status,body,type,document=false){return new Response(body,{status,headers:headers(type,document)});}
+function response(status,body,type,document=false){
+ const headers=new Headers();
+ headers.set('Content-Type',type);
+ headers.set('Cache-Control','no-store, no-cache, must-revalidate');
+ headers.set('Pragma','no-cache');
+ headers.set('Referrer-Policy','no-referrer');
+ headers.set('X-Content-Type-Options','nosniff');
+ if(document)headers.set('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors https://persen-pos-staging.pages.dev https://*.persen-pos-staging.pages.dev; base-uri 'none'; form-action 'none'; object-src 'none'");
+ return new Response(body,{status,headers});
+}
+function json(status,body){return response(status,JSON.stringify(body),'application/json; charset=utf-8');}
+function text(status,body,type,document=false){return response(status,body,type,document);}
 function object(value){return value!==null&&typeof value==='object'&&!Array.isArray(value);}
 function configured(){const url=(Deno.env.get('SUPABASE_URL')||'').replace(/\/$/,'');
  const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
