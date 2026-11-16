@@ -25,10 +25,12 @@ function createStagingSwivelRuntime({
  const frame=createIsolatedGuestFrame({window,container:overlay,cashierOrigin,guestOrigin});
  let active=false,finishedSnapshot=null,firstName='';
  function message(s){const n=$('swivel-unlock-message');if(n)n.textContent=s}
+ // On an error, remain locked. Never offer a browser-side method that can
+ // restore cashier access without a server-verified original-shift badge.
  function failClosed(){
-  overlay.hidden=true;unlock.hidden=true;frame.dispose();
+  overlay.hidden=false;unlock.hidden=false;frame.dispose();
   legacyFrame.removeAttribute('src');legacyFrame.hidden=true;
-  workspace.inert=false;doc.body.classList.remove('swivel-customer-active');
+  workspace.inert=true;doc.body.classList.add('swivel-customer-active');
  }
  // Locking the PARENT UI alone is not a security boundary: the customer is
  // served on a different origin and never sees the authenticated Supabase SDK.
@@ -130,6 +132,6 @@ function createStagingSwivelRuntime({
   finally{finishedSnapshot=null}
  }
  return Object.freeze({enable,finishAfterAuthoritativeOrder,
-  active:()=>active,stage:()=>bridge.state(),failClosed});
+  active:()=>active,stage:()=>bridge.state()});
 }
 module.exports={createStagingSwivelRuntime};
