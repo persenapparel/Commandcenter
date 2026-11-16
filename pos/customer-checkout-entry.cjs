@@ -26,6 +26,7 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
   if (window.parent === window) throw Error('Customer must run in isolated embedded context');
   let started = false;
   let disposed = false;
+  let activeGuest = null;
   const onMessage = event => {
     if (disposed || started || event.origin !== cashier.origin ||
         event.source !== window.parent || !event.data ||
@@ -46,6 +47,7 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
       const controller = createCustomerCheckout({
         root, guestApi: guest, origin: customer.origin, cashierOrigin: cashier.origin
       });
+      activeGuest = guest;
       started = true;
       window.removeEventListener('message', onMessage);
       void controller.start();
@@ -58,6 +60,10 @@ function mountCustomerCheckout({window, root, cashierOrigin, apiOrigin, fetchImp
     dispose() {
       disposed = true;
       window.removeEventListener('message', onMessage);
+      // A removed/locked customer context must not retain a usable bearer.
+      // This is local cleanup only; the backend must also revoke the token.
+      if (activeGuest) activeGuest.revokeLocal();
+      activeGuest = null;
     }
   };
 }
