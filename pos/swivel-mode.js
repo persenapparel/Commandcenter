@@ -181,6 +181,12 @@
   mode:()=> 'swivel',
   active:()=>!!state(),
   ownsCheckout:checkoutId=>state()?.checkoutId===checkoutId&&state()?.phase==='payment',
+  recordCash:payment=>{
+   const pending=state();
+   if(!bridge||!pending||pending.phase!=='payment'||!pending.checkoutId)
+    throw Error('Secure cashier payment is unavailable');
+   return bridge.recordCash({checkoutId:pending.checkoutId,payment});
+  },
   finishSale:payment=>bridge?.finishSale(payment)
  });
 })();
