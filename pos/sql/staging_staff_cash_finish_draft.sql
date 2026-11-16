@@ -109,7 +109,7 @@ begin
  end if;
  update public.pos_checkouts set status='completed',updated_at=now() where id=c.id;
  return sid;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_staff_finish_order(p_shift_id uuid,p_shift_secret text,p_checkout uuid)
@@ -151,7 +151,7 @@ begin
  if c.cash_handoff_complete then return true; end if;
  update public.pos_checkouts set cash_handoff_complete=true,updated_at=now() where id=c.id;
  return true;
-end $function$
+end $function$;
 
 revoke all on function public.pos_staff_complete_cash(uuid,text,uuid,integer,jsonb,jsonb,integer) from public,anon;
 grant execute on function public.pos_staff_complete_cash(uuid,text,uuid,integer,jsonb,jsonb,integer) to authenticated;
