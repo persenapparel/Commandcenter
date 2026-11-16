@@ -326,13 +326,26 @@ async function showSecureHandoffHome(){
  await showCompletedSale(saved);
  secureHandoffSavedSale=null;
 }
+const secureHandoffRpcNames=new Set([
+ 'pos_staff_start_shift','pos_staff_begin_checkout','pos_handoff_claim',
+ 'pos_handoff_issue_guest','pos_handoff_status','pos_handoff_resume',
+ 'pos_handoff_verify_paid','pos_handoff_revoke'
+]);
+const secureHandoffClient=Object.freeze({
+ rpc:(name,args)=>{
+  if(!secureHandoffRpcNames.has(name)||!db)throw Error('Secure handoff RPC unavailable');
+  return db.rpc(name,args);
+ }
+});
 window.PersenPOSRegister=Object.freeze({
  ready:()=>!!db&&!!user&&!!register,
+ secureHandoffClient,
  getStaffCheckoutRequest:secureHandoffRequest,
  lockHandoffCheckout:lockSecureHandoffCheckout,
  restoreHandoffCheckout:restoreSecureHandoffCheckout,
  finishHandoffSale:finishSecureHandoffSale,
- showHandoffHome:showSecureHandoffHome
+ showHandoffHome:showSecureHandoffHome,
+ notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
  if(!register||busy||statusRunning)return;
