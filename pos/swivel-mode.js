@@ -77,13 +77,18 @@
   returnBadge.value='';
   returnBadge.focus();
  }
- function ensureBridge(){
-  if(bridge)return bridge;
+ function ensureFreshGuestFrame(){
+  if(guestFrame)return guestFrame;
   cashier=cashierOrigin();
   entry=guestEntry(config.guestEntryUrl);
   guestFrame=secure.createIsolatedGuestFrame({
    window,container:host,cashierOrigin:cashier,guestOrigin:entry.origin,guestEntryUrl:entry.href
   });
+  return guestFrame;
+ }
+ function ensureBridge(){
+  if(bridge)return bridge;
+  ensureFreshGuestFrame();
   bridge=secure.createStagingHandoffBridge({
    client:api.secureHandoffClient,
    getStaffCheckoutRequest:()=>api.getStaffCheckoutRequest(),
@@ -121,6 +126,9 @@
   if(transition)return;
   transition=true;start.disabled=true;
   try{
+   // The previous customer's frame was destroyed after the verified sale.
+   // Always prepare a fresh, credential-free frame for each next order.
+   ensureFreshGuestFrame();
    const active=ensureBridge();
    await active.handToCustomer();
    message('Customer checkout is ready. Turn the iPad toward the customer.');
