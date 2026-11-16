@@ -107,6 +107,8 @@ jobs:
           # Server-verified staff checkout + register grant negatives (disposable PostgreSQL).
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_authorized_begin_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_shift_checkout_followup_draft.sql
+          # Role-aware cash and Finish Order draft; disposable PostgreSQL only.
+          psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_cash_finish_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/tests/staging-staff-authorized-begin-sql-test.sql
       - name: Build separate credential-free customer-origin project (CI placeholders only)
         run: |
