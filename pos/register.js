@@ -767,6 +767,22 @@ by('epson-enroll-method').addEventListener('change',()=>{
 });
 
 
+by('generate-owner-badge').addEventListener('click',()=>{
+ const out=by('owner-badge-message');
+ if(!db||!user){out.textContent='Owner sign-in is required before badge setup.';return}
+ if(!globalThis.crypto||typeof crypto.getRandomValues!=='function'){
+  out.textContent='Secure badge generation is unavailable on this device.';return;
+ }
+ // A 128-bit random Code 128-compatible badge value; no local storage,
+ // query-string, telemetry, or server write happens until owner submits.
+ const bytes=new Uint8Array(16);
+ crypto.getRandomValues(bytes);
+ const code=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+ const field=by('owner-badge-enrollment').querySelector('[name=badge]');
+ field.value=code;field.focus();field.select();
+ out.textContent='Private badge code generated. Copy or print it as Code 128 before saving. The POS cannot reveal it later.';
+});
+
 by('owner-badge-enrollment').addEventListener('submit',async event=>{
  event.preventDefault();
  const form=event.currentTarget,out=by('owner-badge-message'),button=by('enroll-owner-badge');
