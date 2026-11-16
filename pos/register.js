@@ -321,6 +321,18 @@ async function finishSecureHandoffSale({checkoutId}){
  secureHandoffSavedSale=saved;
  return {checkoutId,completed:true};
 }
+function reopenRegisterAfterVerifiedBadge(){
+ // The secure bridge calls this only after server validation of the
+ // original shift badge. The opaque cashier lock stays visible until done.
+ if(!db||!user||!register||busy||checkout||pendingCash)
+  throw Error('Next-sale register is not ready');
+ if(!stock.some(readyToSell))
+  throw Error('No ready-to-sell products available for the next sale');
+ setRegisterOpen(true);
+ if(document.body.classList.contains('pos-register-closed'))
+  throw Error('Register did not reopen after badge verification');
+ return true;
+}
 async function showSecureHandoffHome(){
  if(!secureHandoffSavedSale)throw Error('Finished checkout receipt is unavailable');
  const saved=secureHandoffSavedSale;
@@ -347,6 +359,7 @@ window.PersenPOSRegister=Object.freeze({
  restoreHandoffCheckout:restoreSecureHandoffCheckout,
  finishHandoffSale:finishSecureHandoffSale,
  showHandoffHome:showSecureHandoffHome,
+ reopenRegisterAfterVerifiedBadge,
  notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
