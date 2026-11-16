@@ -6,10 +6,11 @@ const SHIFT='44444444-4444-4444-8444-444444444444';
 const TOKEN='b'.repeat(64);
 const SECRET='a'.repeat(64);
 function fake(overrides={}) {
- const calls=[],shift=()=>({ok:true,shift_id:SHIFT,shift_secret:SECRET,
+ const calls=[],rpcArgs=[],shift=()=>({ok:true,shift_id:SHIFT,shift_secret:SECRET,
   first_name:'Alex',role:'owner',expires_at:'2099-01-01T00:00:00Z'});
  const client={rpc:async(name,args)=>{
-  calls.push(name);
+  calls.push(name);rpcArgs.push({name,args});
+  if(name==='pos_staff_begin_checkout')return {data:ORDER};
   if(name==='pos_staff_start_shift')return {data:shift()};
   if(name==='pos_handoff_claim')return {data:{ok:true,phase:'claimed',checkoutId:ORDER}};
   if(name==='pos_handoff_issue_guest')return {data:{checkoutId:ORDER,capability:TOKEN}};
@@ -21,7 +22,10 @@ function fake(overrides={}) {
  let locked=true;
  const bridge=createStagingHandoffBridge({
   client,
-  beginAuthorizedCheckout:async()=>{calls.push('checkout');return ORDER},
+  getStaffCheckoutRequest:async()=>{calls.push('checkout request');return {
+   registerId:ORDER,items:[{stock_id:ORDER,qty:1,unit_cents:2500}],
+   discountBps:0,taxMilli:0
+  }}, 
   lockAndVerifyCashier:async()=>{calls.push('lock');return locked},
   openGuest:async({checkoutId,capability})=>{
    assert.equal(checkoutId,ORDER);assert.equal(capability,TOKEN);
@@ -34,18 +38,24 @@ function fake(overrides={}) {
   showHome:async()=>calls.push('home'),
   ...overrides
  });
- return {bridge,calls,setStatus:value=>status=value,setLock:value=>locked=value};
+ return {bridge,calls,rpcArgs,setStatus:value=>status=value,setLock:value=>locked=value};
 }
 test('single iPad secure sequence is shift -> claim -> lock -> guest -> badge -> verified sale -> home',async()=>{
- const {bridge,calls,setStatus}=fake();
+ const {bridge,calls,rpcArgs,setStatus}=fake();
  await assert.rejects(bridge.handToCustomer(),/shift/);
  const shift=await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
  assert.deepEqual(shift,{firstName:'Alex',role:'owner',expiresAt:'2099-01-01T00:00:00Z'});
  assert.doesNotMatch(JSON.stringify(shift),new RegExp(SECRET));
  await bridge.handToCustomer();
- assert.deepEqual(calls.slice(0,5),['pos_staff_start_shift','checkout',
-  'pos_handoff_claim','lock','pos_handoff_issue_guest']);
- assert.equal(calls[5],'guest');
+ assert.deepEqual(calls.slice(0,6),['pos_staff_start_shift','checkout request',
+  'pos_staff_begin_checkout','pos_handoff_claim','lock','pos_handoff_issue_guest']);
+ assert.equal(calls[6],'guest');
+ const begin=rpcArgs.find(x=>x.name==='pos_staff_begin_checkout').args;
+ assert.equal(begin.p_shift_id,SHIFT);
+ assert.equal(begin.p_shift_secret,SECRET);
+ assert.equal(begin.p_register,ORDER);
+ assert.equal(begin.p_discount_bps,0);
+ assert.equal(begin.p_tax_milli,0);
  assert.equal(bridge.state().checkout.phase,'guest');
  await assert.rejects(bridge.confirmCustomerCompleted(),/not verified/);
  setStatus('contact_received');
@@ -86,4 +96,19 @@ test('failed authoritative sale never revokes guest or shows home',async()=>{
  assert.equal(bridge.state().checkout.phase,'payment');
  assert.equal(calls.includes('home'),false);
  assert.equal(calls.includes('pos_handoff_revoke'),false);
+});
+
+test('staff handoff refuses a forged discount before checkout creation and stays locked',async()=>{
+ const {bridge,calls}=fake({
+  getStaffCheckoutRequest:async()=>({registerId:ORDER,items:[{qty:1}],discountBps:500,taxMilli:0})
+ });
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await assert.rejects(bridge.handToCustomer(),/zero discount and tax/);
+ assert.equal(calls.includes('pos_staff_begin_checkout'),false);
+ assert.equal(calls.includes('pos_handoff_issue_guest'),false);
+ assert.equal(calls.includes('guest'),false);
+ assert.equal(bridge.state().checkout.phase,'locked');
+});
+test('missing staff checkout request prevents any owner-account fallback',()=>{
+ assert.throws(()=>fake({getStaffCheckoutRequest:null}),/Missing staging handoff dependency: getStaffCheckoutRequest/);
 });
