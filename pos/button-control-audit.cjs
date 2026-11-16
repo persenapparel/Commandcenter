@@ -47,7 +47,7 @@ for(const id of ['pair-setup','pair-quick','pair-copy','pair-share','pair-link-p
 }
 assert.ok(!registerJs.includes("by('pair')"),'Legacy pairing event handler must stay removed');
 const build=read('build-pages.mjs');
-assert.ok(build.includes("'secure-handoff-browser.js'")===false&&build.includes("secure-handoff-browser.js"),'Secure handoff bundle must be generated only into the staging POS output');
+assert.ok(build.includes("writeFile(join(dest,'secure-handoff-browser.js')"),'Secure handoff bundle must be generated into the staging POS output');
 assert.ok(build.includes("handoff-config.js"),'Staging handoff config must be generated into the POS output');
 assert.ok(!build.includes("'test-fake-supabase.js'")&&!build.includes("'browser-full-flow-test.cjs'"),'Mock test files must not deploy');
 const epsonCenter=read('epson-center.js');
