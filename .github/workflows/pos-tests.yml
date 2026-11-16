@@ -104,6 +104,10 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_shift_auth_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_checkout_handoff_bridge_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/tests/staging-handoff-bridge-sql-test.sql
+          # Isolated cashier authorization: distinct employee account, explicit
+          # owner grant, price tampering/discount and revocation negatives.
+          psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_authorized_begin_draft.sql
+          psql -v ON_ERROR_STOP=1 -f pos/tests/staging-staff-authorized-begin-sql-test.sql
       - name: Build separate credential-free customer-origin project (CI placeholders only)
         run: |
           node pos/build-guest-pages.mjs

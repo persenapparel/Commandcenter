@@ -43,7 +43,11 @@ function createStagingHandoffBridge({
      role:auth.role,expiresAt:auth.expires_at});
    coordinator=createHandoffCoordinator({
     beginCheckout:async()=>{
-     const opened=await beginAuthorizedCheckout();
+     // The employee creates the checkout through a shift-scoped server RPC,
+     // never via the legacy owner-authenticated begin-checkout endpoint.
+     const opened=await beginAuthorizedCheckout({
+      createCheckout:request=>adapter.beginStaffCheckout(request)
+     });
      const checkoutId=typeof opened==='string'?opened:opened?.checkoutId;
      if(!UUID.test(checkoutId||''))throw Error('Invalid checkout creation result');
      return adapter.claim(checkoutId);

@@ -25,6 +25,21 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
    throw Error('Invalid checkout id');
   if (active!==id) throw Error('Checkout is not claimed for this cashier');
  }
+ async function beginStaffCheckout({registerId,items,discountBps=0,taxMilli=0,eventId=null}) {
+  if(active)throw Error('Another checkout is already claimed');
+  if(typeof registerId!=='string' || !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(registerId) ||
+     !Array.isArray(items)||!items.length)
+   throw Error('Invalid checkout request');
+  const result=await client.rpc('pos_staff_begin_checkout',{
+   p_shift_id:shiftId,p_shift_secret:shiftSecret,p_register:registerId,
+   p_items:items,p_discount_bps:discountBps,p_tax_milli:taxMilli,
+   p_event:eventId
+  });
+  if(result.error || typeof result.data!=='string' ||
+     !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(result.data))
+   throw Error('Employee checkout unavailable');
+  return {checkoutId:result.data};
+ }
  async function claim(checkoutId) {
   if (active) throw Error('Another checkout is already claimed');
   const result=await rpc('pos_handoff_claim',{
@@ -88,6 +103,6 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
    throw Error('Guest authorization revocation unverified');
   active=null;
  }
- return Object.freeze({claim,issue,resume,getStatus,verifyPaid,revoke,current:()=>active});
+ return Object.freeze({beginStaffCheckout,claim,issue,resume,getStatus,verifyPaid,revoke,current:()=>active});
 }
 module.exports={createHandoffRpcAdapter};
