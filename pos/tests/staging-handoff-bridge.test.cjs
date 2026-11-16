@@ -38,6 +38,7 @@ function fake(overrides={}) {
    calls.push('guest');
   },
   restoreCashier:async()=>calls.push('restore'),
+  unlockRegisterForNextSale:async()=>{calls.push('reopen');return true},
   finishAuthoritativeSale:async({checkoutId})=>{paid=true;return {checkoutId,completed:true}}, 
   clearGuest:async()=>calls.push('clear'),
   showHome:async()=>calls.push('home'),
@@ -187,6 +188,7 @@ test('one PIN per shift and original badge required before second order',async()
  assert.equal(bridge.state().locked,true);
  const greeting=await bridge.unlockNextSale('correct-badge-value-123456');
  assert.deepEqual(greeting,{firstName:'Alex'});
+ assert.equal(calls.filter(name=>name==='reopen').length,1);
  assert.equal(bridge.state().checkout.phase,'cashier');
  assert.equal(bridge.state().locked,false);
  assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
@@ -199,4 +201,20 @@ test('idle unlock is denied without a completed sale',async()=>{
  const {bridge}=fake();
  await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
  await assert.rejects(bridge.unlockNextSale('correct-badge-value-123456'),/No locked completed sale/);
+});
+
+
+test('if register cannot reopen after correct badge, next sale remains locked',async()=>{
+ const {bridge,setStatus,calls}=fake({unlockRegisterForNextSale:async()=>false});
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}});
+ await bridge.finishSale({cashCents:2500});
+ await assert.rejects(bridge.unlockNextSale('correct-badge-value-123456'),/reopening failed/);
+ assert.equal(bridge.state().locked,true);
+ assert.equal(bridge.state().checkout.phase,'home');
+ await assert.rejects(bridge.handToCustomer(),/badge/);
+ assert.equal(calls.filter(name=>name==='pos_staff_begin_checkout').length,1);
 });
