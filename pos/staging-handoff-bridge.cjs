@@ -10,12 +10,12 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
 const SECRET=/^[0-9a-f]{64}$/i;
 function createStagingHandoffBridge({
  client, getStaffCheckoutRequest, lockAndVerifyCashier, openGuest,
- restoreCashier,
+ restoreCashier, unlockRegisterForNextSale,
  finishAuthoritativeSale, clearGuest, showHome
 }) {
  if(!client || typeof client.rpc!=='function')throw Error('Authenticated RPC client required');
  const tasks={getStaffCheckoutRequest,lockAndVerifyCashier,openGuest,
-  restoreCashier,finishAuthoritativeSale,
+  restoreCashier,unlockRegisterForNextSale,finishAuthoritativeSale,
   clearGuest,showHome};
  for(const [name,fn] of Object.entries(tasks))if(typeof fn!=='function')
   throw Error('Missing staging handoff dependency: '+name);
@@ -110,6 +110,10 @@ function createStagingHandoffBridge({
   const proof=await adapter.verifyIdleBadge(badge);
   if(proof.verified!==true||proof.firstName!==cashier.firstName)
    throw Error('Original employee badge not verified');
+  // Reopening must complete while the opaque overlay is still visible.
+  // If inventory, network or initialization fails, keep the badge gate locked.
+  const reopened=await unlockRegisterForNextSale();
+  if(reopened!==true)throw Error('Verified register reopening failed');
   coordinator=newCoordinator();
   locked=false;
   return Object.freeze({firstName:cashier.firstName});
