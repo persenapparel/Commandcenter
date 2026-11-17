@@ -340,7 +340,7 @@ async function showSecureHandoffHome(){
  secureHandoffSavedSale=null;
 }
 const secureHandoffRpcNames=new Set([
- 'pos_staff_start_shift','pos_staff_begin_checkout','pos_handoff_claim',
+ 'pos_staff_start_shift','pos_staff_resume_shift','pos_staff_begin_checkout','pos_handoff_claim',
  'pos_handoff_issue_guest','pos_handoff_status','pos_handoff_resume',
  'pos_handoff_verify_paid','pos_handoff_revoke',
   'pos_staff_complete_cash','pos_staff_finish_order'
