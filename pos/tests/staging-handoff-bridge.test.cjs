@@ -309,3 +309,33 @@ test('idle lock waits for a pending cash request and rejects duplicate cash subm
  assert.equal(cashCalls,1);
  assert.equal(bridge.lockForIdle(),true);
 });
+
+
+test('concurrent next-sale badge scans cannot reopen the same completed sale twice',async()=>{
+ let releaseReopen, reopenCount=0;
+ const gate=new Promise(resolve=>{releaseReopen=resolve});
+ const {bridge,calls,setStatus}=fake({
+  unlockRegisterForNextSale:async()=>{reopenCount++;return gate}
+ });
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}});
+ await bridge.finishSale({cashCents:2500});
+ const first=bridge.unlockNextSale('correct-badge-value-123456');
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(reopenCount,1);
+ assert.equal(bridge.state().locked,true,'the screen stays covered until reopening finishes');
+ await assert.rejects(
+  bridge.unlockNextSale('correct-badge-value-123456'),
+  /already pending/
+ );
+ assert.equal(reopenCount,1,'duplicate badge must not start a second reopen');
+ assert.equal(calls.filter(name=>name==='pos_staff_resume_shift').length,1);
+ releaseReopen(true);
+ await first;
+ assert.equal(bridge.state().locked,false);
+ assert.equal(bridge.state().checkout.phase,'cashier');
+ assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
+});
