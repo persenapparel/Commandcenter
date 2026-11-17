@@ -24,9 +24,9 @@ for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','pos.js','pos-co
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
 await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
-// Pinned customer build for the supervised PR #159 checkout integration preview.
+// Pinned customer build verified with staging-only framing CSP and CORS.
 // An explicit POS_GUEST_ENTRY_URL from Cloudflare always takes precedence.
-const guestFallback='https://6ceeb2ad.commandcenter-4yg.pages.dev/pos-guest/';
+const guestFallback='https://a76dbeb5.commandcenter-4yg.pages.dev/pos-guest/';
 function secureGuestEntry(value){
  const entry=new URL(value),host=entry.hostname.toLowerCase();
  if(entry.protocol!=='https:'||entry.username||entry.password||entry.search||entry.hash||
