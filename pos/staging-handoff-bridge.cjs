@@ -20,6 +20,7 @@ function createStagingHandoffBridge({
  for(const [name,fn] of Object.entries(tasks))if(typeof fn!=='function')
   throw Error('Missing staging handoff dependency: '+name);
  let cashier=null,adapter=null,coordinator=null,starting=false,locked=false,newCoordinator=null;
+ let idleLocked=false,unlocking=false,paymentPending=false;
  const call=async(name,args)=>{
   const result=await client.rpc(name,args);
   if(result?.error || !result || !result.data || typeof result.data!=='object')
@@ -93,11 +94,15 @@ function createStagingHandoffBridge({
   const current=coordinator.state();
   if(current.phase!=='payment'||current.checkoutId!==checkoutId||current.pending)
    throw Error('Cashier is not authorized to record this checkout');
-  return adapter.completeCash(checkoutId,payment);
+  if(paymentPending)throw Error('Cash payment already pending');
+  paymentPending=true;
+  try{return await adapter.completeCash(checkoutId,payment)}
+  finally{paymentPending=false}
  }
  async function finishSale(payment) {
   assertReady();
   if(locked)throw Error('Register is badge locked');
+  if(paymentPending)throw Error('Cash payment already pending');
   const completed=await coordinator.finishSale(payment);
   if(completed?.phase!=='home')throw Error('Verified home lock unavailable');
   locked=true; // Keep shift in memory; require badge-only re-entry.
@@ -118,9 +123,37 @@ function createStagingHandoffBridge({
   locked=false;
   return Object.freeze({firstName:cashier.firstName});
  }
- function state(){return Object.freeze({employee:cashier,locked,
+ function lockForIdle(){
+  const current=coordinator?.state();
+  if(!cashier||locked||paymentPending||current?.pending||
+     !['cashier','payment'].includes(current?.phase))return false;
+  // Keep the cart, payment state and original shift in memory.
+  locked=true;idleLocked=true;
+  return true;
+ }
+ async function unlockIdle(badge){
+  assertReady();
+  if(!idleLocked||!locked||unlocking)throw Error('No idle register to resume');
+  unlocking=true;
+  try{
+   const current=coordinator.state();
+   const proof=current.phase==='cashier'
+    ?await adapter.verifyIdleBadge(badge):await adapter.verifyShiftBadge(badge);
+   if(proof.verified!==true||proof.firstName!==cashier.firstName)
+    throw Error('Original employee badge not verified');
+   if(current.phase==='payment'){
+    const status=await adapter.getStatus(current.checkoutId);
+    if(!['contact_received','completed'].includes(status))
+     throw Error('Checkout is no longer available');
+   }
+   assertReady();
+   idleLocked=false;locked=false;
+   return Object.freeze({firstName:cashier.firstName});
+  }finally{unlocking=false}
+ }
+ function state(){return Object.freeze({employee:cashier,locked,idleLocked,
   checkout:coordinator?coordinator.state():null})}
  return Object.freeze({startShift,handToCustomer,confirmCustomerCompleted,
-  requireBadge,resumeWithBadge,recordCash,finishSale,unlockNextSale,state});
+  requireBadge,resumeWithBadge,recordCash,finishSale,unlockNextSale,lockForIdle,unlockIdle,state});
 }
 module.exports={createStagingHandoffBridge};
