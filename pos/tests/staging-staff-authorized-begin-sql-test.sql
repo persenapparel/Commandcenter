@@ -26,7 +26,7 @@ DECLARE
  v_item uuid:='66666666-6666-4666-8666-666666666666';
  v_shift uuid; v_secret text; v_login jsonb; v_checkout uuid;
  v_grant jsonb; v_token text; v_sale uuid;
- v_items jsonb;
+ v_items jsonb; v_second uuid; v_second_token text;
 BEGIN
  v_items:=jsonb_build_array(jsonb_build_object(
   'stock_id',v_item,'qty',1,'unit_cents',2500,'service','Apparel','taxable',true));
@@ -193,6 +193,57 @@ BEGIN
  v_grant:=public.pos_handoff_verify_paid(v_checkout,v_shift,v_secret);
  IF v_grant->>'completed' IS DISTINCT FROM 'true'
  THEN RAISE EXCEPTION 'Completed staff cash sale not server verified'; END IF;
+
+ -- A second sale must use the existing shift and only its original badge.
+ -- Never call start_shift again: that would conceal a broken badge-only path.
+ PERFORM public.pos_handoff_revoke(v_checkout,v_shift,v_secret);
+ v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('X',32));
+ IF v_grant->>'ok' IS DISTINCT FROM 'false'
+ THEN RAISE EXCEPTION 'Wrong badge unlocked second sale'; END IF;
+ v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('S',32));
+ IF v_grant->>'ok' IS DISTINCT FROM 'true'
+ THEN RAISE EXCEPTION 'Original badge could not unlock second sale without PIN'; END IF;
+ v_second:=public.pos_staff_begin_checkout(v_shift,v_secret,v_reg,v_items,0,0,null);
+ IF v_second=v_checkout THEN RAISE EXCEPTION 'Second sale reused first checkout'; END IF;
+ PERFORM public.pos_handoff_claim(v_second,v_shift,v_secret);
+ v_grant:=public.pos_handoff_issue_guest(v_second,v_shift,v_secret);
+ v_second_token:=v_grant->>'capability';
+ v_grant:=public.pos_handoff_guest_submit(v_second,v_second_token,
+  '{"signatureException":true,"marketingConsent":false,"email":"","phone":""}'::jsonb);
+ IF v_grant->>'accepted' IS DISTINCT FROM 'true'
+ THEN RAISE EXCEPTION 'Second guest accessibility exception failed'; END IF;
+ v_grant:=public.pos_handoff_resume(v_second,v_shift,v_secret,repeat('S',32));
+ IF v_grant->>'verified' IS DISTINCT FROM 'true'
+ THEN RAISE EXCEPTION 'Second guest return failed'; END IF;
+ BEGIN
+  PERFORM public.pos_staff_finish_order(v_shift,v_secret,v_second);
+  RAISE EXCEPTION 'Second sale finished before payment';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Second sale finished before payment' THEN RAISE; END IF;
+ END;
+ -- Count only this disposable register: $30 tender for a $25 order gives $5.
+ UPDATE public.pos_registers SET drawer_configured=true,cash_drawer='{"500":2}',drawer_version=1
+ WHERE id=v_reg;
+ BEGIN
+  PERFORM public.pos_staff_complete_cash(v_shift,v_secret,v_second,3000,
+   '{"2000":1,"1000":1}','{"500":1}',0);
+  RAISE EXCEPTION 'Stale drawer version accepted';
+ EXCEPTION WHEN others THEN
+  IF SQLERRM='Stale drawer version accepted' THEN RAISE; END IF;
+ END;
+ PERFORM public.pos_staff_complete_cash(v_shift,v_secret,v_second,3000,
+  '{"2000":1,"1000":1}','{"500":1}',1);
+ IF NOT EXISTS(SELECT 1 FROM public.pos_sales WHERE checkout_id=v_second
+  AND total_cents=2500 AND tendered_cents=3000 AND change_cents=500)
+ THEN RAISE EXCEPTION 'Second-sale change was not exactly $5'; END IF;
+ PERFORM public.pos_staff_finish_order(v_shift,v_secret,v_second);
+ v_grant:=public.pos_handoff_verify_paid(v_second,v_shift,v_secret);
+ IF v_grant->>'completed' IS DISTINCT FROM 'true'
+ THEN RAISE EXCEPTION 'Second sale did not finish'; END IF;
+ IF (SELECT count(*) FROM public.pos_sales WHERE checkout_id IN (v_checkout,v_second))<>2
+ THEN RAISE EXCEPTION 'Two-sale flow duplicated or lost a sale'; END IF;
+ IF (SELECT quantity FROM public.stock_items WHERE id=v_item)<>7
+ THEN RAISE EXCEPTION 'Two-sale stock decrement was not exactly two'; END IF;
 
  PERFORM set_config('request.jwt.claim.sub',v_owner::text,true);
  IF public.pos_staff_set_register_access(v_reg,v_staff,false) IS DISTINCT FROM true
