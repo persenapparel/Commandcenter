@@ -1,5 +1,14 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),vm=require('node:vm');
+const registerSource=fs.readFileSync('pos/register.js','utf8');
+const restrictedClientSource=registerSource.slice(
+ registerSource.indexOf('const secureHandoffRpcNames='),
+ registerSource.indexOf('window.PersenPOSRegister=')
+);
+function registerClient(db){
+ return vm.runInNewContext(restrictedClientSource+'\nsecureHandoffClient;', {db});
+}
 const {createStagingHandoffBridge}=require('../staging-handoff-bridge.cjs');
 const ORDER='22222222-2222-4222-8222-222222222222';
 const SHIFT='44444444-4444-4444-8444-444444444444';
@@ -27,7 +36,7 @@ function fake(overrides={}) {
  let status='awaiting_customer';
  let locked=true;
  const bridge=createStagingHandoffBridge({
-  client,
+  client:registerClient(client),
   getStaffCheckoutRequest:async()=>{calls.push('checkout request');return {
    registerId:ORDER,items:[{stock_id:ORDER,qty:1,unit_cents:2500}],
    discountBps:0,taxMilli:0
@@ -196,6 +205,15 @@ test('one PIN per shift and original badge required before second order',async()
  await bridge.handToCustomer();
  assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
  assert.equal(calls.filter(name=>name==='pos_staff_begin_checkout').length,2);
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ await bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:3000}});
+ await bridge.finishSale({cashCents:3000});
+ assert.equal(bridge.state().locked,true);
+ assert.equal(bridge.state().checkout.phase,'home');
+ assert.equal(calls.filter(name=>name==='pos_staff_complete_cash').length,2);
+ assert.equal(calls.filter(name=>name==='pos_staff_finish_order').length,2);
+ assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
 });
 test('idle unlock is denied without a completed sale',async()=>{
  const {bridge}=fake();
@@ -217,4 +235,13 @@ test('if register cannot reopen after correct badge, next sale remains locked',a
  assert.equal(bridge.state().checkout.phase,'home');
  await assert.rejects(bridge.handToCustomer(),/badge/);
  assert.equal(calls.filter(name=>name==='pos_staff_begin_checkout').length,1);
+});
+
+test('register boundary rejects unrelated RPCs and missing authenticated client',()=>{
+ let calls=0;
+ const client=registerClient({rpc:()=>{calls++;}});
+ assert.throws(()=>client.rpc('pos_complete_cash',{}),/unavailable/);
+ assert.throws(()=>client.rpc('unrelated_admin_rpc',{}),/unavailable/);
+ assert.equal(calls,0);
+ assert.throws(()=>registerClient(null).rpc('pos_staff_resume_shift',{}),/unavailable/);
 });
