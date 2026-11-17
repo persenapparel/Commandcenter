@@ -21,6 +21,7 @@ function createStagingHandoffBridge({
   throw Error('Missing staging handoff dependency: '+name);
  let cashier=null,adapter=null,coordinator=null,starting=false,locked=false,newCoordinator=null;
  let idleLocked=false,unlocking=false,paymentPending=false,nextSaleUnlocking=false;
+ let preparing=false,preparedRequest=null;
  const call=async(name,args)=>{
   const result=await client.rpc(name,args);
   if(result?.error || !result || !result.data || typeof result.data!=='object')
@@ -48,7 +49,7 @@ function createStagingHandoffBridge({
     beginCheckout:async()=>{
      // The owner-only checkout RPC must never be used for employee handoff.
      // The adapter binds this creation to the authenticated original shift.
-     const request=await getStaffCheckoutRequest();
+     const request=preparedRequest;
      const opened=await adapter.beginStaffCheckout(request);
      const checkoutId=opened.checkoutId;
      if(!UUID.test(checkoutId||''))throw Error('Invalid checkout creation result');
@@ -84,7 +85,19 @@ function createStagingHandoffBridge({
   if(!cashier || !coordinator || Date.parse(cashier.expiresAt)<=Date.now())
    throw Error('Employee shift is not active');
  }
- async function handToCustomer(){assertReady();if(locked)throw Error('Scan staff badge to unlock register');return coordinator.handToCustomer()}
+ async function handToCustomer(){
+  assertReady();if(locked)throw Error('Scan staff badge to unlock register');
+  const current=coordinator.state();
+  if(preparing||current.pending||current.phase!=='cashier')throw Error('Checkout is not ready');
+  // Reject local cart validation errors before any server request or lock.
+  // Network/claim failures inside the coordinator still fail closed.
+  preparing=true;
+  try{
+   preparedRequest=await getStaffCheckoutRequest();
+   if(locked)throw Error('Scan staff badge to unlock register');
+   return await coordinator.handToCustomer();
+  }finally{preparing=false;preparedRequest=null}
+ }
  async function confirmCustomerCompleted(){assertReady();return coordinator.customerCompleted()}
  function requireBadge(){assertReady();return coordinator.showCashierLock()}
  async function resumeWithBadge(badge){assertReady();return coordinator.badgeResume(badge)}

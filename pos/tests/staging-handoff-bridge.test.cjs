@@ -339,3 +339,18 @@ test('concurrent next-sale badge scans cannot reopen the same completed sale twi
  assert.equal(bridge.state().checkout.phase,'cashier');
  assert.equal(calls.filter(name=>name==='pos_staff_start_shift').length,1);
 });
+
+test('local invalid cart stays editable and retry creates only one checkout',async()=>{
+ let invalid=true;
+ const h=fake({getStaffCheckoutRequest:()=>{
+  if(invalid)throw Error('Discount not supported');
+  return {registerId:ORDER,items:[{stock_id:ORDER,qty:1,unit_cents:2500}],discountBps:0,taxMilli:0};
+ }});
+ await h.bridge.startShift({badge:'correct-badge-value-123456',pin:'123456'});
+ await assert.rejects(h.bridge.handToCustomer(),/Discount/);
+ assert.equal(h.bridge.state().checkout.phase,'cashier');
+ assert.deepEqual(h.calls,['pos_staff_start_shift']);
+ invalid=false;await h.bridge.handToCustomer();
+ assert.equal(h.calls.filter(x=>x==='pos_staff_begin_checkout').length,1);
+ assert.equal(h.bridge.state().checkout.phase,'guest');
+});
