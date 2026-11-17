@@ -20,7 +20,7 @@ function createStagingHandoffBridge({
  for(const [name,fn] of Object.entries(tasks))if(typeof fn!=='function')
   throw Error('Missing staging handoff dependency: '+name);
  let cashier=null,adapter=null,coordinator=null,starting=false,locked=false,newCoordinator=null;
- let idleLocked=false,unlocking=false,paymentPending=false;
+ let idleLocked=false,unlocking=false,paymentPending=false,nextSaleUnlocking=false;
  const call=async(name,args)=>{
   const result=await client.rpc(name,args);
   if(result?.error || !result || !result.data || typeof result.data!=='object')
@@ -112,6 +112,11 @@ function createStagingHandoffBridge({
   assertReady();
   if(!locked||coordinator?.state()?.phase!=='home'||!newCoordinator)
    throw Error('No locked completed sale to resume');
+  // Barcode scanners can submit twice before network verification finishes.
+  // Only one reopening may be in flight for a given completed sale.
+  if(nextSaleUnlocking)throw Error('Next-sale badge verification already pending');
+  nextSaleUnlocking=true;
+  try{
   const proof=await adapter.verifyIdleBadge(badge);
   if(proof.verified!==true||proof.firstName!==cashier.firstName)
    throw Error('Original employee badge not verified');
@@ -122,6 +127,7 @@ function createStagingHandoffBridge({
   coordinator=newCoordinator();
   locked=false;
   return Object.freeze({firstName:cashier.firstName});
+  }finally{nextSaleUnlocking=false}
  }
  function lockForIdle(){
   const current=coordinator?.state();
