@@ -245,3 +245,67 @@ test('register boundary rejects unrelated RPCs and missing authenticated client'
  assert.equal(calls,0);
  assert.throws(()=>registerClient(null).rpc('pos_staff_resume_shift',{}),/unavailable/);
 });
+
+test('idle lock preserves cart phase and verifies original badge without restarting shift',async()=>{
+ const {bridge,calls}=fake();
+ assert.equal(bridge.lockForIdle(),false);
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ assert.equal(bridge.lockForIdle(),true);
+ await assert.rejects(bridge.handToCustomer(),/badge/);
+ await assert.rejects(bridge.unlockIdle('wrong-badge-value-123456'),/not verified/);
+ assert.equal(bridge.state().idleLocked,true);
+ await bridge.unlockIdle('correct-badge-value-123456');
+ assert.equal(bridge.state().locked,false);
+ assert.equal(bridge.state().checkout.phase,'cashier');
+ assert.equal(calls.includes('reopen'),false);
+ assert.equal(calls.filter(x=>x==='pos_staff_start_shift').length,1);
+ await bridge.handToCustomer();
+ assert.equal(bridge.lockForIdle(),false,'customer screen must not be interrupted');
+});
+test('idle payment lock blocks cash and finish and resumes the exact checkout',async()=>{
+ const {bridge,calls,setStatus}=fake();
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();setStatus('contact_received');
+ await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ assert.equal(bridge.lockForIdle(),true);
+ await assert.rejects(bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}}),/badge locked/);
+ await assert.rejects(bridge.finishSale({}),/badge locked/);
+ await assert.rejects(bridge.unlockIdle('wrong-badge-value-123456'));
+ assert.equal(bridge.state().locked,true);
+ setStatus('cancelled');
+ await assert.rejects(bridge.unlockIdle('correct-badge-value-123456'),/no longer available/);
+ assert.equal(bridge.state().locked,true);
+ setStatus('completed'); // Cash may already have been recorded before idle.
+ await bridge.unlockIdle('correct-badge-value-123456');
+ assert.equal(bridge.state().checkout.phase,'payment');
+ assert.equal(bridge.state().checkout.checkoutId,ORDER);
+ assert.equal(calls.filter(x=>x==='pos_handoff_resume').length,1);
+ assert.equal(calls.includes('pos_staff_complete_cash'),false);
+});
+test('idle lock waits for a pending cash request and rejects duplicate cash submissions',async()=>{
+ let release;
+ // Use the real register client boundary with a delayed cash response.
+ let cashCalls=0;
+ const client={rpc:async(name)=>{
+  if(name==='pos_staff_start_shift')return {data:{ok:true,shift_id:SHIFT,shift_secret:SECRET,first_name:'Alex',role:'owner',expires_at:'2099-01-01'}};
+  if(name==='pos_staff_begin_checkout')return {data:ORDER};
+  if(name==='pos_handoff_claim')return {data:{ok:true,phase:'claimed',checkoutId:ORDER}};
+  if(name==='pos_handoff_issue_guest')return {data:{checkoutId:ORDER,capability:TOKEN}};
+  if(name==='pos_handoff_status')return {data:{ok:true,checkoutId:ORDER,status:'contact_received'}};
+  if(name==='pos_handoff_resume')return {data:{verified:true,checkoutId:ORDER}};
+  if(name==='pos_staff_complete_cash'){cashCalls++;return new Promise(resolve=>{release=()=>resolve({data:ORDER})});}
+  throw Error(name);
+ }};
+ const {bridge}=fake({client:registerClient(client)});
+ await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
+ await bridge.handToCustomer();await bridge.confirmCustomerCompleted();bridge.requireBadge();
+ await bridge.resumeWithBadge('correct-badge-value-123456');
+ const pending=bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}});
+ assert.equal(bridge.lockForIdle(),false);
+ await assert.rejects(bridge.recordCash({checkoutId:ORDER,payment:{tenderCents:2500}}),/already pending/);
+ await assert.rejects(bridge.finishSale({}),/already pending/);
+ release();await pending;
+ assert.equal(cashCalls,1);
+ assert.equal(bridge.lockForIdle(),true);
+});

@@ -134,6 +134,9 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
  // original employee badge. No second PIN and no new shift is created.
  async function verifyIdleBadge(badge) {
   if(active)throw Error('Guest checkout must be closed before register unlock');
+  return verifyShiftBadge(badge);
+ }
+ async function verifyShiftBadge(badge) {
   if(typeof badge!=='string'||badge.length<16||badge.length>256)
    throw Error('Invalid employee badge');
   const result=await rpc('pos_staff_resume_shift',{
@@ -145,6 +148,6 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
   return Object.freeze({verified:true,firstName:result.first_name});
  }
  return Object.freeze({beginStaffCheckout,claim,issue,resume,getStatus,verifyPaid,
-  completeCash,finishOrder,verifyIdleBadge,revoke,current:()=>active});
+  completeCash,finishOrder,verifyIdleBadge,verifyShiftBadge,revoke,current:()=>active});
 }
 module.exports={createHandoffRpcAdapter};

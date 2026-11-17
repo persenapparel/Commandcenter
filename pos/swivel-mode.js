@@ -36,11 +36,18 @@
   return url;
  }
  let cashier=null,entry=null,bridge=null,guestFrame=null,transition=false;
+ let lastActivity=Date.now();
+ const cashierSurfaces=Array.from(document.querySelectorAll('body > main, body > header'));
+ function coverCashier(covered){
+  for(const surface of cashierSurfaces)surface.inert=covered;
+ }
  function state(){return bridge?.state?.().checkout||null}
  function resetOverlay(){
   returnForm.hidden=true;
   overlay.hidden=true;
   document.body.classList.remove('swivel-customer-active');
+  coverCashier(false);
+  lastActivity=Date.now();
  }
  function clearGuest({keepLocked=false}={}){
   try{guestFrame?.dispose?.()}catch(_){}
@@ -55,6 +62,8 @@
   }
  }
  function renderCustomerLock(){
+  coverCashier(true);
+  keepCustomer.hidden=false;
   lock.hidden=false;
   returnForm.querySelector('h2').textContent='Cashier access';
   returnForm.querySelector('p').textContent='Turn the iPad back toward the cashier and scan the original staff badge to continue to payment.';
@@ -65,6 +74,8 @@
   returnMessage.textContent='';
  }
  function renderNextSaleLock(){
+  coverCashier(true);
+  keepCustomer.hidden=true;
   clearGuest({keepLocked:true});
   overlay.hidden=false;
   lock.hidden=true;
@@ -77,6 +88,43 @@
   returnBadge.value='';
   returnBadge.focus();
  }
+ function renderIdleLock(){
+  // Close top-layer cashier dialogs before covering the page; a modal
+  // dialog otherwise remains above even the highest z-index overlay.
+  for(const dialog of document.querySelectorAll('main dialog[open]'))dialog.close();
+  coverCashier(true);
+  overlay.hidden=false;
+  lock.hidden=true;
+  returnForm.hidden=false;
+  keepCustomer.hidden=true;
+  document.body.classList.add('swivel-customer-active');
+  returnForm.querySelector('h2').textContent='Persen Apparel · Register locked';
+  returnForm.querySelector('p').textContent='The register locked after 30 seconds without activity. Your current order is still here. Scan your staff badge to continue.';
+  $('swivel-return-submit').textContent='Unlock register';
+  returnMessage.textContent='Employee badge required. No PIN required again this shift.';
+  returnBadge.value='';returnBadge.focus();
+ }
+ function checkIdle(force=false){
+  if(transition||(!force&&Date.now()-lastActivity<30000))return false;
+  if(!bridge?.lockForIdle())return false;
+  renderIdleLock();
+  return true;
+ }
+ // Check elapsed wall time before accepting a tap/scan: Safari can suspend
+ // timers in the background. The first returning event must not edit a cart.
+ for(const type of ['pointerdown','keydown','input','click']){
+  document.addEventListener(type,event=>{
+   if(checkIdle()){
+    event.preventDefault();event.stopImmediatePropagation();return;
+   }
+   if(!bridge?.state?.().locked)lastActivity=Date.now();
+  },true);
+ }
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)checkIdle(true);else checkIdle();
+ });
+ window.addEventListener('pageshow',()=>checkIdle());
+ setInterval(()=>checkIdle(),1000);
  function ensureFreshGuestFrame(){
   if(guestFrame)return guestFrame;
   cashier=cashierOrigin();
@@ -195,7 +243,12 @@
   if(!badge){returnMessage.textContent='Scan the original staff badge to continue.';return}
   transition=true;returnMessage.textContent='Verifying badge…';
   try{
-   if(state()?.phase==='home'&&bridge?.state?.().locked){
+   if(bridge?.state?.().idleLocked){
+    const verified=await bridge.unlockIdle(badge);
+    returnBadge.value='';
+    resetOverlay();
+    message('Hello, '+verified.firstName+'! Continue your current order.');
+   }else if(state()?.phase==='home'&&bridge?.state?.().locked){
     const verified=await bridge.unlockNextSale(badge);
     returnBadge.value='';
     resetOverlay();
