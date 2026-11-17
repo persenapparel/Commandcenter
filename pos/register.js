@@ -83,6 +83,7 @@ const hasPrice=item=>{
 };
 const readyToSell=item=>isSalesStock(item)&&hasPrice(item)&&item.quantity>0;
 function addVariant(x){
+ if(!window.PersenPOSSwivel?.canUseRegister?.())return notice('Scan your employee badge and PIN before adding products.');
  if(checkout)return notice('Finish or cancel the current checkout first');
  const meta=variantMeta.get(x.id),line=cart.find(c=>c.stock_id===x.id);
  if(!isSalesStock(x)||!hasPrice(x))return notice('This item needs an active Sales Product and a selling price.');
@@ -151,9 +152,13 @@ function renderQuickCatalog(){
  by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
  by('open-register').disabled=readyCount===0;
 }
-function setRegisterOpen(open){
+function setRegisterOpen(open,verifiedBadge=false){
  if(!open&&checkout)return notice('Finish or cancel the open checkout before closing the register.');
  if(open&&!stock.some(readyToSell))return notice('First add at least one priced Sales Product.');
+ if(open&&!verifiedBadge&&!window.PersenPOSSwivel?.canUseRegister?.()){
+  window.PersenPOSSwivel?.requestRegisterOpen?.();
+  return;
+ }
  document.body.classList.toggle('pos-register-closed',!open);
  sessionStorage.setItem('pos-register-open',open?'1':'0');
  queueCustomerPreview();
@@ -328,7 +333,7 @@ function reopenRegisterAfterVerifiedBadge(){
   throw Error('Next-sale register is not ready');
  if(!stock.some(readyToSell))
   throw Error('No ready-to-sell products available for the next sale');
- setRegisterOpen(true);
+ setRegisterOpen(true,true);
  if(document.body.classList.contains('pos-register-closed'))
   throw Error('Register did not reopen after badge verification');
  return true;
@@ -1012,7 +1017,7 @@ by('barcode-csv').addEventListener('click',exportBarcodeLabels);
 by('scan-search').addEventListener('click',()=>{
  const field=by('search');field.focus();by('scan-search').hidden=true;
 });
-by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:false});e.target.reset();draw()}catch(err){notice(err.message)}};
+by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(!window.PersenPOSSwivel?.canUseRegister?.())return notice('Employee shift required.');if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:false});e.target.reset();draw()}catch(err){notice(err.message)}};
 by('discount').oninput=draw;
 document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
 by('clear-cart').onclick=()=>{if(checkout||pendingCash)return notice('Finish the current order first.');if(!cart.length)return;if(!window.confirm('Clear all items from this cart?'))return;cart=[];draw();notice('Cart cleared. Customer display will reset.')};

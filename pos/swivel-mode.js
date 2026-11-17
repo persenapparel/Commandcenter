@@ -163,8 +163,14 @@
   });
   return bridge;
  }
+ function canUseRegister(){
+  const current=bridge?.state?.();
+  return !!current?.employee&&!current.locked&&current.checkout?.phase==='cashier'&&
+   !current.checkout.pending&&Date.parse(current.employee.expiresAt)>Date.now();
+ }
  function openShiftDialog(){
-  if(!api.ready())return message('Sign in and open the register before starting a secure customer handoff.');
+  if(!api.ready())return message('Sign in as the staging owner before starting your employee shift.');
+  if(bridge?.state?.().employee)return message('Register is locked. Use the original badge at the lock screen.');
   shiftMessage.textContent='';
   shiftBadge.value='';shiftPin.value='';
   if(typeof shiftDialog.showModal!=='function')return message(blocked);
@@ -190,7 +196,9 @@
     returnForm.hidden=false;
     returnMessage.textContent='Secure handoff stopped before it could open. Keep this iPad with the cashier and do not start another order.';
    }
-   message('Secure customer handoff could not start. The cashier screen remains locked.');
+   message(phase==='cashier'
+    ?'Check your cart and use 0% discount, then retry Hand to Customer.'
+    :'Secure customer handoff could not start. The cashier screen remains locked.');
   }finally{
    transition=false;start.disabled=false;
   }
@@ -211,9 +219,10 @@
    shiftBadge.value='';shiftPin.value='';
    shiftMessage.textContent='';
    shiftDialog.close();
-   message('Hello, '+employee.firstName+'. Preparing the secure customer checkout…');
+   api.reopenRegisterAfterVerifiedBadge();
+   lastActivity=Date.now();
+   message('Hello, '+employee.firstName+'! Scan products to start your sale.');
    transition=false;
-   await handToCustomer();
   }catch(_){
    shiftBadge.value='';shiftPin.value='';
    shiftMessage.textContent='Staff access was not verified. Check the badge and PIN.';
@@ -267,10 +276,12 @@
  if(resume)resume.hidden=true;
  document.body.dataset.checkoutDeviceMode='swivel';
  const hint=document.querySelector('.live-cart-hint');
- if(hint)hint.textContent='Scan everything first, then use your staff badge and PIN to hand this iPad to the customer.';
+ if(hint)hint.textContent='Sign in with your staff badge and PIN, scan products, then select Hand to Customer.';
  resetOverlay();
  window.PersenPOSSwivel=Object.freeze({
   mode:()=> 'swivel',
+  canUseRegister,
+  requestRegisterOpen:openShiftDialog,
   active:()=>!!state(),
   ownsCheckout:checkoutId=>state()?.checkoutId===checkoutId&&state()?.phase==='payment',
   recordCash:payment=>{

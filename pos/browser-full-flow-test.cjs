@@ -10,12 +10,21 @@ const visible=async(p,s,timeout=11000)=>p.waitForFunction(s=>{const e=document.q
 const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
- const url='http://127.0.0.1:'+server.address().port+'/';
+ const localUrl='http://127.0.0.1:'+server.address().port+'/';
+ // Virtual staging origin, served entirely from local fixtures. This exercises
+ // the actual origin guard without weakening it to accept localhost.
+ const url='https://persen-pos-staging.pages.dev/';
  const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({viewport:{width:1280,height:800}});
  ctx.setDefaultTimeout(6000);
  await ctx.addInitScript({path:'pos/test-fake-supabase.js'});
  await ctx.addInitScript({content:"Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async s=>localStorage.setItem('__clip',s),readText:async()=>localStorage.getItem('__clip')}});Object.defineProperty(window,'print',{configurable:true,value:()=>localStorage.setItem('__prints',String(Number(localStorage.getItem('__prints')||0)+1))});window.confirm=()=>true;"});
- await ctx.route('**/*',r=>r.request().url().startsWith(url)?r.continue():r.fulfill({status:200,contentType:'application/javascript',body:''}));
+ await ctx.route('**/*',async r=>{
+  if(r.request().url().startsWith(url)){
+   const response=await ctx.request.get(localUrl+r.request().url().slice(url.length));
+   return r.fulfill({response});
+  }
+  return r.fulfill({status:200,contentType:'application/javascript',body:''});
+ });
  let admin,cashier,printer;
  try{
  await step('Device dashboard routes without unsafe browser-stored PIN',async()=>{
@@ -74,6 +83,18 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('input[aria-label="Include Christmas Hoodie"]').check();
   await cashier.locator('input[aria-label="Include Winter Crewneck"]').check();
   await cashier.locator('#save-event-selection').click();await txt(cashier,'#notice','Event saved. Your selected Sales Products are ready.');
+  await visible(cashier,'#swivel-shift-dialog');
+  assert.equal(await cashier.locator('body').evaluate(e=>e.classList.contains('pos-register-closed')),true);
+  assert.equal(await cashier.locator('#swivel-guest-host iframe').count(),0);
+  await cashier.locator('#swivel-badge').fill('TEST-BADGE-ONLY-0001');
+  await cashier.locator('#swivel-pin').fill('wrong');await cashier.locator('#swivel-shift-submit').click();
+  await txt(cashier,'#swivel-shift-message','not verified');
+  assert.equal(await cashier.locator('body').evaluate(e=>e.classList.contains('pos-register-closed')),true);
+  await cashier.locator('#swivel-badge').fill('TEST-BADGE-ONLY-0001');
+  await cashier.locator('#swivel-pin').fill('654321');await cashier.locator('#swivel-shift-submit').click();
+  await txt(cashier,'#notice','Hello, Test!');
+  assert.equal(await cashier.locator('#swivel-pin').inputValue(),'');
+  assert.equal(await cashier.locator('#swivel-guest-host iframe').count(),0,'Shift login must not start guest checkout');
   await visible(cashier,'.quick-toolbar');
   await visible(cashier,'#catalog .quick-product');assert.ok(await cashier.locator('.quick-product').count()>=2);
   assert.equal(await cashier.locator('.product-manager:visible').count(),0);
@@ -126,16 +147,17 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   }
   assert.equal(await cashier.locator('input[name="checkout-device-mode"][value="dual"]').count(),0);
  });
- await step('Single-iPad handoff requires staff badge before isolated customer screen can open',async()=>{
+ await step('Verified shift avoids a second PIN prompt and unsupported discounted handoff fails closed',async()=>{
   const before=await state(cashier);
   const original={checkouts:before.tables.pos_checkouts.length,sales:before.tables.pos_sales.length,printJobs:before.tables.pos_print_jobs.length};
   assert.equal(await cashier.locator('#start').innerText(),'Hand to Customer →');
   assert.equal(await cashier.locator('#start').isDisabled(),false);
   await cashier.locator('#start').click();
-  await visible(cashier,'#swivel-shift-dialog');
+  await txt(cashier,'#notice','Check your cart and use 0% discount');
+  assert.equal(await cashier.locator('#swivel-overlay').isVisible(),false,'Local cart error must remain editable before checkout is created');
+  assert.equal(await cashier.locator('#swivel-shift-dialog').isVisible(),false,'Existing shift must not request another PIN');
   assert.equal(await cashier.locator('#swivel-badge').count(),1);
   assert.equal(await cashier.locator('#swivel-pin').count(),1);
-  assert.equal(await cashier.locator('#swivel-overlay').isVisible(),false,'Customer overlay must remain closed until a verified staff shift starts');
   assert.equal(await cashier.locator('#swivel-customer-frame').count(),0,'Retired same-origin customer frame must not exist');
   assert.equal(await cashier.locator('#swivel-guest-host iframe').count(),0,'No guest frame may load before server staff verification');
   assert.equal(await cashier.locator('#workspace').isVisible(),true,'Cashier still controls the iPad before handoff');
@@ -144,7 +166,6 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(after.tables.pos_checkouts.length,original.checkouts,'Badge gate must not create checkout');
   assert.equal(after.tables.pos_sales.length,original.sales,'Badge gate must not create sale');
   assert.equal(after.tables.pos_print_jobs.length,original.printJobs,'Badge gate must not queue receipt');
-  await cashier.locator('#swivel-shift-cancel').click();
  });
  await step('Epson Center remains read-only and legacy NELKO browser worker stays disabled',async()=>{
   await visible(admin,'#print-center');

@@ -71,6 +71,10 @@ function rpc(name,p={}){
  const match=t.pos_checkouts.find(x=>x.id===p.p_checkout);
  const write=x=>{save(state);return result(x)};
  switch(name){
+ case 'pos_staff_start_shift':{
+  if(p.p_badge!=='TEST-BADGE-ONLY-0001'||p.p_pin!=='654321')return result({ok:false});
+  return result({ok:true,shift_id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',shift_secret:'a'.repeat(64),first_name:'Test',role:'owner',expires_at:new Date(Date.now()+3600000).toISOString()});
+ }
  case 'pos_create_product_group':{
   const sizes=p.p_sizes||{};let n=0;
   for(const [size,quantity] of Object.entries(sizes)){if(Number(quantity)<=0)continue;const id=newid(state);
