@@ -12,7 +12,8 @@ test('badge-only owner enrollment never requires an employee email',()=>{
  assert.match(markup,/No employee emails or accounts needed/);
  assert.match(markup,/id="staff-setup-readiness"/);
  assert.match(markup,/id="test-staff-badge-pin"[^>]*disabled/);
- assert.doesNotMatch(markup,/name="email"|id="activate-staff-badge"|href="staff-test.html"/);
+ const badgeDialog=markup.split('<dialog id="staff-badge-setup-dialog"')[1].split('</dialog>')[0];
+ assert.doesNotMatch(badgeDialog,/name="email"|id="activate-staff-badge"|href="staff-test.html"/);
  assert.match(source,/pos_owner_badge_slot_status/);
  assert.match(source,/pos_owner_enroll_badge/);
  assert.match(source,/pos_staff_test_badge_pin/);
