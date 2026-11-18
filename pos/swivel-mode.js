@@ -334,6 +334,7 @@
     const verified=await bridge.unlockIdle(badge);
     returnBadge.value='';
     resetOverlay();
+    api.refreshExternalApprovalUI?.();
     message('Hello, '+verified.firstName+'! Continue your current order.');
    }else if(state()?.phase==='home'&&bridge?.state?.().locked){
     const verified=await bridge.unlockNextSale(badge);
@@ -344,6 +345,7 @@
     message('Hello, '+verified.firstName+'! Choose your next action.');
    }else{
     await bridge.resumeWithBadge(badge);
+    api.refreshExternalApprovalUI?.();
     returnBadge.value='';
     message('Cashier resumed. Confirm cash only after you receive it.');
    }
