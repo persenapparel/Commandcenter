@@ -9,3 +9,75 @@ body:not(.pos-register-closed)[data-cashier-stage="catalog"] .quick-toolbar {pos
 body:not(.pos-register-closed)[data-cashier-stage="catalog"] #start {min-height:58px;font-size:18px}
 @media(max-width:850px){body:not(.pos-register-closed)[data-cashier-stage="catalog"] .layout{grid-template-columns:minmax(0,1fr)}body:not(.pos-register-closed)[data-cashier-stage="catalog"] .quick-toolbar{position:static}}
 @media print{body:not(.pos-register-closed)[data-cashier-stage="catalog"] .quick-toolbar{display:none!important}}
+
+
+/* Kiosk-size sales register. Only the product and cart panes scroll when
+   absolutely necessary, never the whole page. All staff/payment overlays
+   remain above this shell and emergency lock stays visible. */
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed){height:100dvh;overflow:hidden}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed)>header{display:none}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed)>main{
+  display:flex;flex-direction:column;width:100%;max-width:none;height:100dvh;
+  margin:0;padding:8px 12px!important;overflow:hidden
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed)>main>#notice{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #workspace{
+  min-height:0;flex:1;display:flex;flex-direction:column;gap:8px;overflow:hidden
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #workspace>:not(.quick-toolbar):not(.layout){display:none!important}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .quick-toolbar{
+  display:flex!important;position:static!important;margin:0;padding:6px 12px;min-height:48px;flex:none
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .quick-toolbar>span,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #refresh-products,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #add-event-products,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .quick-toolbar .backoffice-link{display:none!important}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .quick-toolbar .manual-register-lock{background:#123f76;color:#fff;border-color:#123f76}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout{
+  flex:1;min-height:0;max-height:100%;overflow:hidden;
+  display:grid!important;grid-template-columns:minmax(0,1.4fr) minmax(280px,.82fr)!important;
+  gap:10px;align-items:stretch!important
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout>.panel{
+  min-width:0;min-height:0;height:100%;display:flex;flex-direction:column;overflow:hidden;
+  padding:13px;border-radius:14px
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout>.panel:first-child>h2,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .pos-label-export,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .pos-scan-mode-toggle,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #category-filters,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #custom,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout>.panel:first-child>h3,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .live-cart-hint{display:none!important}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #search{display:none!important}
+body.fast-mode[data-employee-mode="sales"][data-sales-search="true"][data-cashier-stage="catalog"]:not(.pos-register-closed) #search{display:block!important;min-height:43px;margin:4px 0}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .pos-scan-form{flex:none;margin:0 0 8px;padding:10px;border-radius:12px}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .pos-scan-form label small{display:none}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .pos-scan-actions{flex-wrap:nowrap;gap:8px}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #scan-code{min-width:0;min-height:53px;flex:1;margin:0;font-size:17px;border:2px solid #2a65b6}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #scan-submit{min-width:100px;min-height:53px;flex:0 0 auto}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #scan-status{font-size:12px;margin:4px 0}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .sales-search-toggle{font-size:11px;padding:6px 11px;min-height:32px}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #catalog{
+  flex:1;min-height:0;max-height:none!important;overflow-y:auto;overscroll-behavior:contain;align-content:start
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #cart{
+  flex:1;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain
+}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout>.panel:nth-child(2)>label,
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .discount{display:none!important}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .total{margin-top:auto;flex:none;padding:9px 0}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #start{min-height:56px;flex:none}
+@media(max-width:680px){
+ body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout{
+  grid-template-columns:minmax(0,1fr) minmax(155px,.85fr)!important;gap:6px
+ }
+ body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout>.panel{padding:9px}
+ body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #catalog{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .pos-scan-actions{flex-wrap:wrap}
+ body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #scan-submit{min-height:36px;font-size:12px}
+}
+@media print{body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]{height:auto!important;overflow:visible!important}}

@@ -841,3 +841,21 @@ body.fast-mode .quick-product.event-featured{border-color:#82b5ee;box-shadow:ins
 .pos-inventory-result dt{font-weight:600;color:#4d6480}
 .pos-inventory-result dd{margin:0;overflow-wrap:anywhere;font-weight:650}
 .pos-inventory-availability{margin:.8rem 0 0;font-weight:700;color:#13345d}
+
+.external-approval-panel{max-width:660px;margin:18px auto;padding:26px;border:2px solid #86a6da;background:#f7fbff;border-radius:18px}
+.external-approval-panel h3{font-size:26px;margin:9px 0 13px}
+.external-approval-total{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:15px;background:white;border:1px solid #cadcf2;border-radius:12px}
+.external-approval-total strong{font-size:30px}
+.external-approval-panel p{color:#455e7e;line-height:1.5}
+.external-approval-panel fieldset{border:1px solid #cfdfef;border-radius:12px;padding:15px;margin:15px 0}
+.external-approval-panel legend{font-weight:900}
+.external-approval-check{display:flex;align-items:flex-start;gap:12px;padding:10px 0;font-weight:700}
+.external-approval-check input{flex:none;width:21px;height:21px;margin:2px 0}
+.external-approval-panel #external-owner-approve{min-height:58px;font-size:16px}
+.staff-badge-dialog{width:min(92vw,650px);max-height:90dvh;overflow-y:auto}
+.staff-badge-dialog form{display:grid;gap:7px}
+.staff-badge-dialog fieldset{border:1px solid #cfdfef;border-radius:12px;padding:12px}
+.employee-home-badge-setup,.badge-setup-launch{display:block;margin:18px auto;padding:12px 18px;min-height:45px;background:#e6f2ff;border:1px solid #a8c9ef;color:#174d8b}
+body[data-staff-role="cashier"] .employee-home-badge-setup{display:none!important}
+
+body[data-cashier-stage="handoff"] #external-approval-panel{display:none!important}

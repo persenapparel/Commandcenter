@@ -16,8 +16,8 @@ function syncCashierStage(){
  const headings={
   customer:['Customer is checking out','Their iPad shows each question. You can see their progress here without viewing their answers.'],
   payment:['Collect the payment','The customer finished their details. Enter the amount received or tap the bills they handed you.'],
-  external:['Payment instructions only','The customer selected an external payment method. This POS cannot verify or record that payment as paid.'],
-  handoff:['Give change & finish the order','Cash was recorded. Give the customer their change and receipt before finishing.']
+  external:['Payment needs owner approval','The customer chose Venmo or Apple Cash. Check the recipient account, then have the owner scan their badge and enter their PIN.'],
+  handoff:['Payment verified · finish order','Payment saved. Give change only for a cash sale, then tap Finish Order.']
  };
  const copy=headings[stage];
  by('cashier-stage-header').hidden=!copy;
@@ -209,6 +209,7 @@ function syncCheckoutUI(){
  by('discount').disabled=!!checkout||cashier||inventoryOnly;
  document.querySelectorAll('[data-discount]').forEach(button=>{button.disabled=!!checkout||cashier||inventoryOnly});
  by('event-select').disabled=!!checkout||!!cart.length||inventoryOnly;
+ updateExternalApprovalPanel();
 }
 async function loadStock(){
  // Inventory and quick tiles must come from the POS database. Staging remains isolated.
@@ -236,7 +237,7 @@ async function loadStock(){
 async function loadTemplates(){templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));by('templates').replaceChildren();for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;by('templates').append(opt)}const t=templates.find(x=>x.active)||templates[0];if(t){by('templates').value=t.id;showTemplate(t)}}
 function showTemplate(t){by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false}
 async function ensureRegister(){const regs=await check(db.from('pos_registers').select('*').eq('owner_id',user.id).eq('active',true).order('created_at').limit(1));register=regs[0]||await check(db.from('pos_registers').insert({owner_id:user.id,label:'Persen POS register'}).select('*').single());pendingCash=sessionStorage.getItem(pendingCashKey());syncCheckoutUI();}
-const saleForCheckout=id=>check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,tendered_cents,change_cents,change_breakdown,created_at').eq('checkout_id',id).maybeSingle());
+const saleForCheckout=id=>check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method,tendered_cents,change_cents,change_breakdown,created_at').eq('checkout_id',id).maybeSingle());
 function showPaidAwaitingHandoff(saved,record){
  const id=record.id;
  lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};
@@ -247,12 +248,20 @@ function showPaidAwaitingHandoff(saved,record){
  handoffCheckoutId=id;rememberCash(null);
  document.body.classList.add('checkout-active');
  document.body.classList.remove('pos-register-closed');
+ const external=['venmo','apple_cash'].includes(saved.payment_method);
  by('cash-handoff').hidden=false;by('finish-order').disabled=false;
+ by('cash-handoff-eyebrow').textContent=external?'OWNER-VERIFIED TRANSFER':'CASH PAYMENT RECORDED';
+ by('cash-handoff-heading').textContent=external?'Payment approved by owner':'Hand the customer their change';
+ by('cash-handoff-change').hidden=external;
  by('cash-handoff-change').textContent=C.money(saved.change_cents);
- void updateEpsonDrawerStatus(saved.id);
- draw();
- syncCashierStage();
- notice('Cash payment saved. Hand back '+C.money(saved.change_cents)+' in change, then tap Finish Order.');
+ by('cash-handoff-description').textContent=external
+  ?'Your independent owner approval was recorded. Tap Finish Order.'
+  :'After handing back any change, tap Finish Order.';
+ by('epson-drawer-status').hidden=external;
+ if(!external)void updateEpsonDrawerStatus(saved.id);
+ draw();syncCashierStage();updateExternalApprovalPanel();
+ notice(external?'Owner verified this transfer. Tap Finish Order.':
+  'Cash payment saved. Return '+C.money(saved.change_cents)+' in change, then Finish Order.');
 }
 async function showCompletedSale(saved){
  lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};
@@ -331,8 +340,59 @@ async function restoreSecureHandoffCheckout({checkoutId}){
  checkout=current;
  checkoutVersion++;
  document.body.classList.remove('swivel-customer-active');
- syncCashierStage();syncCheckoutUI();draw();
+ syncCashierStage();syncCheckoutUI();draw();updateExternalApprovalPanel();
 }
+
+function updateExternalApprovalPanel(){
+ const panel=by('external-approval-panel'),method=checkout?.payment_preference;
+ const ready=checkout?.status==='contact_received' &&
+  ['venmo_info','apple_cash_info'].includes(method) &&
+  window.PersenPOSSwivel?.ownsCheckout?.(checkout.id)===true;
+ panel.hidden=!ready;
+ if(!ready)return;
+ by('external-approval-title').textContent=method==='venmo_info'?'Venmo transfer':'Apple Cash transfer';
+ by('external-approval-amount').textContent=C.money(checkout.total_cents);
+}
+async function ownerApproveExternalPayment(){
+ if(busy||!checkout||checkout.status!=='contact_received')return;
+ if(!['venmo_info','apple_cash_info'].includes(checkout.payment_preference))
+  return notice('External transfer selection not verified.');
+ if(!window.PersenPOSSwivel?.ownsCheckout?.(checkout.id))
+  return notice('The original cashier badge must resume this checkout.');
+ const checked=by('external-cashier-confirmed').checked===true;
+ const ownerVerified=by('external-owner-verified').checked===true;
+ const badge=by('external-owner-badge').value.trim(),pin=by('external-owner-pin').value;
+ if(!checked||!ownerVerified||badge.length<8||pin.length<6){
+  by('external-approval-status').textContent='Verify the funds independently, check both boxes and enter owner badge and PIN.';
+  return;
+ }
+ busy=true;by('external-owner-approve').disabled=true;
+ const checkoutId=checkout.id;
+ by('external-approval-status').textContent='Checking owner authorization on server…';
+ try{
+  const result=await check(db.rpc('pos_owner_confirm_external_payment',{
+   p_checkout:checkoutId,p_owner_badge:badge,p_owner_pin:pin,
+   p_cashier_confirmed:checked,p_owner_verified:ownerVerified
+  }));
+  if(result?.approved!==true||result.checkoutId!==checkoutId||
+     !['venmo','apple_cash'].includes(result.method)||
+     typeof result.saleId!=='string')
+   throw Error('Owner payment approval not verified');
+  const saved=await saleForCheckout(checkoutId);
+  if(!saved||saved.id!==result.saleId||saved.payment_method!==result.method)
+   throw Error('Owner-verified sale record unavailable');
+  showPaidAwaitingHandoff(saved,{...checkout,status:'completed',cash_handoff_complete:false});
+  by('external-approval-status').textContent='Owner approved payment. Finish Order required.';
+ }catch(_){
+  // Never mark paid based on a network response that cannot be checked.
+  by('external-approval-status').textContent='Approval cannot be verified. Check the sale record before retrying. Do not record it as cash.';
+ }finally{
+  by('external-owner-pin').value='';by('external-owner-badge').value='';
+  busy=false;by('external-owner-approve').disabled=false;
+ }
+}
+by('external-owner-approve').onclick=()=>void ownerApproveExternalPayment();
+
 async function finishSecureHandoffSale({checkoutId}){
  if(!checkout||checkout.id!==checkoutId||checkout.status!=='completed')
   throw Error('Secure checkout is not ready to finish');
@@ -379,7 +439,9 @@ function openEmployeeMode(mode){
  if(mode==='inventory')setScanMode('inventory');
  else setScanMode('sell');
  draw();
- by(mode==='inventory'?'scan-code':'search').focus();
+ // Keep the scanner input focused in both Sales and Inventory Check.
+ // On iPad a Bluetooth HID scanner can type into this field immediately.
+ const scanner=by('scan-code');scanner.value='';scanner.focus({preventScroll:true});
  return true;
 }
 async function showSecureHandoffHome(){
@@ -411,6 +473,8 @@ window.PersenPOSRegister=Object.freeze({
  showHandoffHome:showSecureHandoffHome,
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
+ openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
+ refreshExternalApprovalUI:updateExternalApprovalPanel,
  notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
@@ -498,7 +562,7 @@ async function cash(){
   notice('Cash payment could not be confirmed: '+e.message+'. Do not start another order until status is checked.');
  }finally{busy=false;await status()}
 }
-function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
+function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent=(lastSale.totals.payment_method==='venmo'?'VENMO':lastSale.totals.payment_method==='apple_cash'?'APPLE CASH':'CASH')+' SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-tender-label').textContent=lastSale.totals.payment_method==='cash'?'Cash received':'Owner-verified transfer';by('receipt-change-label').textContent=lastSale.totals.payment_method==='cash'?'Change returned':'Change';by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
 async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
 async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales(),reloadDrawer()]);if(sessionStorage.getItem('pos-register-open')==='1'&&stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))setRegisterOpen(true);try{const contents=await check(db.from('site_content').select('key,value').in('key',['seasonal_campaigns_v1','v54_google_reviews']));const dict=Object.fromEntries((contents||[]).map(x=>[x.key,x.value]));season=C.season(dict.seasonal_campaigns_v1);reviewLink=R.reviewUrl(dict.v54_google_reviews);if(season){Experience.apply(document,season);by('seasonal-status').textContent='Active: '+season.title+' — receipt and display promotions';notice('Seasonal Studio connected: '+season.title)}else{by('seasonal-status').textContent='No published active campaign — classic receipt and customer display'}if(!reviewLink)notice('Google review link not configured in Command Center Site Studio; review invitation hidden until configured.')}catch(err){by('seasonal-status').textContent='Seasonal Studio temporarily unavailable';}await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
 
@@ -878,6 +942,61 @@ by('owner-badge-enrollment').addEventListener('submit',async event=>{
 });
 
 
+
+/* Owner-only reservation of two separate future employee badge identities.
+ * Never treat pending reservations as an active cashier login. The server
+ * protects this action with the already enrolled owner's badge and PIN.
+ */
+const badgeSetupDialog=by('staff-badge-setup-dialog');
+by('open-employee-badges').onclick=()=>window.PersenPOSRegister.openEmployeeBadgeSetup();
+by('close-staff-badge-setup').onclick=()=>badgeSetupDialog.close();
+function ownerOpenEmployeeBadgeSetup(){
+ if(!db||!user)return notice('Sign in as owner to set up employee badges.');
+ if(badgeSetupDialog.open)return;
+ badgeSetupDialog.showModal();
+}
+function validEan8(data){
+ const sum=[...data].reduce((total,digit,i)=>total+Number(digit)*(i%2===0?3:1),0);
+ return data+String((10-sum%10)%10);
+}
+by('generate-staff-badge').onclick=()=>{
+ if(!window.crypto?.getRandomValues)return by('staff-badge-setup-message').textContent='Secure badge generation is unavailable.';
+ const numbers=new Uint32Array(2);crypto.getRandomValues(numbers);
+ const firstSeven=String(((numbers[0]^numbers[1])>>>0)%10000000).padStart(7,'0');
+ const code=validEan8(firstSeven);
+ const field=by('staff-badge-setup-form').querySelector('[name=badge]');
+ field.value=code;field.select();
+ by('staff-badge-setup-message').textContent='Generated badge '+code+'. Print a verified EAN-8 barcode tag before you close this form. The code is never stored in the browser.';
+};
+by('staff-badge-setup-form').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const form=event.currentTarget,out=by('staff-badge-setup-message'),button=by('save-staff-badge');
+ const f=new FormData(form),pin=String(f.get('pin')||''),pinAgain=String(f.get('pin_confirm')||'');
+ const code=String(f.get('badge')||'').trim();
+ if(pin.length<6||pin!==pinAgain||!/^[0-9]{8}$/.test(code)){
+  out.textContent='Enter a valid 8-digit EAN-8 code and matching 6+ digit employee PIN.';return;
+ }
+ if(!db||!user){out.textContent='Owner login required.';return}
+ button.disabled=true;out.textContent='Verifying owner approval and reserving badge…';
+ try{
+  const result=await check(db.rpc('pos_owner_prepare_employee_badge',{
+   p_slot:Number(f.get('slot')),p_first_name:String(f.get('first_name')||'').trim(),
+   p_email:String(f.get('email')||'').trim(),p_badge:code,p_pin:pin,
+   p_owner_badge:String(f.get('owner_badge')||'').trim(),
+   p_owner_pin:String(f.get('owner_pin')||'')
+  }));
+  if(!result?.saved||result.activated)throw Error('Badge reservation was not accepted');
+  form.querySelector('[name=pin]').value='';
+  form.querySelector('[name=pin_confirm]').value='';
+  form.querySelector('[name=owner_pin]').value='';
+  form.querySelector('[name=owner_badge]').value='';
+  out.textContent='Employee '+f.get('slot')+' badge reserved. Keep the printed number private. Not activated: separate employee account and register authorization still required.';
+ }catch(_){
+  for(const field of ['pin','pin_confirm','owner_pin'])form.querySelector('[name='+field+']').value='';
+  out.textContent='Badge not saved. Confirm your owner badge/PIN and that the staging reservation system is installed.';
+ }finally{button.disabled=false}
+});
+
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
 // A non-blocking, accessible one-second scan confirmation. It never captures scanner focus.
 let scanConfirmationTimer;
@@ -969,6 +1088,7 @@ function setScanMode(mode){
  by('scan-status').textContent=scanMode==='inventory'?'Inventory check mode — scans do not add products to the cart.':'Add-to-cart mode — scans add products to the sale.';
  by('scan-inventory-result').hidden=true;
  by('scan-search').hidden=true;
+ document.body.dataset.salesSearch='false';
  by('scan-code').value='';
  by('scan-code').focus();
 }
@@ -1007,6 +1127,18 @@ function checkInventorySku(input){
 }
 by('scan-mode-sell').addEventListener('click',()=>setScanMode('sell'));
 by('scan-mode-inventory').addEventListener('click',()=>setScanMode('inventory'));
+by('show-product-search').addEventListener('click',()=>{
+ const opening=document.body.dataset.salesSearch!=='true';
+ document.body.dataset.salesSearch=opening?'true':'false';
+ by('show-product-search').textContent=opening?'Hide product search':'Search products';
+ if(opening)by('search').focus({preventScroll:true});
+ else by('scan-code').focus({preventScroll:true});
+});
+by('scan-search').addEventListener('click',()=>{
+ document.body.dataset.salesSearch='true';
+ by('show-product-search').textContent='Hide product search';
+ by('search').focus({preventScroll:true});
+});
 by('scan-form').addEventListener('submit',e=>{
  e.preventDefault();
  const field=by('scan-code');

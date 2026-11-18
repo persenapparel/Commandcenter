@@ -134,12 +134,38 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
       line(panel, 'div', '02 · CONTACT', 'guest-section-tag');
       line(panel, 'h1', "What's your phone number?");
       line(panel, 'p', 'Optional — for questions about your order. We do not send text receipts.', 'guest-muted');
-      const phone = field(panel, 'Phone number', 'tel', answers.phone, 'You can skip this question.');
-      phone.addEventListener('input', () => { answers.phone = phone.value; });
+      // A purpose-built, touch-friendly dial pad. A read-only telephone field
+      // prevents iPadOS from launching its full native typing keyboard.
+      const phone = field(panel, 'Phone number', 'tel', answers.phone, 'Enter 10 digits, or choose Skip.');
+      phone.readOnly = true;
+      phone.inputMode = 'none';
+      phone.autocomplete = 'off';
+      phone.setAttribute('aria-label', 'Phone number entered using the on-screen number pad');
+      const dial = line(panel, 'div', undefined, 'guest-dialpad-popup');
+      dial.setAttribute('role', 'group');
+      dial.setAttribute('aria-label', 'Phone number dial pad');
+      line(dial, 'p', 'Tap the numbers below', 'guest-dialpad-title');
+      const keys = line(dial, 'div', undefined, 'guest-dialpad');
+      const updatePhone = digits => {
+        answers.phone = digits.replace(/[^0-9]/g, '').slice(0, 15);
+        phone.value = answers.phone;
+        phone.setAttribute('aria-label', 'Phone number: ' + (answers.phone || 'empty'));
+      };
+      for (const digit of ['1','2','3','4','5','6','7','8','9','clear','0','delete']) {
+        const text = digit === 'clear' ? 'Clear' : digit === 'delete' ? '⌫' : digit;
+        const key = action(text, 'guest-dialkey' +
+          (digit === 'clear' || digit === 'delete' ? ' guest-dialkey-tool' : ''), () => {
+          if (digit === 'clear') updatePhone('');
+          else if (digit === 'delete') updatePhone(answers.phone.slice(0, -1));
+          else updatePhone(answers.phone + digit);
+        });
+        if (digit === 'delete') key.setAttribute('aria-label', 'Delete last digit');
+        if (digit === 'clear') key.setAttribute('aria-label', 'Clear phone number');
+        keys.append(key);
+      }
       navigation(panel, 'Next →', () => {
-        answers.phone = phone.value.trim();
         const digits = answers.phone.replace(/[^0-9]/g, '');
-        if (answers.phone && (digits.length < 10 || digits.length > 15))
+        if (digits && (digits.length < 10 || digits.length > 15))
           return 'Enter a full phone number, or choose Skip.';
         setStep(2);
         return '';
@@ -233,7 +259,10 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
           email: answers.email.trim(),
           marketingConsent: answers.marketing === true,
           signature: answers.exception ? null : answers.signature,
-          signatureException: answers.exception
+          signatureException: answers.exception,
+          // A payment preference, NOT authorization to treat it as paid.
+          paymentPreference: answers.payment==='venmo'?'venmo_info':
+            answers.payment==='applecash'?'apple_cash_info':'cash'
         };
         // Never send a client-selected tender as if it were an authorized payment.
         Promise.resolve().then(() => guestApi.submit(payload)).then(result => {

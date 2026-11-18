@@ -104,10 +104,12 @@ test('customer wizard shows total, phone, email, payment and confirmation on sep
   assert.deepEqual(calls[0],{
     checkoutId:'00000000-0000-4000-8000-000000000001',
     phone:'',email:'',marketingConsent:false,
-    signature:'Customer Name',signatureException:false
+    signature:'Customer Name',signatureException:false,
+    paymentPreference:'apple_cash_info'
   });
-  assert.equal(Object.hasOwn(calls[0],'paymentPreference'),false,
-    'guest UI must not invent an authorized tender or claim payment');
+  assert.equal(calls[0].paymentPreference,'apple_cash_info',
+    'guest records the preference, never any payment authorization');
+  assert.equal(Object.hasOwn(calls[0],'paymentVerified'),false);
   assert.ok(root.querySelector('.guest-selected-payment').textContent.includes('Apple Cash'));
   assert.ok(root.querySelector('.guest-notice').textContent.includes('does not mean you have paid'));
 });
@@ -117,7 +119,13 @@ test('skipping invalid partial contact does not send stale answers', async () =>
   await controller.start();
   press(root);
   const phone=root.querySelectorAll('input').find(x=>x.type==='tel');
-  phone.value='631'; phone.trigger('input');
+  assert.equal(phone.readOnly,true);
+  assert.equal(phone.inputMode,'none');
+  for(const digit of '631'){
+   const key=root.querySelectorAll('.guest-dialkey').find(x=>x.textContent===digit);
+   assert.ok(key);key.trigger('click');
+  }
+  assert.equal(phone.value,'631');
   press(root);
   assert.equal(screen(root),"What's your phone number?",'invalid partial phone is blocked');
   press(root,'guest-skip');
@@ -151,4 +159,20 @@ test('guest submission failure fails closed without a paid confirmation', async 
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(screen(root),'Checkout unavailable');
   assert.match(root.querySelector('p').textContent,/return the iPad/i);
+});
+
+test('iPad dialpad enters numeric values with delete and clear, without a keyboard',async()=>{
+ const root=fakeDom(),{controller}=create(root);
+ await controller.start();press(root);
+ const phone=root.querySelectorAll('input').find(x=>x.type==='tel');
+ assert.equal(phone.readOnly,true);
+ assert.equal(phone.inputMode,'none');
+ function hit(text){const button=root.querySelectorAll('.guest-dialkey').find(x=>x.textContent===text);assert.ok(button);button.trigger('click')}
+ assert.equal(root.querySelectorAll('.guest-dialkey').length,12);
+ for(const digit of '63155501234')hit(digit);
+ assert.equal(phone.value,'63155501234');
+ hit('⌫');assert.equal(phone.value,'6315550123');
+ hit('Clear');assert.equal(phone.value,'');
+ press(root,'guest-skip');
+ assert.equal(screen(root),"What's your email address?");
 });
