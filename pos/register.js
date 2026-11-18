@@ -950,10 +950,41 @@ by('owner-badge-enrollment').addEventListener('submit',async event=>{
 const badgeSetupDialog=by('staff-badge-setup-dialog');
 by('open-employee-badges').onclick=()=>window.PersenPOSRegister.openEmployeeBadgeSetup();
 by('close-staff-badge-setup').onclick=()=>badgeSetupDialog.close();
+let employeeSlotStatus=null;
+async function refreshEmployeeSlotStatus(){
+ const form=by('staff-badge-setup-form'),slot=Number(form.querySelector('[name=slot]').value),
+ out=by('staff-setup-readiness');
+ employeeSlotStatus=null;
+ by('test-staff-badge-pin').disabled=true;
+ by('activate-staff-badge').disabled=true;
+ out.textContent='Checking Employee '+slot+' setup status…';
+ try{
+  const response=await check(db.rpc('pos_owner_employee_slot_status',{p_slot:slot}));
+  if(slot!==Number(form.querySelector('[name=slot]').value))return;
+  employeeSlotStatus=response;
+  if(!response?.reserved){
+   out.textContent='STEP 1 NEEDED: Employee '+slot+' has no saved badge. Complete all fields and tap the blue Reserve employee badge button FIRST.';
+  }else if(!response.accountExists){
+   out.textContent='Badge saved. NEXT: Have the employee create their own staging account with the exact email used for this badge, then confirm the email.';
+  }else if(!response.emailConfirmed){
+   out.textContent='Badge saved and employee account found. NEXT: Employee must open the confirmation email and verify their address before activation.';
+  }else if(response.alreadyAssigned){
+   out.textContent='An employee badge is already assigned to this account. Do not activate a duplicate.';
+  }else{
+   out.textContent='Badge saved and email confirmed. Test the employee PIN, then enter your owner badge and PIN and tap Activate.';
+  }
+  by('test-staff-badge-pin').disabled=!response?.reserved;
+  by('activate-staff-badge').disabled=!response?.reserved||!response.emailConfirmed||response.alreadyAssigned;
+ }catch(_){
+  out.textContent='Unable to check setup status. Do not activate until the owner status service is available.';
+ }
+}
+by('staff-badge-setup-form').querySelector('[name=slot]').addEventListener('change',()=>{void refreshEmployeeSlotStatus()});
 function ownerOpenEmployeeBadgeSetup(){
  if(!db||!user)return notice('Sign in as owner to set up employee badges.');
  if(badgeSetupDialog.open)return;
  badgeSetupDialog.showModal();
+ void refreshEmployeeSlotStatus();
 }
 function validEan8(data){
  const sum=[...data].reduce((total,digit,i)=>total+Number(digit)*(i%2===0?3:1),0);
@@ -985,15 +1016,25 @@ by('staff-badge-setup-form').addEventListener('submit',async event=>{
    p_owner_badge:String(f.get('owner_badge')||'').trim(),
    p_owner_pin:String(f.get('owner_pin')||'')
   }));
-  if(!result?.saved||result.activated)throw Error('Badge reservation was not accepted');
+  if(result?.saved!==true||result?.activated!==false){
+   if(result?.error==='Owner badge/PIN not verified')throw Error('Owner badge/PIN not verified');
+   throw Error('Badge reservation was not accepted');
+  }
   form.querySelector('[name=pin]').value='';
   form.querySelector('[name=pin_confirm]').value='';
   form.querySelector('[name=owner_pin]').value='';
   form.querySelector('[name=owner_badge]').value='';
-  out.textContent='Employee '+f.get('slot')+' badge reserved. Keep the printed number private. Not activated: separate employee account and register authorization still required.';
- }catch(_){
+  out.textContent='Employee '+f.get('slot')+' badge saved! Keep your printed barcode private. Re-enter employee PIN to test. Activation stays locked until the employee confirms their email.';
+  await refreshEmployeeSlotStatus();
+ }catch(err){
   for(const field of ['pin','pin_confirm','owner_pin'])form.querySelector('[name='+field+']').value='';
-  out.textContent='Badge not saved. Confirm your owner badge/PIN and that the staging reservation system is installed.';
+  const message=String(err?.message||'');
+  out.textContent=message.includes('Owner badge/PIN not verified')
+   ?'NOT SAVED: Your owner badge or owner PIN did not match. Re-enter them and tap Reserve first.'
+   :message.includes('badge code is unavailable')?'NOT SAVED: That 8-digit badge is already in use. Generate another badge and tap Reserve.'
+    :message.includes('Owner verification temporarily unavailable')?'NOT SAVED: Owner verification is temporarily locked; try after the lockout.'
+     :'NOT SAVED: Reservation failed. Make sure you entered the full owner badge/PIN and retry the blue Reserve button.';
+  await refreshEmployeeSlotStatus();
  }finally{button.disabled=false}
 });
 
@@ -1021,6 +1062,16 @@ by('test-staff-badge-pin').onclick=async()=>{
 };
 by('activate-staff-badge').onclick=async()=>{
  const form=by('staff-badge-setup-form'),f=new FormData(form);
+ if(!employeeSlotStatus?.reserved){
+  by('staff-badge-setup-message').textContent='Not activated: Reserve the employee badge first using the blue button.';
+  await refreshEmployeeSlotStatus();
+  return;
+ }
+ if(!employeeSlotStatus.emailConfirmed){
+  by('staff-badge-setup-message').textContent='Not activated: Employee must confirm the email linked to the reserved badge.';
+  await refreshEmployeeSlotStatus();
+  return;
+ }
  const button=by('activate-staff-badge'),out=by('staff-badge-setup-message');
  const ownerBadge=String(f.get('owner_badge')||'').trim(),ownerPin=String(f.get('owner_pin')||'');
  if(ownerBadge.length<8||ownerPin.length<6){
@@ -1036,8 +1087,17 @@ by('activate-staff-badge').onclick=async()=>{
    :result?.reason==='employee_account_missing'
     ?'Not activated: the employee must first create and confirm their own separate staging account with the email you reserved.'
     :'Owner approval failed. Check the badge/PIN and try again after any lockout.';
- }catch(_){out.textContent='Activation not verified. No cashier permissions were granted. Check that this employee does not already have an assigned account.'}
- finally{form.querySelector('[name=owner_badge]').value='';form.querySelector('[name=owner_pin]').value='';button.disabled=false;}
+ }catch(err){
+  const reason=String(err?.message||'');
+  out.textContent=reason.includes('Employee badge slot not found')
+    ?'Not activated: No saved badge for this slot. Tap Reserve employee badge first.'
+    :reason.includes('already assigned')?'Not activated: The email or barcode is already assigned to another employee badge.'
+     :reason.includes('Owner verification temporarily unavailable')?'Not activated: Owner PIN checks are temporarily locked.'
+      :'Not activated. Confirm the employee email was verified and the owner badge/PIN are correct.';
+ }finally{
+  form.querySelector('[name=owner_badge]').value='';form.querySelector('[name=owner_pin]').value='';
+  await refreshEmployeeSlotStatus();
+ }
 };
 
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
