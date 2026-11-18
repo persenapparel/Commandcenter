@@ -104,10 +104,12 @@ test('customer wizard shows total, phone, email, payment and confirmation on sep
   assert.deepEqual(calls[0],{
     checkoutId:'00000000-0000-4000-8000-000000000001',
     phone:'',email:'',marketingConsent:false,
-    signature:'Customer Name',signatureException:false
+    signature:'Customer Name',signatureException:false,
+    paymentPreference:'apple_cash_info'
   });
-  assert.equal(Object.hasOwn(calls[0],'paymentPreference'),false,
-    'guest UI must not invent an authorized tender or claim payment');
+  assert.equal(calls[0].paymentPreference,'apple_cash_info',
+    'guest records the preference, never any payment authorization');
+  assert.equal(Object.hasOwn(calls[0],'paymentVerified'),false);
   assert.ok(root.querySelector('.guest-selected-payment').textContent.includes('Apple Cash'));
   assert.ok(root.querySelector('.guest-notice').textContent.includes('does not mean you have paid'));
 });
