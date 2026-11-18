@@ -103,9 +103,9 @@ jobs:
           psql -v ON_ERROR_STOP=1 -c 'create role service_role nologin'
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_shift_auth_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_checkout_handoff_bridge_draft.sql
+          psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_authorized_begin_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/tests/staging-handoff-bridge-sql-test.sql
           # Server-verified staff checkout + register grant negatives (disposable PostgreSQL).
-          psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_authorized_begin_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_shift_checkout_followup_draft.sql
           # Role-aware cash and Finish Order draft; disposable PostgreSQL only.
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_staff_cash_finish_draft.sql
