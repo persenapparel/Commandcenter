@@ -70,7 +70,7 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret,registerId}) {
  }
  async function resume({checkoutId,badge}) {
   same(checkoutId);
-  if(typeof badge!=='string' || badge.length<16 || badge.length>256)
+  if(typeof badge!=='string' || badge.length<8 || badge.length>256)
    throw Error('Invalid badge');
   const result=await rpc('pos_handoff_resume',{
    p_checkout:checkoutId,p_shift_id:shiftId,p_shift_secret:shiftSecret,
@@ -141,7 +141,7 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret,registerId}) {
   return verifyShiftBadge(badge);
  }
  async function verifyShiftBadge(badge) {
-  if(typeof badge!=='string'||badge.length<16||badge.length>256)
+  if(typeof badge!=='string'||badge.length<8||badge.length>256)
    throw Error('Invalid employee badge');
   const result=await rpc('pos_staff_resume_shift',{
    p_shift_id:shiftId,p_shift_secret:shiftSecret,p_badge:badge,p_register:registerId
