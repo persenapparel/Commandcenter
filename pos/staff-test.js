@@ -42,6 +42,20 @@ $('sign-up').addEventListener('submit',async event=>{
  }catch(_){notice('Account registration unavailable. Check your email, or ask the owner to verify staging sign-up settings.')}
  finally{form.querySelector('[name=password]').value='';button.disabled=false;}
 });
+$('resend-confirmation').addEventListener('submit',async event=>{
+ event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');
+ const email=String(new FormData(form).get('email')||'').trim();
+ if(!email)return;
+ button.disabled=true;
+ try{
+  const {error}=await db.auth.resend({type:'signup',email,
+   options:{emailRedirectTo:location.origin+'/staff-test.html'}});
+  if(error)throw error;
+  notice('If this is an unconfirmed staging account, a confirmation email has been requested. Check inbox and spam, follow the verification link, then ask the owner to activate the badge.');
+ }catch(_){notice('Confirmation email could not be requested. Please check the address and try again later.')}
+ finally{button.disabled=false;}
+});
+
 $('test-pin').addEventListener('submit',async event=>{
  event.preventDefault();const form=event.currentTarget,button=form.querySelector('button'),f=formPayload(form);
  const badge=String(f.get('badge')||'').trim(),pin=String(f.get('pin')||'');
