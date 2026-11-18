@@ -340,8 +340,59 @@ async function restoreSecureHandoffCheckout({checkoutId}){
  checkout=current;
  checkoutVersion++;
  document.body.classList.remove('swivel-customer-active');
- syncCashierStage();syncCheckoutUI();draw();
+ syncCashierStage();syncCheckoutUI();draw();updateExternalApprovalPanel();
 }
+
+function updateExternalApprovalPanel(){
+ const panel=by('external-approval-panel'),method=checkout?.payment_preference;
+ const ready=checkout?.status==='contact_received' &&
+  ['venmo_info','apple_cash_info'].includes(method) &&
+  window.PersenPOSSwivel?.ownsCheckout?.(checkout.id)===true;
+ panel.hidden=!ready;
+ if(!ready)return;
+ by('external-approval-title').textContent=method==='venmo_info'?'Venmo transfer':'Apple Cash transfer';
+ by('external-approval-amount').textContent=C.money(checkout.total_cents);
+}
+async function ownerApproveExternalPayment(){
+ if(busy||!checkout||checkout.status!=='contact_received')return;
+ if(!['venmo_info','apple_cash_info'].includes(checkout.payment_preference))
+  return notice('External transfer selection not verified.');
+ if(!window.PersenPOSSwivel?.ownsCheckout?.(checkout.id))
+  return notice('The original cashier badge must resume this checkout.');
+ const checked=by('external-cashier-confirmed').checked===true;
+ const ownerVerified=by('external-owner-verified').checked===true;
+ const badge=by('external-owner-badge').value.trim(),pin=by('external-owner-pin').value;
+ if(!checked||!ownerVerified||badge.length<8||pin.length<6){
+  by('external-approval-status').textContent='Verify the funds independently, check both boxes and enter owner badge and PIN.';
+  return;
+ }
+ busy=true;by('external-owner-approve').disabled=true;
+ const checkoutId=checkout.id;
+ by('external-approval-status').textContent='Checking owner authorization on server…';
+ try{
+  const result=await check(db.rpc('pos_owner_confirm_external_payment',{
+   p_checkout:checkoutId,p_owner_badge:badge,p_owner_pin:pin,
+   p_cashier_confirmed:checked,p_owner_verified:ownerVerified
+  }));
+  if(result?.approved!==true||result.checkoutId!==checkoutId||
+     !['venmo','apple_cash'].includes(result.method)||
+     typeof result.saleId!=='string')
+   throw Error('Owner payment approval not verified');
+  const saved=await saleForCheckout(checkoutId);
+  if(!saved||saved.id!==result.saleId||saved.payment_method!==result.method)
+   throw Error('Owner-verified sale record unavailable');
+  showPaidAwaitingHandoff(saved,{...checkout,status:'completed',cash_handoff_complete:false});
+  by('external-approval-status').textContent='Owner approved payment. Finish Order required.';
+ }catch(_){
+  // Never mark paid based on a network response that cannot be checked.
+  by('external-approval-status').textContent='Approval cannot be verified. Check the sale record before retrying. Do not record it as cash.';
+ }finally{
+  by('external-owner-pin').value='';by('external-owner-badge').value='';
+  busy=false;by('external-owner-approve').disabled=false;
+ }
+}
+by('external-owner-approve').onclick=()=>void ownerApproveExternalPayment();
+
 async function finishSecureHandoffSale({checkoutId}){
  if(!checkout||checkout.id!==checkoutId||checkout.status!=='completed')
   throw Error('Secure checkout is not ready to finish');
