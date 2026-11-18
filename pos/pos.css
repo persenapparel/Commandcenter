@@ -857,3 +857,5 @@ body.fast-mode .quick-product.event-featured{border-color:#82b5ee;box-shadow:ins
 .staff-badge-dialog fieldset{border:1px solid #cfdfef;border-radius:12px;padding:12px}
 .employee-home-badge-setup,.badge-setup-launch{display:block;margin:18px auto;padding:12px 18px;min-height:45px;background:#e6f2ff;border:1px solid #a8c9ef;color:#174d8b}
 body[data-staff-role="cashier"] .employee-home-badge-setup{display:none!important}
+
+body[data-cashier-stage="handoff"] #external-approval-panel{display:none!important}
