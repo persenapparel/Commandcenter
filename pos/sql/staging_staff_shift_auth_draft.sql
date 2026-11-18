@@ -73,7 +73,7 @@ begin
   v_attempt.attempts:=0;
  end if;
  -- Reject invalid sizes before digest/crypt to bound credential processing cost.
- if p_register is null or p_badge is null or length(p_badge) not between 16 and 256
+ if p_register is null or p_badge is null or length(p_badge) not between 8 and 256
     or p_pin is null or length(p_pin) not between 4 and 128 then
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
@@ -96,7 +96,7 @@ begin
    )
   )
  );
- if not found or p_register is null or p_badge is null or length(p_badge) not between 16 and 256
+ if not found or p_register is null or p_badge is null or length(p_badge) not between 8 and 256
     or p_pin is null or length(p_pin) not between 4 and 128 or
     v_staff.pin_hash is null or
     extensions.crypt(p_pin,v_staff.pin_hash) is distinct from v_staff.pin_hash then
@@ -156,7 +156,7 @@ begin
  end if;
  -- Reject invalid sizes before hashing untrusted badge or shift secrets.
  if p_register is null or p_shift_secret is null or length(p_shift_secret) <> 64
-    or p_badge is null or length(p_badge) not between 16 and 256 then
+    or p_badge is null or length(p_badge) not between 8 and 256 then
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
       blocked_until=case when attempts+1>=5 then now()+interval '15 minutes' else null end
@@ -189,7 +189,7 @@ begin
  -- credential disable/rotation. No guest checkout authorization is implied.
  for update of s,c;
  if not found or p_register is null or p_shift_secret is null or length(p_shift_secret) <> 64
-    or p_badge is null or length(p_badge) not between 16 and 256 then
+    or p_badge is null or length(p_badge) not between 8 and 256 then
   -- Do not RAISE here: an exception would roll back the throttle update.
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,

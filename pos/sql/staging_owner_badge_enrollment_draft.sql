@@ -17,7 +17,7 @@ begin
  if v_uid is null or not public.is_persen_admin() then
   raise exception 'Owner authorization required';
  end if;
- if length(v_badge) not between 16 and 256
+ if length(v_badge) not between 8 and 256
     or length(v_pin) not between 6 and 128
     or length(v_name) not between 1 and 80 then
   raise exception 'Invalid owner badge setup';

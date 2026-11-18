@@ -30,7 +30,7 @@ function createStagingHandoffBridge({
  };
  async function startShift({badge,pin}) {
   if(cashier || starting)throw Error('Shift already active');
-  if(typeof badge!=='string' || badge.length<16 || badge.length>256 ||
+  if(typeof badge!=='string' || badge.length<8 || badge.length>256 ||
      typeof pin!=='string' || pin.length<4 || pin.length>128)
    throw Error('Invalid employee credentials');
   starting=true;
