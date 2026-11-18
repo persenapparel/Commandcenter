@@ -43,5 +43,8 @@ jobs:
         run: |
           test -f pos-dist/register.html
           test -f pos-dist/display.html
-          test -f pos-dist/print-station.html
+          # The retired browser print station must not be shipped; Epson's Windows agent is the only approved path.
+          test ! -e pos-dist/print-station.html
+          test ! -e pos-dist/print-station.js
+          test ! -e pos-dist/print-station.css
           test -f pos-dist/assets/persen-logo.png
