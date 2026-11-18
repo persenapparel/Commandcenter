@@ -1,0 +1,75 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const read=filename=>fs.readFileSync('pos/'+filename,'utf8');
+const drawerSQL=read('epson-t20iv-staging.sql');
+const badgeSQL=read('sql/staging_employee_badge_pin_activation_20261118.sql');
+const ownerUI=read('register.js');
+const enrollment=read('register.html');
+const portal=read('staff-test.html'),portalScript=read('staff-test.js');
+const build=read('build-pages.mjs');
+const agent=read('epson-station/agent.cjs');
+const printMonitor=read('epson-center.js');
+
+test('drawer trigger is unique, cash only and requires completed guest details with exact change',()=>{
+ assert.match(drawerSQL,/new\.payment_method <> 'cash' then return new/);
+ assert.match(drawerSQL,/c\.status='contact_received'/);
+ assert.match(drawerSQL,/new\.change_cents <> new\.tendered_cents-new\.total_cents/);
+ assert.match(drawerSQL,/sale\.payment_method='cash' and c\.payment_preference='cash'/);
+ assert.match(drawerSQL,/c\.status='completed'/);
+ assert.match(drawerSQL,/create unique index if not exists pos_drawer_open_cash_once/);
+ assert.match(drawerSQL,/after insert on public\.pos_sales/);
+ assert.doesNotMatch(drawerSQL,/after update on public\.pos_sales/);
+});
+test('receipt spool, browser reprint and Venmo/Apple Cash never transmit drawer kick',()=>{
+ assert.match(agent,/async function drawer\(\)/);
+ assert.match(agent,/pos_claim_drawer_open_job/);
+ assert.match(agent,/async function receipt\(\)/);
+ assert.match(agent,/escposReceipt\(sale\)/);
+ assert.match(agent,/const processor=createProcessor/);
+ assert.match(agent,/PERSEN_DRAWER_ARMED/);
+ assert.match(agent,/PERSEN_RECEIPTS_ARMED/);
+ assert.match(printMonitor,/read-only Epson queue monitor/i);
+ assert.doesNotMatch(printMonitor,/drawerKick\(|sendRawWindows\(/);
+ assert.match(drawerSQL,/kind in \('cash-sale','owner-manual'\)/);
+});
+test('both employee badges can be reserved, tested and activated only with separate accounts',()=>{
+ assert.match(badgeSQL,/slot in \(1,2\)/);
+ assert.match(badgeSQL,/pos_owner_test_pending_employee_badge/);
+ assert.match(badgeSQL,/v_pending\.badge_digest=extensions\.digest\(p_badge,'sha256'\)/);
+ assert.match(badgeSQL,/extensions\.crypt\(p_pin,v_pending\.pin_hash\)=v_pending\.pin_hash/);
+ assert.match(badgeSQL,/pos_owner_activate_pending_employee_badge/);
+ assert.match(badgeSQL,/u\.email_confirmed_at is not null and u\.id<>v_uid/);
+ assert.match(badgeSQL,/staff_role='owner'/);
+ assert.match(badgeSQL,/insert into public\.pos_staff_register_grants/);
+ assert.match(badgeSQL,/staff_role='cashier'/);
+ assert.match(badgeSQL,/pos_staff_test_badge_pin/);
+ assert.match(badgeSQL,/alter table public\.pos_pending_employee_pin_checks enable row level security/);
+ assert.match(enrollment,/id="test-staff-badge-pin"/);
+ assert.match(enrollment,/id="activate-staff-badge"/);
+ assert.match(ownerUI,/pos_owner_test_pending_employee_badge/);
+ assert.match(ownerUI,/pos_owner_activate_pending_employee_badge/);
+});
+test('staging build ships independent employee account and badge PIN test page',()=>{
+ assert.match(build,/'staff-test\.html'/);
+ assert.match(build,/'staff-test\.js'/);
+ assert.match(portal,/id="sign-up"/);
+ assert.match(portal,/id="sign-in"/);
+ assert.match(portal,/id="test-pin"/);
+ assert.match(portal,/never opens the cash register/i);
+ assert.match(portalScript,/pos_staff_test_badge_pin/);
+ assert.match(portalScript,/db\.auth\.signUp/);
+ assert.match(portalScript,/db\.auth\.signInWithPassword/);
+ assert.doesNotMatch(portalScript,/pos_owner_confirm_external_payment|pos_staff_complete_cash|pos_authorize_manual_drawer/);
+ assert.doesNotThrow(()=>new vm.Script(portalScript));
+});
+
+test('Epson receipt test can run with cash drawer explicitly disarmed',()=>{
+ assert.match(agent,/const drawerArmed=process\.env\.PERSEN_DRAWER_ARMED==='YES'/);
+ assert.match(agent,/const receiptsArmed=process\.env\.PERSEN_RECEIPTS_ARMED==='YES'/);
+ assert.match(agent,/drawerArmed\?await processor\.drawer\(\):null/);
+ assert.match(agent,/receiptsArmed\?await processor\.receipt\(\):null/);
+ assert.doesNotMatch(agent,/PERSEN_DRAWER_ARMED!=='YES'\|\|process\.env\.PERSEN_RECEIPTS_ARMED!=='YES'/);
+});

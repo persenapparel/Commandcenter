@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Persen Apparel · Employee PIN Test</title>
+<link rel="stylesheet" href="staff-test.css">
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="config.js"></script><script defer src="backend.js"></script>
+<script defer src="staff-test.js"></script></head>
+<body><header><strong>PERSEN APPAREL</strong><span>STAGING · EMPLOYEE ACCESS</span></header>
+<main><div class="eyebrow">EMPLOYEE ONBOARDING</div><h1>Test your badge and PIN.</h1>
+<p class="lead">Each employee uses their own email and password. Do not use the owner's sign-in. This page tests credentials only and never opens the cash register.</p>
+<div id="notice" role="status" aria-live="polite">Connecting to secure staging…</div>
+<section class="grid">
+<div class="panel">
+<h2>1 · Your staging account</h2>
+<p>If you already have a confirmed staging account, sign in. Otherwise create one with the **same email the owner entered** for your badge. You must confirm the email before activation.</p>
+<form id="sign-in"><label>Email<input name="email" type="email" required autocomplete="email"></label>
+<label>Password<input name="password" type="password" required autocomplete="current-password"></label>
+<button type="submit">Sign in to test badge</button></form>
+<details><summary>Need a new account?</summary>
+<form id="sign-up"><label>Your own email<input name="email" type="email" required autocomplete="email"></label>
+<label>Choose a unique password<input name="password" type="password" minlength="12" required autocomplete="new-password"></label>
+<button type="submit">Create staging employee account</button></form>
+<p>Confirm the email you receive. The owner must then activate your reserved employee badge before the PIN test can pass.</p></details>
+<button id="sign-out" type="button" hidden>Sign out</button>
+</div>
+<div class="panel">
+<h2>2 · Scan your badge</h2>
+<p>After your separate account has been activated by the owner, scan the 8-digit employee badge and enter your employee PIN. No owner PIN is needed here.</p>
+<form id="test-pin"><label>Employee badge<input name="badge" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" placeholder="Scan 8-digit badge" required autocomplete="off"></label>
+<label>Your employee PIN<input name="pin" type="password" inputmode="numeric" minlength="6" maxlength="128" required autocomplete="off"></label>
+<button type="submit">Verify badge &amp; PIN</button></form>
+<p class="disclaimer">A successful test confirms your cashier credentials only. Sales, discounts, refunds and owner settings are not enabled on this test page.</p>
+</div></section>
+<p class="footer"><a href="register.html">Return to POS staging</a></p></main></body></html>

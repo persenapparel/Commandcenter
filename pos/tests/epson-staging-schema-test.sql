@@ -40,11 +40,14 @@ begin
  values('11111111-1111-4111-8111-111111111111','Epson isolated test')
  returning id into reg;
  insert into public.pos_checkouts(register_id,owner_id,status,items,total_cents,phone,payment_preference)
- values(reg,'11111111-1111-4111-8111-111111111111','completed','[]'::jsonb,1000,'6315550100','cash')
+ values(reg,'11111111-1111-4111-8111-111111111111','contact_received','[]'::jsonb,1000,'6315550100','cash')
  returning id into checkout;
  insert into public.pos_sales(checkout_id,owner_id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method,tendered_cents,change_cents)
  values(checkout,'11111111-1111-4111-8111-111111111111',jsonb_build_object('items','[]'::jsonb),1000,0,0,1000,'cash',2000,1000)
  returning id into sale;
+ -- Cash sale insert occurs while customer contact is complete; the authoritative
+ -- cash RPC marks the checkout completed *after* the sale insert.
+ update public.pos_checkouts set status='completed' where id=checkout;
  select id into auto_job from public.pos_drawer_open_jobs where sale_id=sale;
  if auto_job is null then raise exception 'Saved cash sale did not queue a drawer command'; end if;
  if (select count(*) from public.pos_drawer_open_jobs where sale_id=sale) <> 1 then
