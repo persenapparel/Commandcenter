@@ -1,36 +1,24 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>Persen Apparel · Employee PIN Test</title>
+<meta name="robots" content="noindex,nofollow"><title>Persen Apparel · Badge & PIN Test</title>
 <link rel="stylesheet" href="staff-test.css">
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="config.js"></script><script defer src="backend.js"></script>
 <script defer src="staff-test.js"></script></head>
-<body><header><strong>PERSEN APPAREL</strong><span>STAGING · EMPLOYEE ACCESS</span></header>
-<main><div class="eyebrow">EMPLOYEE ONBOARDING</div><h1>Test your badge and PIN.</h1>
-<p class="lead">Each employee uses their own email and password. Do not use the owner's sign-in. This page tests credentials only and never opens the cash register.</p>
-<div id="notice" role="status" aria-live="polite">Connecting to secure staging…</div>
+<body><header><strong>PERSEN APPAREL</strong><span>STAGING · BADGE TEST</span></header>
+<main><div class="eyebrow">EMPLOYEE BADGES · NO EMAIL REQUIRED</div>
+<h1>Scan your badge. Enter your PIN.</h1>
+<p class="lead">No employee email, password, or individual account is needed. The owner first signs into the staging register once. Employees then identify themselves using their own badge and PIN.</p>
+<div id="notice" role="status" aria-live="polite">Checking staging access…</div>
 <section class="grid">
-<div class="panel">
-<h2>1 · Your staging account</h2>
-<p>If you already have a confirmed staging account, sign in. Otherwise create one with the **same email the owner entered** for your badge. You must confirm the email before activation.</p>
-<form id="sign-in"><label>Email<input name="email" type="email" required autocomplete="email"></label>
-<label>Password<input name="password" type="password" required autocomplete="current-password"></label>
-<button type="submit">Sign in to test badge</button></form>
-<details><summary>Need a new account?</summary>
-<form id="sign-up"><label>Your own email<input name="email" type="email" required autocomplete="email"></label>
-<label>Choose a unique password<input name="password" type="password" minlength="12" required autocomplete="new-password"></label>
-<button type="submit">Create staging employee account</button></form>
-<form id="resend-confirmation"><label>Email that needs confirmation<input name="email" type="email" autocomplete="email" required placeholder="Employee email address"></label>
-<button type="submit">Resend confirmation email</button></form>
-<p>Confirm the email you receive. The owner must then activate your reserved employee badge before the PIN test can pass.</p></details>
-<button id="sign-out" type="button" hidden>Sign out</button>
-</div>
-<div class="panel">
-<h2>2 · Scan your badge</h2>
-<p>After your separate account has been activated by the owner, scan the 8-digit employee badge and enter your employee PIN. No owner PIN is needed here.</p>
-<form id="test-pin"><label>Employee badge<input name="badge" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" placeholder="Scan 8-digit badge" required autocomplete="off"></label>
-<label>Your employee PIN<input name="pin" type="password" inputmode="numeric" minlength="6" maxlength="128" required autocomplete="off"></label>
-<button type="submit">Verify badge &amp; PIN</button></form>
-<p class="disclaimer">A successful test confirms your cashier credentials only. Sales, discounts, refunds and owner settings are not enabled on this test page.</p>
-</div></section>
-<p class="footer"><a href="register.html">Return to POS staging</a></p></main></body></html>
+<div class="panel"><h2>1 · Owner pairs the iPad</h2>
+<p>The owner opens the POS register and signs into staging, then creates Employee 1 and Employee 2 under <strong>Create employee badges</strong>. Both employees can use the badge/PIN-only shift screen in the POS.</p>
+<p>This is a <strong>supervised staging test</strong>. The owner should not leave an owner-signed browser unattended or give employees access to the Back Office.</p>
+<a href="register.html">Open POS register and badge setup</a></div>
+<div class="panel"><h2>2 · Test an employee badge</h2>
+<form id="test-pin" autocomplete="off">
+<label>8-digit employee barcode<input name="badge" type="text" inputmode="none" maxlength="8" placeholder="Scan employee badge" pattern="[0-9]{8}" required></label>
+<label>Employee PIN<input name="pin" type="password" inputmode="numeric" minlength="6" maxlength="128" placeholder="Private employee PIN" required></label>
+<button type="submit">Verify employee badge and PIN</button></form>
+<p class="disclaimer">This page verifies badge and PIN only. To start an employee shift, use the POS register's <strong>Start Shift</strong> screen.</p></div>
+</section><p class="footer"><a href="register.html">Return to POS staging</a></p></main></body></html>
