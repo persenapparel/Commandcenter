@@ -11,13 +11,14 @@
  const shiftBadge=$('swivel-badge'),shiftPin=$('swivel-pin'),shiftMessage=$('swivel-shift-message');
  const returnForm=$('swivel-return-form'),returnBadge=$('swivel-return-badge');
  const returnMessage=$('swivel-return-message'),lock=$('swivel-lock');
+ const manualLock=$('lock-register');
  const keepCustomer=$('swivel-keep-customer'),resume=$('swivel-resume');
  const workspace=$('workspace'),launch=$('register-launch');
  const api=window.PersenPOSRegister,secure=window.PersenPOSSecureHandoff;
  const config=window.PersenPOSHandoffConfig;
  const blocked='Customer handoff is unavailable until the isolated staging connection is verified. Do not turn this signed-in iPad toward a customer.';
  if(!start||!overlay||!host||!shiftDialog||!shiftForm||!shiftBadge||!shiftPin||
-    !returnForm||!returnBadge||!lock||!api||!secure||!config)
+    !returnForm||!returnBadge||!lock||!manualLock||!api||!secure||!config)
   throw Error('Single-iPad POS needs the secured handoff layout.');
  function message(value){api.notice(value)}
  function cashierOrigin(){
@@ -144,7 +145,7 @@
   returnBadge.value='';
   returnBadge.focus();
  }
- function renderIdleLock(){
+ function renderIdleLock(reason='idle'){
   // Close top-layer cashier dialogs before covering the page; a modal
   // dialog otherwise remains above even the highest z-index overlay.
   for(const dialog of document.querySelectorAll('main dialog[open]'))dialog.close();
@@ -155,11 +156,28 @@
   keepCustomer.hidden=true;
   document.body.classList.add('swivel-customer-active');
   returnForm.querySelector('h2').textContent='Persen Apparel · Register locked';
-  returnForm.querySelector('p').textContent='The register locked after 30 seconds without activity. Your current order is still here. Scan your staff badge to continue.';
+  returnForm.querySelector('p').textContent=reason==='manual'
+   ?'You locked the register. Your current cart and checkout are preserved. Scan your staff badge to continue.'
+   :'The register locked after 30 seconds without activity. Your current order is still here. Scan your staff badge to continue.';
   $('swivel-return-submit').textContent='Unlock register';
-  returnMessage.textContent='Employee badge required. No PIN required again this shift.';
+  returnMessage.textContent=reason==='manual'
+   ?'Register locked by employee. Original badge required to unlock; no PIN needed again this shift.'
+   :'Employee badge required. No PIN required again this shift.';
   returnBadge.value='';returnBadge.focus();
  }
+ manualLock.addEventListener('click',()=>{
+  // Use the same verified gate as the 30-second lock; never merely hide the UI.
+  // Preserve the cart and original employee shift, including a resumed payment.
+  if(transition||!bridge?.state?.().employee||document.body.classList.contains('pos-register-closed')){
+   message('Open an authorized employee register before locking it.');
+   return;
+  }
+  if(!bridge.lockForIdle()){
+   message('The register cannot lock while a checkout or payment transition is in progress.');
+   return;
+  }
+  renderIdleLock('manual');
+ });
  function checkIdle(force=false){
   if(transition||(!force&&Date.now()-lastActivity<30000))return false;
   if(!bridge?.lockForIdle())return false;
