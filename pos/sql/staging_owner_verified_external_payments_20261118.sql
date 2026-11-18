@@ -94,6 +94,7 @@ begin
 end $function$
 ;
 revoke all on function public.pos_handoff_guest_submit(uuid,text,jsonb) from public,anon,authenticated;
+grant execute on function public.pos_handoff_guest_submit(uuid,text,jsonb) to service_role;
 -- Called internally by the restricted Edge Function service role.
 
 -- Manual owner approval is a separate authenticated cashier-side operation,
