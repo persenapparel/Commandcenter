@@ -44,8 +44,21 @@ returns trigger language plpgsql security definer set search_path='' as $$
 declare rid uuid;
 begin
  if new.payment_method <> 'cash' then return new; end if;
- select register_id into rid from public.pos_checkouts where id=new.checkout_id and owner_id=new.owner_id;
- if rid is null then raise exception 'Cash sale has no valid register'; end if;
+ -- Never queue the drawer for a pending customer, unpaid/incorrect tender,
+ -- or bogus change. The cash sale and queue record commit together.
+ if new.total_cents is null or new.total_cents <= 0
+    or new.tendered_cents is null
+    or new.tendered_cents < new.total_cents
+    or new.change_cents is null
+    or new.change_cents <> new.tendered_cents-new.total_cents then
+   raise exception 'Cash tender or change has not been fully verified';
+ end if;
+ select c.register_id into rid from public.pos_checkouts c
+ join public.pos_registers r on r.id=c.register_id
+ where c.id=new.checkout_id and c.owner_id=new.owner_id
+   and c.status='contact_received' and r.owner_id=new.owner_id
+   and r.active=true;
+ if rid is null then raise exception 'Customer details and active register required before opening cash drawer'; end if;
  insert into public.pos_drawer_open_jobs(owner_id,sale_id,register_id,kind,reason)
  values(new.owner_id,new.id,rid,'cash-sale','completed-cash-sale')
  on conflict do nothing;
@@ -122,7 +135,14 @@ begin
  returning * into j;
  if not found then return null; end if;
  if j.kind='cash-sale' and not exists(
-   select 1 from public.pos_sales where id=j.sale_id and owner_id=j.owner_id and payment_method='cash'
+   select 1 from public.pos_sales sale
+   join public.pos_checkouts c on c.id=sale.checkout_id
+   where sale.id=j.sale_id and sale.owner_id=j.owner_id
+     and c.owner_id=j.owner_id and c.register_id=j.register_id
+     and sale.payment_method='cash' and c.payment_preference='cash'
+     and c.status='completed'
+     and sale.tendered_cents>=sale.total_cents
+     and sale.change_cents=sale.tendered_cents-sale.total_cents
  ) then raise exception 'Unverified cash sale'; end if;
  return jsonb_build_object('id',j.id,'kind',j.kind,'reason',j.reason,'sale_id',j.sale_id);
 end $$;
