@@ -57,7 +57,7 @@
   const home=document.createElement('section');
   home.id='employee-home';home.className='employee-home panel';home.hidden=true;
   home.setAttribute('aria-label','Employee home');
-  home.innerHTML='<div class="employee-home-brand"><img src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div><span class="eyebrow">PERSEN APPAREL · EMPLOYEE HOME</span><h2 id="employee-home-greeting">Welcome to Persen Apparel</h2><p id="employee-home-role" class="employee-home-role"></p></div></div><div class="employee-home-idle"><span aria-hidden="true">❄</span><time id="employee-home-clock"></time><span aria-hidden="true">✦</span></div><p class="employee-home-intro">Choose what you need to do. The register stays locked until you select Sales or Inventory Check.</p><div class="employee-home-actions"><button id="employee-home-sales" type="button"><span aria-hidden="true">🛍️</span><strong>Sales</strong><small>Start a customer order</small></button><button id="employee-home-returns" type="button"><span aria-hidden="true">↩</span><strong>Returns</strong><small>Look up an original sale</small></button><button id="employee-home-refunds" type="button"><span aria-hidden="true">↺</span><strong>Refunds</strong><small>Owner approval required</small></button><button id="employee-home-inventory" type="button"><span aria-hidden="true">⌁</span><strong>Inventory Check</strong><small>Scan without adding to a sale</small></button></div><p id="employee-home-status" class="employee-home-status" role="status" aria-live="polite"></p>';
+  home.innerHTML='<div class="employee-home-brand"><img src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div><span class="eyebrow">PERSEN APPAREL · EMPLOYEE HOME</span><h2 id="employee-home-greeting">Welcome to Persen Apparel</h2><p id="employee-home-role" class="employee-home-role"></p></div></div><div class="employee-home-idle"><span aria-hidden="true">❄</span><time id="employee-home-clock"></time><span aria-hidden="true">✦</span></div><p class="employee-home-intro">Choose what you need to do. The register stays locked until you select Sales or Inventory Check.</p><div class="employee-home-actions"><button id="employee-home-sales" type="button"><span aria-hidden="true">🛍️</span><strong>Sales</strong><small>Start a customer order</small></button><button id="employee-home-returns" type="button"><span aria-hidden="true">↩</span><strong>Returns</strong><small>Look up an original sale</small></button><button id="employee-home-refunds" type="button"><span aria-hidden="true">↺</span><strong>Refunds</strong><small>Owner approval required</small></button><button id="employee-home-inventory" type="button"><span aria-hidden="true">⌁</span><strong>Inventory Check</strong><small>Scan without adding to a sale</small></button></div><button id="employee-home-badge-setup" class="employee-home-badge-setup" type="button">Manage two employee badge slots (owner only)</button><p id="employee-home-status" class="employee-home-status" role="status" aria-live="polite"></p>';
   if(typeof launch.insertAdjacentElement==='function')launch.insertAdjacentElement('afterend',home);
   else workspace.append(home);
   const status=home.querySelector('#employee-home-status');
@@ -70,6 +70,8 @@
   home.querySelector('#employee-home-sales').addEventListener('click',()=>{
    try{api.openEmployeeMode('sales');hideEmployeeHome();message('Sales register ready. Scan products to start a sale.')}catch(error){status.textContent=error.message}
   });
+  const staffSetup=home.querySelector('#employee-home-badge-setup');
+  staffSetup.addEventListener('click',()=>{window.PersenPOSRegister.openEmployeeBadgeSetup?.()});
   home.querySelector('#employee-home-inventory').addEventListener('click',()=>{
    try{api.openEmployeeMode('inventory');hideEmployeeHome();message('Inventory Check is ready. Scan a product barcode; nothing will be added to a sale.')}catch(error){status.textContent=error.message}
   });
@@ -89,6 +91,7 @@
   if(!home)return false;
   home.hidden=false;
   home.querySelector('#employee-home-greeting').textContent='Hello, '+employee.firstName+'!';
+  home.querySelector('#employee-home-badge-setup').hidden=employee.role!=='owner';
   home.querySelector('#employee-home-role').textContent=employee.role==='owner'
    ? 'Owner access · select an action to continue'
    : 'Cashier access · sales and read-only inventory are ready';
