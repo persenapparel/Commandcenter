@@ -50,7 +50,19 @@
   <div id="customer-help-alert" class="customer-help-alert" hidden><strong>Customer requested assistance</strong><span>Check the customer iPad and help with the current step.</span></div>
 </div>
 <p id="receipt-request-status" class="hint">Receipt preferences will appear here after customer checkout.</p>
-<p id="pairing"></p><p id="external-payment-notice" class="hint" hidden>Customer requested payment instructions. Do not mark a sale paid until payment is independently verified. Venmo verification is manual; Apple Cash is unavailable for business checkout.</p>
+<p id="pairing"></p><p id="external-payment-notice" class="hint" hidden>External transfer requested. This system cannot access Venmo or Apple Cash. Independently verify incoming funds in an eligible recipient account; a screenshot or customer confirmation is not proof of payment.</p>
+<section id="external-approval-panel" class="external-approval-panel" aria-label="External payment verification" hidden>
+<span class="eyebrow">PAYMENT AWAITING VERIFICATION</span><h3 id="external-approval-title">Confirm payment</h3>
+<div class="external-approval-total"><span>Amount due</span><strong id="external-approval-amount">$0.00</strong></div>
+<p>Cashier: check the actual recipient account and exact amount. Never mark paid from a customer's screenshot.</p>
+<label class="external-approval-check"><input id="external-cashier-confirmed" type="checkbox">Employee checked incoming funds in the approved recipient account</label>
+<fieldset><legend>Owner approval</legend><p>The owner must personally verify the transfer and enter their private badge and PIN.</p>
+<label class="external-approval-check"><input id="external-owner-verified" type="checkbox">I personally verified the transfer and amount in my authorized account</label>
+<label>Owner badge<input id="external-owner-badge" type="text" autocomplete="off" minlength="8" maxlength="256" placeholder="Scan owner badge"></label>
+<label>Owner PIN<input id="external-owner-pin" type="password" inputmode="numeric" autocomplete="off" minlength="6" maxlength="128" placeholder="Owner PIN"></label>
+</fieldset>
+<p id="external-approval-status" role="status" aria-live="polite">Waiting for owner approval. This order is unpaid.</p>
+<button id="external-owner-approve" type="button" class="primary">Owner: Approve received payment</button></section>
 <details class="cashier-payment-help">
   <summary>Venmo checkout instructions</summary>
   <div class="cashier-payment-options">
@@ -74,11 +86,11 @@
 <div id="change-breakdown" class="change-breakdown"></div>
 <button id="cash" class="primary cash-confirm" disabled>Confirm cash received · Record sale</button>
 <div id="cash-handoff" class="cash-handoff" role="status" aria-live="polite" hidden>
-  <div class="cash-handoff-eyebrow">CASH PAYMENT RECORDED</div>
-  <h3>Hand the customer their change</h3>
+  <div class="cash-handoff-eyebrow" id="cash-handoff-eyebrow">CASH PAYMENT RECORDED</div>
+  <h3 id="cash-handoff-heading">Hand the customer their change</h3>
   <strong id="cash-handoff-change" class="cash-handoff-change">$0.00</strong>
   <p id="epson-drawer-status" role="status" aria-live="polite">Checking Epson cash drawer queue (staging only)…</p>
-  <p>After you have given the customer their change and receipt, tap Finish Order. The customer iPad will then say “You're all set!”</p>
+  <p id="cash-handoff-description">After giving change and receipt, tap Finish Order.</p>
   <button id="finish-order" type="button" class="primary finish-order" disabled>Finish Order →</button>
 </div>
 <p class="hint">Only confirm after receiving the cash. In Epson staging mode, a signed-in Windows print station handles the receipt and cash drawer. Do not run the retired browser print station; Epson printing is handled only by the separate Windows agent.</p>
@@ -117,7 +129,7 @@
   </ol>
   <p class="hint">The laptop back office displays the receipt and drawer queues. Epson printing and the cash drawer are handled only by the authorized Windows station.</p>
  </details>
- <p><a href="admin.html#print-center">Open Epson Print Center in Laptop Back Office ↗</a></p><button id="save-template">Save template</button><button id="print">Emergency browser reprint (check for duplicates)</button></div></section></div></div><article class="paper" id="receipt" hidden><img class="paper-logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div class="paper-brand">PERSEN APPAREL</div><small>CUSTOM APPAREL · LONG ISLAND</small><hr><small id="receipt-id"></small><div id="receipt-items"></div><hr><div class="receipt-breakdown"><div>Subtotal <span id="receipt-subtotal"></span></div><div>Discount <span id="receipt-discount"></span></div></div><hr><div class="receipt-total">TOTAL <span id="receipt-total"></span></div><div class="receipt-breakdown"><div>Cash received <span id="receipt-cash-tendered"></span></div><div>Change returned <span id="receipt-cash-change"></span></div></div><hr><b id="receipt-headline"></b><p class="receipt-season-heading" id="receipt-season-heading" hidden></p><p id="receipt-season-message"></p><p id="receipt-promo"></p><hr><p id="receipt-thanks">THANK YOU FOR YOUR ORDER!</p><p id="receipt-review-message"></p><p><a id="receipt-review-url" href="#" hidden></a></p><p>Shop online: persenapparel.com</p><p>Instagram: @persenapparel</p><small id="receipt-footer"></small></article><dialog id="variant-dialog" class="variant-dialog" aria-labelledby="variant-title"><div class="picker-head"><div><span class="eyebrow">SELECT COLOR &amp; SIZE</span><h2 id="variant-title">Choose a size</h2></div><button type="button" id="close-variant" aria-label="Close size picker">×</button></div><div id="variant-options" class="variant-options"></div><p class="hint">Choose an available size to add it to the cart.</p></dialog><dialog id="event-setup-dialog" class="variant-dialog" aria-labelledby="event-setup-title">
+ <p><a href="admin.html#print-center">Open Epson Print Center in Laptop Back Office ↗</a></p><button id="save-template">Save template</button><button id="print">Emergency browser reprint (check for duplicates)</button></div></section></div></div><article class="paper" id="receipt" hidden><img class="paper-logo" src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div class="paper-brand">PERSEN APPAREL</div><small>CUSTOM APPAREL · LONG ISLAND</small><hr><small id="receipt-id"></small><div id="receipt-items"></div><hr><div class="receipt-breakdown"><div>Subtotal <span id="receipt-subtotal"></span></div><div>Discount <span id="receipt-discount"></span></div></div><hr><div class="receipt-total">TOTAL <span id="receipt-total"></span></div><div class="receipt-breakdown"><div><span id="receipt-tender-label">Cash received</span> <span id="receipt-cash-tendered"></span></div><div><span id="receipt-change-label">Change returned</span> <span id="receipt-cash-change"></span></div></div><hr><b id="receipt-headline"></b><p class="receipt-season-heading" id="receipt-season-heading" hidden></p><p id="receipt-season-message"></p><p id="receipt-promo"></p><hr><p id="receipt-thanks">THANK YOU FOR YOUR ORDER!</p><p id="receipt-review-message"></p><p><a id="receipt-review-url" href="#" hidden></a></p><p>Shop online: persenapparel.com</p><p>Instagram: @persenapparel</p><small id="receipt-footer"></small></article><dialog id="variant-dialog" class="variant-dialog" aria-labelledby="variant-title"><div class="picker-head"><div><span class="eyebrow">SELECT COLOR &amp; SIZE</span><h2 id="variant-title">Choose a size</h2></div><button type="button" id="close-variant" aria-label="Close size picker">×</button></div><div id="variant-options" class="variant-options"></div><p class="hint">Choose an available size to add it to the cart.</p></dialog><dialog id="event-setup-dialog" class="variant-dialog" aria-labelledby="event-setup-title">
 <div class="picker-head"><h2 id="event-setup-title">Set up your event</h2><button id="close-event-setup" type="button" aria-label="Close event setup">×</button></div>
 <form id="event-setup-form"><label>Choose an event<select id="setup-event"></select></label><label>Event name<input id="setup-name" required maxlength="100"></label><label>Event date<input id="setup-date" type="date" required></label>
 <p>Choose finished Sales Products. All available colors and sizes stay together. Blank inventory is never shown.</p><label>Find Sales Products<input id="event-product-search" type="search"></label><div id="event-product-options"></div><p id="event-selection-count"></p><p id="event-setup-message" role="status"></p><button id="save-event-selection" class="primary" type="submit">Save event &amp; open register</button></form></dialog><dialog id="staff-badge-setup-dialog" class="variant-dialog staff-badge-dialog" aria-labelledby="staff-badge-title">
