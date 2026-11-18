@@ -16,8 +16,8 @@ function syncCashierStage(){
  const headings={
   customer:['Customer is checking out','Their iPad shows each question. You can see their progress here without viewing their answers.'],
   payment:['Collect the payment','The customer finished their details. Enter the amount received or tap the bills they handed you.'],
-  external:['Payment instructions only','The customer selected an external payment method. This POS cannot verify or record that payment as paid.'],
-  handoff:['Give change & finish the order','Cash was recorded. Give the customer their change and receipt before finishing.']
+  external:['Payment needs owner approval','The customer chose Venmo or Apple Cash. Check the recipient account, then have the owner scan their badge and enter their PIN.'],
+  handoff:['Payment verified · finish order','Payment saved. Give change only for a cash sale, then tap Finish Order.']
  };
  const copy=headings[stage];
  by('cashier-stage-header').hidden=!copy;
@@ -209,6 +209,7 @@ function syncCheckoutUI(){
  by('discount').disabled=!!checkout||cashier||inventoryOnly;
  document.querySelectorAll('[data-discount]').forEach(button=>{button.disabled=!!checkout||cashier||inventoryOnly});
  by('event-select').disabled=!!checkout||!!cart.length||inventoryOnly;
+ updateExternalApprovalPanel();
 }
 async function loadStock(){
  // Inventory and quick tiles must come from the POS database. Staging remains isolated.
@@ -236,7 +237,7 @@ async function loadStock(){
 async function loadTemplates(){templates=await check(db.from('pos_receipt_templates').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));by('templates').replaceChildren();for(const t of templates){const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;by('templates').append(opt)}const t=templates.find(x=>x.active)||templates[0];if(t){by('templates').value=t.id;showTemplate(t)}}
 function showTemplate(t){by('template-name').value=t.name;by('headline').value=t.headline;by('promotion').value=t.promotion;by('footer').value=t.footer;by('review-message').value=t.review_message||R.DEFAULTS.review;by('receipt-seasonal').checked=t.show_seasonal!==false;by('receipt-review').checked=t.show_review!==false}
 async function ensureRegister(){const regs=await check(db.from('pos_registers').select('*').eq('owner_id',user.id).eq('active',true).order('created_at').limit(1));register=regs[0]||await check(db.from('pos_registers').insert({owner_id:user.id,label:'Persen POS register'}).select('*').single());pendingCash=sessionStorage.getItem(pendingCashKey());syncCheckoutUI();}
-const saleForCheckout=id=>check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,tendered_cents,change_cents,change_breakdown,created_at').eq('checkout_id',id).maybeSingle());
+const saleForCheckout=id=>check(db.from('pos_sales').select('id,snapshot,subtotal_cents,discount_cents,tax_cents,total_cents,payment_method,tendered_cents,change_cents,change_breakdown,created_at').eq('checkout_id',id).maybeSingle());
 function showPaidAwaitingHandoff(saved,record){
  const id=record.id;
  lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};
@@ -247,12 +248,20 @@ function showPaidAwaitingHandoff(saved,record){
  handoffCheckoutId=id;rememberCash(null);
  document.body.classList.add('checkout-active');
  document.body.classList.remove('pos-register-closed');
+ const external=['venmo','apple_cash'].includes(saved.payment_method);
  by('cash-handoff').hidden=false;by('finish-order').disabled=false;
+ by('cash-handoff-eyebrow').textContent=external?'OWNER-VERIFIED TRANSFER':'CASH PAYMENT RECORDED';
+ by('cash-handoff-heading').textContent=external?'Payment approved by owner':'Hand the customer their change';
+ by('cash-handoff-change').hidden=external;
  by('cash-handoff-change').textContent=C.money(saved.change_cents);
- void updateEpsonDrawerStatus(saved.id);
- draw();
- syncCashierStage();
- notice('Cash payment saved. Hand back '+C.money(saved.change_cents)+' in change, then tap Finish Order.');
+ by('cash-handoff-description').textContent=external
+  ?'Your independent owner approval was recorded. Tap Finish Order.'
+  :'After handing back any change, tap Finish Order.';
+ by('epson-drawer-status').hidden=external;
+ if(!external)void updateEpsonDrawerStatus(saved.id);
+ draw();syncCashierStage();
+ notice(external?'Owner verified this transfer. Tap Finish Order.':
+  'Cash payment saved. Return '+C.money(saved.change_cents)+' in change, then Finish Order.');
 }
 async function showCompletedSale(saved){
  lastSale={id:saved.id,cart:saved.snapshot.items,totals:saved,time:new Date(saved.created_at)};
@@ -501,7 +510,7 @@ async function cash(){
   notice('Cash payment could not be confirmed: '+e.message+'. Do not start another order until status is checked.');
  }finally{busy=false;await status()}
 }
-function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent='CASH SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
+function receipt(){if(!lastSale)return;by('receipt').hidden=false;by('receipt-id').textContent=(lastSale.totals.payment_method==='venmo'?'VENMO':lastSale.totals.payment_method==='apple_cash'?'APPLE CASH':'CASH')+' SALE '+lastSale.id.slice(0,8).toUpperCase()+' · '+lastSale.time.toLocaleString();by('receipt-items').replaceChildren();for(const x of lastSale.cart){const line=document.createElement('div');line.className='receipt-line';const a=document.createElement('span');a.textContent=x.qty+' × '+x.name+' '+x.size;const b=document.createElement('span');b.textContent=C.money(x.qty*x.unit_cents);line.append(a,b);by('receipt-items').append(line)}by('receipt-subtotal').textContent=C.money(lastSale.totals.subtotal_cents);by('receipt-discount').textContent='−'+C.money(lastSale.totals.discount_cents);by('receipt-total').textContent=C.money(lastSale.totals.total_cents);by('receipt-tender-label').textContent=lastSale.totals.payment_method==='cash'?'Cash received':'Owner-verified transfer';by('receipt-change-label').textContent=lastSale.totals.payment_method==='cash'?'Change returned':'Change';by('receipt-cash-tendered').textContent=C.money(lastSale.totals.tendered_cents);by('receipt-cash-change').textContent=C.money(lastSale.totals.change_cents);const cfg=R.presentation({headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review:by('review-message').value,reviewLink:reviewLink,showReview:by('receipt-review').checked,showSeason:by('receipt-seasonal').checked,season});by('receipt-headline').textContent=cfg.headline;by('receipt-season-heading').textContent=cfg.season_style.icon+'  '+cfg.season_style.label+'  '+cfg.season_style.icon;by('receipt-season-heading').hidden=!cfg.season_style.label;by('receipt-season-message').textContent=cfg.seasonal;by('receipt-season-message').hidden=!cfg.seasonal;by('receipt-promo').textContent=cfg.promotion;by('receipt-footer').textContent=cfg.footer;by('receipt-review-message').textContent=cfg.review_url?cfg.review:'';by('receipt-review-message').hidden=!cfg.review_url;const a=by('receipt-review-url');a.hidden=!cfg.review_url;if(cfg.review_url){a.href=cfg.review_url;a.textContent=cfg.review_url.split('://').slice(1).join('://')}else{a.removeAttribute('href');a.textContent=''};}
 async function saveTemplate(){try{const id=by('templates').value;const payload={owner_id:user.id,name:by('template-name').value.trim(),headline:by('headline').value,promotion:by('promotion').value,footer:by('footer').value,review_message:by('review-message').value,show_seasonal:by('receipt-seasonal').checked,show_review:by('receipt-review').checked,active:false,updated_at:new Date().toISOString()};if(!payload.name)throw Error('Template name required');if(id)await check(db.from('pos_receipt_templates').update(payload).eq('id',id));else await check(db.from('pos_receipt_templates').insert(payload));await loadTemplates();notice('Receipt template saved. Historical sale amounts are unchanged.')}catch(e){notice(e.message)}}
 async function boot(){try{if(!window.PA?.ready)throw Error('Supabase connection unavailable');db=PA.db;user=await PA.me();if(!user){notice('Sign in with your Command Center account');return}if(!await PA.isAdmin(user))throw Error('This account is not authorized for Persen POS');by('auth').hidden=true;by('workspace').hidden=false;await ensureRegister();await Promise.all([loadStock(),loadTemplates(),loadEvents(),loadSales(),reloadDrawer()]);if(sessionStorage.getItem('pos-register-open')==='1'&&stock.some(x=>x.quantity>0&&variantMeta.has(x.id)))setRegisterOpen(true);try{const contents=await check(db.from('site_content').select('key,value').in('key',['seasonal_campaigns_v1','v54_google_reviews']));const dict=Object.fromEntries((contents||[]).map(x=>[x.key,x.value]));season=C.season(dict.seasonal_campaigns_v1);reviewLink=R.reviewUrl(dict.v54_google_reviews);if(season){Experience.apply(document,season);by('seasonal-status').textContent='Active: '+season.title+' — receipt and display promotions';notice('Seasonal Studio connected: '+season.title)}else{by('seasonal-status').textContent='No published active campaign — classic receipt and customer display'}if(!reviewLink)notice('Google review link not configured in Command Center Site Studio; review invitation hidden until configured.')}catch(err){by('seasonal-status').textContent='Seasonal Studio temporarily unavailable';}await status();poll=setInterval(status,1800);db.channel('pos-owner-'+register.id).on('postgres_changes',{event:'*',schema:'public',table:'pos_checkouts',filter:'register_id=eq.'+register.id},status).subscribe();}catch(e){notice(e.message)}}
 
