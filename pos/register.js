@@ -914,7 +914,7 @@ function scanSku(input){
  if(busy||checkout||pendingCash){out.textContent='Finish or cancel the current checkout first.';return;}
  const model=window.PersenPOSBarcodeTender;
  let code;
- try{code=model.normalizeCode(input)}catch{
+ try{code=model.resolveProductCode(input)}catch{
   out.textContent='This barcode is not a supported internal SKU. Use product search.';search.hidden=false;return;
  }
  let index;
@@ -1045,7 +1045,7 @@ function exportBarcodeLabels(){
   if(!user||!register||!stock.length)throw Error('Sign in and load products first.');
   const used=new Set(),rows=[['Barcode Code128','Product','Color','Size']];
   for(const item of stock.filter(isSalesStock)){
-   const code=window.PersenPOSBarcodeTender.normalizeCode(item.sku);
+   const code=window.PersenPOSBarcodeTender.tagCodeForSku(item.sku);
    if(!/^[A-Z0-9]/.test(code))throw Error('Barcode must start with a letter or number: '+code);
    if(used.has(code))throw Error('Duplicate size/variant barcode: '+code);
    used.add(code);
