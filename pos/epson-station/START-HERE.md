@@ -73,3 +73,7 @@ When the hardware is connected and the owner authorizes the test, use **staging 
 - Simulate printer offline: mark a claimed drawer command uncertain and **do not automatically retry**; inspect physically before any owner decision.
 
 A Cloudflare success or `command-sent` merely proves deployment or Windows spool acceptance, **not** physical paper feed, cutter, cash-drawer electrical compatibility, or opening.
+
+### Separate printer and drawer arming
+
+The Windows agent is **independently armed for receipts and the drawer**. For the first paper-feed/cut test, set receipt printing ARMED and the drawer DISARMED; the Windows agent must not even claim drawer jobs in this state. Confirm the Epson driver itself is **not configured to kick the drawer on print**. Only after manufacturer cable compatibility, printer driver and RAW receipt test are verified should the owner explicitly enable the drawer for a supervised simulated cash sale. Both switches remain DISARMED by default, and neither switch means that the hardware actually worked.
