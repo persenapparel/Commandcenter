@@ -14,7 +14,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  // Virtual staging origin, served entirely from local fixtures. This exercises
  // the actual origin guard without weakening it to accept localhost.
  const url='https://persen-pos-staging.pages.dev/';
- const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({viewport:{width:1280,height:800}});
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_PATH}:{})}),ctx=await browser.newContext({viewport:{width:1280,height:800}});
  ctx.setDefaultTimeout(6000);
  await ctx.addInitScript({path:'pos/test-fake-supabase.js'});
  await ctx.addInitScript({content:"Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async s=>localStorage.setItem('__clip',s),readText:async()=>localStorage.getItem('__clip')}});Object.defineProperty(window,'print',{configurable:true,value:()=>localStorage.setItem('__prints',String(Number(localStorage.getItem('__prints')||0)+1))});window.confirm=()=>true;"});
@@ -25,7 +25,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   }
   return r.fulfill({status:200,contentType:'application/javascript',body:''});
  });
- let admin,cashier,printer;
+ let admin,cashier;
  try{
  await step('Device dashboard routes without unsafe browser-stored PIN',async()=>{
   const p=await ctx.newPage();opened.push(p);assert.equal((await p.goto(url)).status(),200);
@@ -76,7 +76,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await admin.locator('#refresh').click();await txt(admin,'#notice','Inventory refreshed');
  });
  await step('Laptop event setup',async()=>{const f=admin.locator('#event-form');await f.locator('[name=name]').fill('Holiday Boutique E2E');await f.locator('[name=event_date]').fill('2026-12-12');await f.locator('[name=venue]').fill('Rocky Point');await f.getByRole('button',{name:'Create event'}).click();await txt(admin,'#event-list','Holiday Boutique E2E')});
- await step('Cashier starts closed, opens, and selects event',async()=>{
+ await step('Cashier signs in, lands on Employee Home, then selects Sales',async()=>{
   cashier=await ctx.newPage();opened.push(cashier);await cashier.goto(url+'register.html');await visible(cashier,'#workspace');assert.equal(await cashier.locator('input[name="checkout-device-mode"][value="dual"]').count(),0,'Legacy dual-iPad control must be absent');assert.equal(await cashier.locator('body').getAttribute('data-checkout-device-mode'),'swivel','One swivel iPad must be active');await visible(cashier,'#register-launch');await txt(cashier,'#launch-product-count','ready-to-sell');
   await cashier.locator('#setup-event-launch').click();await visible(cashier,'#event-setup-dialog');
   await cashier.locator('#setup-event').selectOption({label:'Holiday Boutique E2E · 2026-12-12'});
@@ -95,6 +95,11 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await txt(cashier,'#notice','Hello, Test!');
   assert.equal(await cashier.locator('#swivel-pin').inputValue(),'');
   assert.equal(await cashier.locator('#swivel-guest-host iframe').count(),0,'Shift login must not start guest checkout');
+  await visible(cashier,'#employee-home');
+  await txt(cashier,'#employee-home-greeting','Hello, Test!');
+  assert.equal(await cashier.locator('#employee-home-actions button').count(),4,'Employee Home must offer exactly four choices');
+  assert.equal(await cashier.locator('#catalog .quick-product:visible').count(),0,'A verified shift must not expose a cart until Sales is selected');
+  await cashier.locator('#employee-home-sales').click();
   await visible(cashier,'.quick-toolbar');
   await visible(cashier,'#catalog .quick-product');assert.ok(await cashier.locator('.quick-product').count()>=2);
   assert.equal(await cashier.locator('.product-manager:visible').count(),0);
@@ -132,14 +137,16 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#search').fill('');await cashier.locator('.quick-product').filter({hasText:'Winter Crewneck'}).click();
   await cashier.getByRole('button',{name:/S · Forest Green/i}).click();assert.equal(await cashier.locator('#cart .cart-row').count(),2);
  });
- await step('Cashier quantity, discount, no-tax UI, close/reopen',async()=>{
+ await step('Cashier quantity, owner discount, no-tax UI, and active-cart home guard',async()=>{
   const row=cashier.locator('#cart .cart-row').first(),quantity=row.locator('input[type=number]').first();
   assert.equal(await row.locator('input[aria-label^="Unit price for "]').getAttribute('readonly'),'');
   await quantity.fill('4');await quantity.dispatchEvent('change');assert.equal(await quantity.inputValue(),'1');
   await quantity.fill('2');await quantity.dispatchEvent('change');
   await cashier.locator('button[data-discount="10"]').click();assert.equal(await cashier.locator('#discount').inputValue(),'10');
   assert.equal(await cashier.locator('#tax').count(),0,'No tax input must appear for new sales');assert.equal(await cashier.locator('#start').isDisabled(),false);
-  await cashier.locator('#close-register').click();await visible(cashier,'#register-launch');await cashier.locator('#open-register').click();assert.equal(await cashier.locator('#cart .cart-row').count(),2)
+  await cashier.locator('#close-register').click();
+  await txt(cashier,'#notice','Clear the current cart before returning to the employee home.');
+  assert.equal(await cashier.locator('#cart .cart-row').count(),2);
  });
  await step('Legacy two-iPad controls are no longer presented',async()=>{
   for(const id of ['pair','pair-quick','pair-setup','pair-link-panel','pair-copy','pair-share']){
@@ -167,18 +174,16 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(after.tables.pos_sales.length,original.sales,'Badge gate must not create sale');
   assert.equal(after.tables.pos_print_jobs.length,original.printJobs,'Badge gate must not queue receipt');
  });
- await step('Epson Center remains read-only and legacy NELKO browser worker stays disabled',async()=>{
+ await step('Epson Center remains read-only and no legacy printer route is deployed',async()=>{
   await visible(admin,'#print-center');
   await txt(admin,'#epson-monitor-status','Showing staging queue history');
   assert.ok(await admin.locator('#epson-refresh').isEnabled());
-  printer=await ctx.newPage();opened.push(printer);await printer.goto(url+'print-station.html');
-  await txt(printer,'main','old NELKO browser print worker is disabled');
-  assert.equal(await printer.locator('#arm').count(),0);
+  assert.equal((await ctx.request.get(url+'print-station.html')).status(),404,'Legacy browser printer route must not deploy');
   const snapshot=await state(admin);
   assert.equal(snapshot.tables.pos_print_jobs.length,0);
   assert.equal(snapshot.tables.pos_drawer_open_jobs.length,0);
  });
  }finally{for(const p of opened)try{await p.close()}catch{}await ctx.close();await browser.close();await new Promise(r=>server.close(r))}
  if(failures.length){console.error('POS functional failures:',JSON.stringify(failures,null,2));process.exitCode=1}
- else console.log('PASS: Mock cashier catalog/cart/scanner, badge-gated isolated handoff shell and read-only Epson monitor verified. No successful customer checkout, badge authentication, hardware commands or email delivery tested.');
+ else console.log('PASS: Mock cashier Employee Home, permission-scoped sales/inventory workflow and read-only Epson monitor verified. No live customer checkout, hardware command or email delivery tested.');
 })().catch(e=>{console.error(e);try{server.close()}catch{}process.exitCode=1});

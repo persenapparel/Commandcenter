@@ -3,6 +3,9 @@ const C=window.PersenPOSCore,R=window.PersenPOSReceipt,by=id=>document.getElemen
 const notice=s=>by('notice').textContent=s;
 const check=async q=>{const {data,error}=await q;if(error)throw error;return data};
 let pendingCash=null,statusRunning=false,checkoutVersion=0,handoffCheckoutId=null;
+// Staff arrive through Employee Home. Inventory Check is deliberately
+// read-only until the employee returns home and selects Sales.
+let employeeMode='sales';
 let lastCashierStage='catalog';
 function syncCashierStage(){
  const stage=Wizard.cashierStage(checkout);
@@ -84,6 +87,7 @@ const hasPrice=item=>{
 const readyToSell=item=>isSalesStock(item)&&hasPrice(item)&&item.quantity>0;
 function addVariant(x){
  if(!window.PersenPOSSwivel?.canUseRegister?.())return notice('Scan your employee badge and PIN before adding products.');
+ if(employeeMode==='inventory')return notice('Inventory Check is read-only. Return to Employee Home and choose Sales to add products.');
  if(checkout)return notice('Finish or cancel the current checkout first');
  const meta=variantMeta.get(x.id),line=cart.find(c=>c.stock_id===x.id);
  if(!isSalesStock(x)||!hasPrice(x))return notice('This item needs an active Sales Product and a selling price.');
@@ -101,7 +105,7 @@ function pickVariant(title,options){
   const label=document.createElement('strong');label.textContent=(x.size||'One Size')+' · '+(x.color||'Default');
   const price=document.createElement('span');price.className='variant-price';price.textContent=priced?C.money(m.price_cents):'Set price on laptop';
   const count=document.createElement('small');count.textContent=remaining>0?remaining+' available':'Out of stock';
-  button.disabled=remaining<=0||!priced;
+  button.disabled=remaining<=0||!priced||employeeMode==='inventory';
   button.append(label,price,count);button.onclick=()=>{addVariant(x);if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open')};host.append(button);
  }
  if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
@@ -135,7 +139,7 @@ function renderQuickCatalog(){
   const total=g.variants.reduce((n,x)=>n+x.quantity,0);
   const price=ready.length?Math.min(...ready.map(x=>variantMeta.get(x.id).price_cents)):null;
   const tile=document.createElement('button');tile.type='button';tile.className='quick-product'+(pinned.includes(g.name.toLowerCase())?' event-featured':'');
-  tile.disabled=!ready.length;tile.setAttribute('aria-label','Choose size and color for '+g.name);
+  tile.disabled=!ready.length||employeeMode==='inventory';tile.setAttribute('aria-label','Choose size and color for '+g.name);
   const icon=document.createElement('span');icon.className='quick-symbol';icon.textContent=TYPE_ICONS[g.type]||TYPE_ICONS.other;
   const badge=document.createElement('span');badge.className='quick-count';badge.textContent=total+' in stock';
   const title=document.createElement('span');title.className='quick-name';title.textContent=g.name;
@@ -160,12 +164,20 @@ function setRegisterOpen(open,verifiedBadge=false){
   return;
  }
  document.body.classList.toggle('pos-register-closed',!open);
+ if(open)document.body.dataset.employeeHome='false';
+ if(!open){employeeMode='sales';delete document.body.dataset.employeeMode;}
  sessionStorage.setItem('pos-register-open',open?'1':'0');
  queueCustomerPreview();
  if(open)notice('Register open. Tap a product, pick the size/color and send checkout to the customer iPad.');
 }
 by('open-register').onclick=()=>setRegisterOpen(true);
-by('close-register').onclick=()=>setRegisterOpen(false);
+by('close-register').onclick=()=>{
+ if(window.PersenPOSSwivel?.active?.()){
+  if(cart.length)return notice('Clear the current cart before returning to the employee home.');
+  return window.PersenPOSSwivel.showEmployeeHome?.();
+ }
+ setRegisterOpen(false);
+};
 by('refresh-products').onclick=async()=>{if(checkout)return notice('Finish or cancel the current checkout first');try{await loadStock();notice('Sale products and event tiles refreshed.')}catch(e){notice('Could not refresh products: '+e.message)}};
 by('event-select').addEventListener('change',()=>{if(checkout||cart.length){by('event-select').value=selectedEventId;return notice('Finish or clear the cart before switching events.')}selectedEventId=by('event-select').value;sessionStorage.setItem('pos-event',selectedEventId);renderQuickCatalog()});
 window.addEventListener('focus',()=>{if(user&&!checkout&&!cart.length)loadStock().catch(()=>{});});
@@ -179,21 +191,24 @@ function draw(){
  const r=document.createElement('div');r.className='cart-row';const title=document.createElement('div');title.textContent=x.name+' '+[x.color,x.size].filter(Boolean).join(' / ');
  const available=x.stock_id?stock.find(item=>item.id===x.stock_id)?.quantity:999;
  const maxQty=Math.min(999,available??0);
- const qty=document.createElement('input');qty.type='number';qty.min=1;qty.max=maxQty;qty.value=x.qty;qty.style.width='65px';qty.setAttribute('aria-label','Quantity for '+x.name);qty.disabled=!!checkout||maxQty<1;
+  const qty=document.createElement('input');qty.type='number';qty.min=1;qty.max=maxQty;qty.value=x.qty;qty.style.width='65px';qty.setAttribute('aria-label','Quantity for '+x.name);qty.disabled=!!checkout||maxQty<1||employeeMode==='inventory';
  qty.onchange=()=>{const value=qty.valueAsNumber;if(!Number.isInteger(value)||value<1||value>maxQty){qty.value=x.qty;notice('Enter a whole quantity from 1 to '+maxQty+'.');return;}x.qty=value;draw()};
- const price=document.createElement('input');price.type='number';price.min=0;price.max=100000;price.step='.01';price.value=(x.unit_cents/100).toFixed(2);price.style.width='100px';price.setAttribute('aria-label','Unit price for '+x.name);price.disabled=!!checkout;price.readOnly=!!x.stock_id;price.onchange=()=>{try{x.unit_cents=C.cents(price.value);draw()}catch(e){price.value=(x.unit_cents/100).toFixed(2);notice(e.message)}};
- const service=document.createElement('select');service.className='service-picker';service.setAttribute('aria-label','Service category for '+x.name);service.disabled=!!checkout;for(const v of EV.services){const option=document.createElement('option');option.value=v;option.textContent=v;service.append(option);}service.value=x.service||'Other';service.onchange=()=>{x.service=service.value;};
- const remove=document.createElement('button');remove.textContent='×';remove.disabled=!!checkout;remove.onclick=()=>{cart.splice(i,1);draw()};r.append(title,qty,price,service,remove);by('cart').append(r);
+  const price=document.createElement('input');price.type='number';price.min=0;price.max=100000;price.step='.01';price.value=(x.unit_cents/100).toFixed(2);price.style.width='100px';price.setAttribute('aria-label','Unit price for '+x.name);price.disabled=!!checkout||employeeMode==='inventory';price.readOnly=!!x.stock_id;price.onchange=()=>{try{x.unit_cents=C.cents(price.value);draw()}catch(e){price.value=(x.unit_cents/100).toFixed(2);notice(e.message)}};
+  const service=document.createElement('select');service.className='service-picker';service.setAttribute('aria-label','Service category for '+x.name);service.disabled=!!checkout||employeeMode==='inventory';for(const v of EV.services){const option=document.createElement('option');option.value=v;option.textContent=v;service.append(option);}service.value=x.service||'Other';service.onchange=()=>{x.service=service.value;};
+  const remove=document.createElement('button');remove.textContent='×';remove.disabled=!!checkout||employeeMode==='inventory';remove.onclick=()=>{cart.splice(i,1);draw()};r.append(title,qty,price,service,remove);by('cart').append(r);
  }
  try{by('total').textContent=C.money(current().total_cents)}catch(e){notice(e.message)}
  syncCheckoutUI();renderCash();queueCustomerPreview();
 }
 // Lightweight status refresh: never rebuild the cart while the cashier types.
 function syncCheckoutUI(){
- by('start').disabled=!!checkout||!!pendingCash||!cart.length;
+ const inventoryOnly=employeeMode==='inventory';
+ by('start').disabled=!!checkout||!!pendingCash||!cart.length||inventoryOnly;
  by('cancel').disabled=!checkout||checkout.status==='completed';
- by('discount').disabled=!!checkout;
- by('event-select').disabled=!!checkout||!!cart.length;
+ const cashier=activeStaffRole()==='cashier';
+ by('discount').disabled=!!checkout||cashier||inventoryOnly;
+ document.querySelectorAll('[data-discount]').forEach(button=>{button.disabled=!!checkout||cashier||inventoryOnly});
+ by('event-select').disabled=!!checkout||!!cart.length||inventoryOnly;
 }
 async function loadStock(){
  // Inventory and quick tiles must come from the POS database. Staging remains isolated.
@@ -284,6 +299,8 @@ let secureHandoffSavedSale=null;
 function secureHandoffRequest(){
  if(!db||!user||!register||busy||checkout||pendingCash||!Array.isArray(cart)||!cart.length)
   throw Error('Register is not ready for a secure customer handoff');
+ if(employeeMode==='inventory')
+  throw Error('Inventory Check cannot start a sale. Return to Employee Home and choose Sales.');
  const discountBps=C.discountBps(by('discount').value);
  if(discountBps!==0)throw Error('Secure customer handoff requires a 0% discount in this staging build.');
  return {
@@ -328,14 +345,41 @@ async function finishSecureHandoffSale({checkoutId}){
 }
 function reopenRegisterAfterVerifiedBadge(){
  // The secure bridge calls this only after server validation of the
- // original shift badge. The opaque cashier lock stays visible until done.
+ // original shift badge. Verify catalog readiness while the opaque cashier
+ // lock stays visible, then return to the employee home menu instead of
+ // dropping straight into a new cart.
  if(!db||!user||!register||busy||checkout||pendingCash)
   throw Error('Next-sale register is not ready');
  if(!stock.some(readyToSell))
   throw Error('No ready-to-sell products available for the next sale');
+ setRegisterOpen(false,true);
+ if(!document.body.classList.contains('pos-register-closed'))
+  throw Error('Register did not return to the employee home after badge verification');
+ return true;
+}
+function activeStaffRole(){
+ return window.PersenPOSSwivel?.employee?.()?.role||'';
+}
+function openEmployeeMode(mode){
+ if(!window.PersenPOSSwivel?.canUseRegister?.())
+  throw Error('Employee shift is not active');
+ if(checkout||pendingCash)throw Error('Finish or cancel the current checkout first');
+ if(mode!=='sales'&&mode!=='inventory')throw Error('Unknown employee action');
+ const previousMode=employeeMode;
+ employeeMode=mode;
+ document.body.dataset.employeeHome='false';
+ document.body.dataset.employeeMode=mode;
+ document.body.dataset.staffRole=activeStaffRole();
  setRegisterOpen(true,true);
- if(document.body.classList.contains('pos-register-closed'))
-  throw Error('Register did not reopen after badge verification');
+ if(document.body.classList.contains('pos-register-closed')){
+  employeeMode=previousMode;
+  document.body.dataset.employeeMode=previousMode;
+  throw Error('Register did not open after employee authorization');
+ }
+ if(mode==='inventory')setScanMode('inventory');
+ else setScanMode('sell');
+ draw();
+ by(mode==='inventory'?'scan-code':'search').focus();
  return true;
 }
 async function showSecureHandoffHome(){
@@ -358,6 +402,7 @@ const secureHandoffClient=Object.freeze({
 });
 window.PersenPOSRegister=Object.freeze({
  ready:()=>!!db&&!!user&&!!register,
+ getRegisterId:()=>register?.id||null,
  secureHandoffClient,
  getStaffCheckoutRequest:secureHandoffRequest,
  lockHandoffCheckout:lockSecureHandoffCheckout,
@@ -365,6 +410,7 @@ window.PersenPOSRegister=Object.freeze({
  finishHandoffSale:finishSecureHandoffSale,
  showHandoffHome:showSecureHandoffHome,
  reopenRegisterAfterVerifiedBadge,
+ openEmployeeMode,
  notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
@@ -418,7 +464,7 @@ async function status(){
   syncCheckoutUI();renderCash();
  }catch(e){if(!window.PersenPOSSwivel?.active?.())notice('Connection lost: '+e.message)}finally{statusRunning=false}
 }
-async function begin(){if(window.PersenPOSSwivel?.active?.())return notice('Use the secure employee handoff. Owner-only checkout cannot bypass an active employee shift.');if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=0;const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
+async function begin(){if(window.PersenPOSSwivel?.active?.())return notice('Use the secure employee handoff. Owner-only checkout cannot bypass an active employee shift.');if(employeeMode==='inventory')return notice('Inventory Check cannot start a sale. Return to Employee Home and choose Sales.');if(busy||checkout||pendingCash)return;busy=true;checkoutVersion++;try{const payload=cart.map(x=>({stock_id:x.stock_id||null,name:x.name,qty:x.qty,unit_cents:x.unit_cents,service:EV.serviceName(x.service),taxable:x.taxable}));const bps=C.discountBps(by('discount').value),tax=0;const id=await check(db.rpc('pos_begin_checkout',{p_register:register.id,p_items:payload,p_discount_bps:bps,p_tax_milli:tax,p_event:by('event-select').value||null}));checkout={id,status:'awaiting_customer'};syncCashierStage();notice('Checkout sent to customer display.');}catch(e){notice(e.message)}finally{busy=false;draw();await status()}}
 async function cancel(){if(window.PersenPOSSwivel?.active?.())return notice('Secure customer checkout stays locked to the original employee.');if(!checkout||busy)return;busy=true;checkoutVersion++;try{await check(db.rpc('pos_cancel_checkout',{p_checkout:checkout.id}));checkout=null;rememberCash(null);resetTender();syncCashierStage();draw();notice('Checkout cancelled')}catch(e){notice(e.message)}finally{busy=false;await status()}}
 async function cash(){
  if(!checkout||checkout.status!=='contact_received'||busy)return;
@@ -917,6 +963,7 @@ function setScanMode(mode){
  by('scan-mode-inventory').setAttribute('aria-pressed',String(scanMode==='inventory'));
  by('scan-mode-sell').classList.toggle('active',scanMode==='sell');
  by('scan-mode-inventory').classList.toggle('active',scanMode==='inventory');
+ by('scan-mode-sell').disabled=employeeMode==='inventory';
  by('scan-label').textContent=scanMode==='inventory'?'Scan a barcode to check inventory':'Scan product barcode to add to cart';
  by('scan-submit').textContent=scanMode==='inventory'?'Check inventory':'Add scanned item';
  by('scan-status').textContent=scanMode==='inventory'?'Inventory check mode — scans do not add products to the cart.':'Add-to-cart mode — scans add products to the sale.';
@@ -1017,10 +1064,10 @@ by('barcode-csv').addEventListener('click',exportBarcodeLabels);
 by('scan-search').addEventListener('click',()=>{
  const field=by('search');field.focus();by('scan-search').hidden=true;
 });
-by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(!window.PersenPOSSwivel?.canUseRegister?.())return notice('Employee shift required.');if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:false});e.target.reset();draw()}catch(err){notice(err.message)}};
+by('search').oninput=draw;by('custom').onsubmit=e=>{e.preventDefault();if(!window.PersenPOSSwivel?.canUseRegister?.())return notice('Employee shift required.');if(employeeMode==='inventory')return notice('Inventory Check is read-only.');if(activeStaffRole()!=='owner')return notice('Custom items require owner approval.');if(checkout)return notice('Close current checkout first');try{const f=new FormData(e.target);cart.push({stock_id:null,name:String(f.get('name')).trim(),size:'',color:'',qty:1,unit_cents:C.cents(f.get('price')),service:'Other',taxable:false});e.target.reset();draw()}catch(err){notice(err.message)}};
 by('discount').oninput=draw;
-document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout)return;by('discount').value=b.dataset.discount;draw()});
-by('clear-cart').onclick=()=>{if(checkout||pendingCash)return notice('Finish the current order first.');if(!cart.length)return;if(!window.confirm('Clear all items from this cart?'))return;cart=[];draw();notice('Cart cleared. Customer display will reset.')};
+document.querySelectorAll('[data-discount]').forEach(b=>b.onclick=()=>{if(checkout||employeeMode==='inventory'||activeStaffRole()==='cashier')return notice('Discount changes require owner Sales access.');by('discount').value=b.dataset.discount;draw()});
+by('clear-cart').onclick=()=>{if(employeeMode==='inventory')return notice('Inventory Check is read-only.');if(checkout||pendingCash)return notice('Finish the current order first.');if(!cart.length)return;if(!window.confirm('Clear all items from this cart?'))return;cart=[];draw();notice('Cart cleared. Customer display will reset.')};
 by('start').onclick=begin;by('cancel').onclick=cancel;by('checkout-cancel-quick').onclick=cancel;by('cash').onclick=cash;by('finish-order').onclick=finishOrder;
 for(const [buttonId,value,label] of [['copy-venmo','@persenapparel','Venmo username']]){
  by(buttonId).onclick=async()=>{try{

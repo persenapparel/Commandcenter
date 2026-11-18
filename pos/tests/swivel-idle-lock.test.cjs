@@ -3,16 +3,17 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 function harness(){
  let now=0,tick,phase='cashier',locked=false,idleLocked=false;
+ const TestDate=class extends Date{constructor(...args){super(...(args.length?args:[now]))}static now(){return now}};
  const elements=new Map(),events={};
  function element(id){
   if(!elements.has(id))elements.set(id,{value:'',hidden:false,inert:false,textContent:'',open:false,
    listeners:{},addEventListener(type,fn){this.listeners[type]=fn},
-   querySelector(selector){return element(id+selector)},replaceChildren(){},focus(){},
+   querySelector(selector){return element(String(selector).replace(/^#/,''))},append(){},insertAdjacentElement(){},setAttribute(){},replaceChildren(){},focus(){},
    close(){this.open=false},showModal(){this.open=true}});
   return elements.get(id);
  }
  const main=element('main'),header=element('header'),dialog=element('main-dialog');
- const document={hidden:false,getElementById:element,
+ const document={hidden:false,getElementById:element,createElement:()=>element('dynamic-'+elements.size),
   querySelector:()=>null,querySelectorAll:selector=>selector==='body > main, body > header'?[main,header]:dialog.open?[dialog]:[],
   addEventListener(type,fn){events[type]=fn},
   body:{dataset:{},classList:{add(){},remove(){}}}};
@@ -23,12 +24,12 @@ function harness(){
   async unlockIdle(badge){if(badge!=='correct')throw Error('denied');locked=false;idleLocked=false;return {firstName:'Alex'}}
  };
  const window={addEventListener(type,fn){events[type]=fn},
-  PersenPOSRegister:{ready:()=>true,notice(){}},
+  PersenPOSRegister:{ready:()=>true,notice(){},openEmployeeMode(){return true}},
   PersenPOSHandoffConfig:{guestEntryUrl:'https://commandcenter-4yg.pages.dev/pos-guest/'},
   PersenPOSSecureHandoff:{createStagingHandoffBridge:()=>bridge,createIsolatedGuestFrame:()=>({})}};
  vm.runInNewContext(fs.readFileSync('pos/swivel-mode.js','utf8'),{
   document,window,location:{origin:'https://persen-pos-staging.pages.dev'},URL,
-  Date:{now:()=>now},setInterval(fn,ms){assert.equal(ms,1000);tick=fn}
+  Date:TestDate,setInterval(fn,ms){if(ms===1000)tick=fn;else assert.equal(ms,30000)}
  });
  const submit=()=>element('swivel-return-form').listeners.submit({preventDefault(){}});
  return {element,main,header,dialog,document,bridge,submit,

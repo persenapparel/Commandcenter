@@ -422,6 +422,39 @@ header{background:linear-gradient(90deg,#081b38,#143b77);box-shadow:0 5px 22px #
 .register-launch .backoffice-button{display:inline-block;color:#1958a4;font-size:13px;font-weight:850;padding:12px}
 .pos-register-closed #workspace .layout,.pos-register-closed #workspace .quick-toolbar{display:none!important}
 .fast-mode:not(.pos-register-closed) #register-launch{display:none}
+/* Server-verified staff home. It is intentionally display-only until the
+   employee chooses a permitted action; sensitive buttons still validate on
+   the server through the active shift. */
+body[data-employee-home="true"] .hero,
+body[data-employee-home="true"] #workspace>:not(#employee-home){display:none!important}
+.employee-home{max-width:760px;margin:24px auto;text-align:center;background:linear-gradient(145deg,#fff,#edf5ff);border-color:#c9ddf7}
+.employee-home-brand{display:flex;align-items:center;justify-content:center;gap:14px;text-align:left}
+.employee-home-brand img{width:68px;height:68px;object-fit:contain}.employee-home-brand h2{margin:4px 0 0;font-size:clamp(26px,4vw,38px)}
+.employee-home-role{margin:6px 0 0;color:#527099;font-size:13px;font-weight:750}
+.employee-home-idle{display:flex;justify-content:center;align-items:center;gap:14px;margin:21px 0 13px;color:#2c66b5}
+.employee-home-idle time{font-size:clamp(21px,3.5vw,31px);font-weight:900;color:#103765;font-variant-numeric:tabular-nums}
+.employee-home-intro{color:#5e7592;line-height:1.55;margin:0 auto 18px;max-width:510px}
+.employee-home-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;text-align:left}
+.employee-home-actions button{min-height:132px;padding:16px;border:1px solid #c7dcf5;border-radius:17px;background:#fff;color:#103867;display:flex;flex-direction:column;align-items:flex-start;gap:6px;box-shadow:0 5px 15px #183f7310}
+.employee-home-actions button:hover{background:#eaf4ff;border-color:#78a9e5}.employee-home-actions button>span{font-size:23px}.employee-home-actions strong{font-size:18px}.employee-home-actions small{color:#67809e;font-size:12px;font-weight:650;line-height:1.35}
+.employee-home-status{min-height:22px;margin:17px 2px 0;color:#365d8e;font-weight:700;font-size:13px}
+body[data-staff-role="cashier"] #drawer-config,body[data-staff-role="cashier"] .receipt-studio,body[data-staff-role="cashier"] #add-event-products,body[data-staff-role="cashier"] .quick-event-label{display:none!important}
+/* Inventory Check is a compact read-only scanner surface. The server still
+   enforces the same shift/register scope if a client is tampered with. */
+body[data-employee-mode="inventory"] #search,
+body[data-employee-mode="inventory"] #category-filters,
+body[data-employee-mode="inventory"] #catalog,
+body[data-employee-mode="inventory"] .product-manager,
+body[data-employee-mode="inventory"] .pos-label-export,
+body[data-employee-mode="inventory"] #custom,
+body[data-employee-mode="inventory"] .layout>.panel:nth-child(2),
+body[data-employee-mode="inventory"] .layout>.panel:nth-child(3),
+body[data-employee-mode="inventory"] .receipt-studio,
+body[data-employee-mode="inventory"] #add-event-products,
+body[data-employee-mode="inventory"] .quick-event-label{display:none!important}
+body[data-employee-mode="inventory"] .layout{grid-template-columns:minmax(0,1fr);max-width:760px;margin-inline:auto}
+body[data-employee-mode="inventory"] .pos-scan-form{margin-bottom:0}
+@media(max-width:570px){.employee-home{padding:23px 16px}.employee-home-brand{align-items:flex-start}.employee-home-actions{grid-template-columns:1fr}.employee-home-actions button{min-height:112px}}
 .cart-indicator{font-size:10px;letter-spacing:.08em;background:#e6f5ee;color:#248258;padding:7px 10px;border-radius:100px;vertical-align:middle;margin-left:6px}
 .variant-dialog{position:fixed;max-width:min(530px,calc(100vw - 28px));width:100%;max-height:85dvh;overflow:auto;border-radius:23px;border:1px solid #cfdff1;padding:24px;background:#fff;color:#123456;box-shadow:0 25px 60px #061d4290}
 .variant-dialog::backdrop{background:#071a3c90;backdrop-filter:blur(3px)}

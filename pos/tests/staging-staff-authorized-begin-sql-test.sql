@@ -31,15 +31,10 @@ BEGIN
  v_items:=jsonb_build_array(jsonb_build_object(
   'stock_id',v_item,'qty',1,'unit_cents',2500,'service','Apparel','taxable',true));
  PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
- v_login:=public.pos_staff_start_shift(repeat('S',32),'123456');
- IF v_login->>'ok'<>'true' THEN RAISE EXCEPTION 'Valid employee could not sign in'; END IF;
- v_shift:=(v_login->>'shift_id')::uuid;v_secret:=v_login->>'shift_secret';
- BEGIN
-  PERFORM public.pos_staff_begin_checkout(v_shift,v_secret,v_reg,v_items,0,0,null);
-  RAISE EXCEPTION 'Unapproved cashier created checkout';
- EXCEPTION WHEN others THEN
-  IF SQLERRM='Unapproved cashier created checkout' THEN RAISE; END IF;
- END;
+ v_login:=public.pos_staff_start_shift(repeat('S',32),'123456',v_reg);
+ IF v_login->>'ok'='true' THEN
+  RAISE EXCEPTION 'Unapproved cashier opened a register-bound shift';
+ END IF;
  PERFORM set_config('request.jwt.claim.sub',v_owner::text,true);
  IF public.pos_staff_set_register_access(v_reg,v_staff,true) IS DISTINCT FROM true
  THEN RAISE EXCEPTION 'Owner could not grant access'; END IF;
@@ -51,6 +46,9 @@ BEGIN
   IF SQLERRM='Nonowner granted register access' THEN RAISE; END IF;
  END;
  PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
+ v_login:=public.pos_staff_start_shift(repeat('S',32),'123456',v_reg);
+ IF v_login->>'ok'<>'true' THEN RAISE EXCEPTION 'Granted employee could not sign in'; END IF;
+ v_shift:=(v_login->>'shift_id')::uuid;v_secret:=v_login->>'shift_secret';
  BEGIN
   PERFORM public.pos_staff_begin_checkout(v_shift,'wrong',v_reg,v_items,0,0,null);
   RAISE EXCEPTION 'Invalid shift secret allowed';
@@ -197,10 +195,10 @@ BEGIN
  -- A second sale must use the existing shift and only its original badge.
  -- Never call start_shift again: that would conceal a broken badge-only path.
  PERFORM public.pos_handoff_revoke(v_checkout,v_shift,v_secret);
- v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('X',32));
+ v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('X',32),v_reg);
  IF v_grant->>'ok' IS DISTINCT FROM 'false'
  THEN RAISE EXCEPTION 'Wrong badge unlocked second sale'; END IF;
- v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('S',32));
+ v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('S',32),v_reg);
  IF v_grant->>'ok' IS DISTINCT FROM 'true'
  THEN RAISE EXCEPTION 'Original badge could not unlock second sale without PIN'; END IF;
  v_second:=public.pos_staff_begin_checkout(v_shift,v_secret,v_reg,v_items,0,0,null);
@@ -259,7 +257,7 @@ BEGIN
  END;
  PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
  -- A previously valid shift and correct badge must not bypass grant revocation.
- v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('S',32));
+ v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('S',32),v_reg);
  IF v_grant->>'ok' IS DISTINCT FROM 'false'
  THEN RAISE EXCEPTION 'Revoked cashier badge reopened register'; END IF;
  BEGIN

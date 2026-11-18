@@ -42,8 +42,13 @@ alter table public.pos_staff_auth_attempts enable row level security;
 revoke all on public.pos_staff_auth_attempts from anon, authenticated;
 
 -- The badge is an identifier; the PIN and the existing Supabase account
--- authenticate the employee. This RPC never accepts client-supplied roles.
-create or replace function public.pos_staff_start_shift(p_badge text, p_pin text)
+-- authenticate the employee. The selected register is server-checked before
+-- a shift is created, so an employee cannot begin a usable shift at a register
+-- whose grant was revoked. This RPC never accepts client-supplied roles.
+drop function if exists public.pos_staff_start_shift(text,text);
+create or replace function public.pos_staff_start_shift(
+ p_badge text, p_pin text, p_register uuid
+)
 returns jsonb
 language plpgsql security definer set search_path = ''
 as $$
@@ -68,7 +73,7 @@ begin
   v_attempt.attempts:=0;
  end if;
  -- Reject invalid sizes before digest/crypt to bound credential processing cost.
- if p_badge is null or length(p_badge) not between 16 and 256
+ if p_register is null or p_badge is null or length(p_badge) not between 16 and 256
     or p_pin is null or length(p_pin) not between 4 and 128 then
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
@@ -76,10 +81,22 @@ begin
   where auth_user_id=v_uid;
   return jsonb_build_object('ok',false,'error','Invalid employee credentials');
  end if;
- select * into v_staff from public.pos_staff_credentials
- where auth_user_id=v_uid and badge_digest=extensions.digest(p_badge,'sha256')
- and enabled=true;
- if not found or p_badge is null or length(p_badge) not between 16 and 256
+ select c.* into v_staff from public.pos_staff_credentials c
+ where c.auth_user_id=v_uid and c.badge_digest=extensions.digest(p_badge,'sha256')
+ and c.enabled=true
+ and exists (
+  select 1 from public.pos_registers r
+  where r.id=p_register and r.active=true
+  and (
+   (c.staff_role='owner' and r.owner_id=v_uid and public.is_persen_admin())
+   or exists (
+    select 1 from public.pos_staff_register_grants g
+    where g.register_id=r.id and g.owner_id=r.owner_id
+      and g.staff_id=c.id and g.active=true
+   )
+  )
+ );
+ if not found or p_register is null or p_badge is null or length(p_badge) not between 16 and 256
     or p_pin is null or length(p_pin) not between 4 and 128 or
     v_staff.pin_hash is null or
     extensions.crypt(p_pin,v_staff.pin_hash) is distinct from v_staff.pin_hash then
@@ -105,13 +122,15 @@ begin
   'role',v_staff.staff_role,'expires_at',v_expiry);
 end;
 $$;
-revoke all on function public.pos_staff_start_shift(text,text) from public,anon;
-grant execute on function public.pos_staff_start_shift(text,text) to authenticated;
+revoke all on function public.pos_staff_start_shift(text,text,uuid) from public,anon;
+grant execute on function public.pos_staff_start_shift(text,text,uuid) to authenticated;
 
 -- A resumed checkout requires the original authenticated account, the same
--- active shift secret, and the enrolled badge. It does NOT mint a new shift.
+-- active shift secret, enrolled badge, and the exact active register grant.
+-- It does NOT mint a new shift.
+drop function if exists public.pos_staff_resume_shift(uuid,text,text);
 create or replace function public.pos_staff_resume_shift(
- p_shift_id uuid,p_shift_secret text,p_badge text)
+ p_shift_id uuid,p_shift_secret text,p_badge text,p_register uuid)
 returns jsonb
 language plpgsql security definer set search_path = ''
 as $$
@@ -136,7 +155,7 @@ begin
   where auth_user_id=v_uid;
  end if;
  -- Reject invalid sizes before hashing untrusted badge or shift secrets.
- if p_shift_secret is null or length(p_shift_secret) <> 64
+ if p_register is null or p_shift_secret is null or length(p_shift_secret) <> 64
     or p_badge is null or length(p_badge) not between 16 and 256 then
   update public.pos_staff_auth_attempts
   set attempts=attempts+1,
@@ -154,19 +173,22 @@ begin
  and c.badge_digest=extensions.digest(coalesce(p_badge,''),'sha256')
  -- A badge alone cannot restore a register after its staff grant is revoked.
  -- Owner/admin bypass matches the existing server-side checkout grant policy.
- and (
-  (c.staff_role='owner' and public.is_persen_admin())
-  or exists (
-   select 1 from public.pos_staff_register_grants g
-   join public.pos_registers r on r.id=g.register_id
-   where g.staff_id=c.id and g.active=true and r.active=true
-     and g.owner_id=r.owner_id
+ and exists (
+  select 1 from public.pos_registers r
+  where r.id=p_register and r.active=true
+  and (
+   (c.staff_role='owner' and r.owner_id=v_uid and public.is_persen_admin())
+   or exists (
+    select 1 from public.pos_staff_register_grants g
+    where g.register_id=r.id and g.staff_id=c.id and g.active=true
+      and g.owner_id=r.owner_id
+   )
   )
  )
  -- Serialize successful resume against concurrent shift revocation and
  -- credential disable/rotation. No guest checkout authorization is implied.
  for update of s,c;
- if not found or p_shift_secret is null or length(p_shift_secret) <> 64
+ if not found or p_register is null or p_shift_secret is null or length(p_shift_secret) <> 64
     or p_badge is null or length(p_badge) not between 16 and 256 then
   -- Do not RAISE here: an exception would roll back the throttle update.
   update public.pos_staff_auth_attempts
@@ -181,14 +203,14 @@ begin
   'first_name',v_staff.first_name,'role',v_staff.staff_role);
 end;
 $$;
-revoke all on function public.pos_staff_resume_shift(uuid,text,text) from public,anon;
-grant execute on function public.pos_staff_resume_shift(uuid,text,text) to authenticated;
+revoke all on function public.pos_staff_resume_shift(uuid,text,text,uuid) from public,anon;
+grant execute on function public.pos_staff_resume_shift(uuid,text,text,uuid) to authenticated;
 
 -- No checkout authorization is granted by these RPCs alone. Server-side
 -- checkout/RLS integration MUST validate shift and checkout ownership.
 -- Rollback (staging only, after checking dependencies):
--- drop function if exists public.pos_staff_resume_shift(uuid,text,text);
--- drop function if exists public.pos_staff_start_shift(text,text);
+-- drop function if exists public.pos_staff_resume_shift(uuid,text,text,uuid);
+-- drop function if exists public.pos_staff_start_shift(text,text,uuid);
 -- drop table if exists public.pos_staff_auth_attempts;
 -- drop table if exists public.pos_staff_shifts;
 -- drop table if exists public.pos_staff_credentials;

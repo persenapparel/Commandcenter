@@ -40,7 +40,7 @@ BEGIN
  IF EXISTS (SELECT 1 FROM public.pos_staff_register_grants
    WHERE staff_id=v_staff AND owner_id<>v_owner)
  THEN RAISE EXCEPTION 'Owner badge granted access to another owner'; END IF;
- v_login:=public.pos_staff_start_shift(repeat('O',32),'123456');
+ v_login:=public.pos_staff_start_shift(repeat('O',32),'123456',v_reg);
  IF v_login->>'ok' IS DISTINCT FROM 'true' THEN
   RAISE EXCEPTION 'New owner badge failed shift login'; END IF;
  v_shift:=(v_login->>'shift_id')::uuid;v_secret:=v_login->>'shift_secret';
@@ -72,7 +72,7 @@ BEGIN
  EXCEPTION WHEN others THEN
   IF SQLERRM='Old guest token still usable after rotation' THEN RAISE; END IF;
  END;
- v_login:=public.pos_staff_start_shift(repeat('N',32),'654321');
+ v_login:=public.pos_staff_start_shift(repeat('N',32),'654321',v_reg);
  IF v_login->>'ok' IS DISTINCT FROM 'true' THEN
   RAISE EXCEPTION 'Rotated badge could not log in'; END IF;
  RAISE NOTICE 'PASS: owner self grant, shift-bound checkout, rotation revokes token';
