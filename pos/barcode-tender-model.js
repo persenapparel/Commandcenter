@@ -10,6 +10,32 @@
  const text=x=>typeof x==='string'&&x.length>0&&x.length<=120&&/^[\x20-\x7e]+$/.test(x);
  const displayLabel=x=>typeof x==='string'&&x.trim().length>0&&x.length<=120&&!/[\x00-\x1f\x7f]/.test(x);
  const normalizeCode=x=>{if(!text(x))throw Error('Invalid barcode');const code=x.trim().toUpperCase();if(!/^[A-Z0-9_-]{3,64}$/.test(code))throw Error('Unsupported barcode characters');return code;};
+ // Staging-only 8-digit EAN-8 tag aliases for Christmas 2026 sales variants.
+ // Keep canonical inventory SKUs unchanged; barcode aliases never unlock staff accounts.
+ const NUMERIC_TAG_TO_SKU=Object.freeze({
+  '21011009':'PA-XMAS26-HOODIE-RED-S',
+  '21011016':'PA-XMAS26-HOODIE-RED-M',
+  '21011023':'PA-XMAS26-HOODIE-RED-L',
+  '21011030':'PA-XMAS26-HOODIE-RED-XL',
+  '21012006':'PA-XMAS26-HOODIE-GREEN-S',
+  '21012013':'PA-XMAS26-HOODIE-GREEN-M',
+  '21012020':'PA-XMAS26-HOODIE-GREEN-L',
+  '21012037':'PA-XMAS26-HOODIE-GREEN-XL',
+  '21021008':'PA-XMAS26-CREWNECK-RED-S',
+  '21021015':'PA-XMAS26-CREWNECK-RED-M',
+  '21021022':'PA-XMAS26-CREWNECK-RED-L',
+  '21021039':'PA-XMAS26-CREWNECK-RED-XL',
+  '21022005':'PA-XMAS26-CREWNECK-GREEN-S',
+  '21022012':'PA-XMAS26-CREWNECK-GREEN-M',
+  '21022029':'PA-XMAS26-CREWNECK-GREEN-L',
+  '21022036':'PA-XMAS26-CREWNECK-GREEN-XL',
+ });
+ const resolveProductCode=raw=>{
+  const code=normalizeCode(raw);
+  return Object.prototype.hasOwnProperty.call(NUMERIC_TAG_TO_SKU,code)?NUMERIC_TAG_TO_SKU[code]:code;
+ };
+ const SKU_TO_NUMERIC_TAG=Object.freeze(Object.fromEntries(Object.entries(NUMERIC_TAG_TO_SKU).map(([code,sku])=>[sku,code])));
+ const tagCodeForSku=raw=>{const sku=normalizeCode(raw);return SKU_TO_NUMERIC_TAG[sku]||sku;};
  const skuFor=(productId,variantId)=>{const p=String(productId).trim().toUpperCase(),v=String(variantId).trim().toUpperCase();if(!/^[A-Z0-9_]{1,24}$/.test(p)||!/^[A-Z0-9_]{1,24}$/.test(v))throw Error('Invalid SKU component');return 'PA-'+p+'-'+v;};
  function buildBarcodeIndex(variants){
   if(!Array.isArray(variants))throw Error('Invalid variants');
@@ -24,7 +50,7 @@
  }
  function scanCart(index,cart,raw){
   if(!(index instanceof Map)||!Array.isArray(cart))throw Error('Invalid cart/index');
-  const code=normalizeCode(raw),variant=index.get(code);
+  const code=resolveProductCode(raw),variant=index.get(code);
   if(!variant)return {status:'not-found',code,action:'search',cart:cart.slice()};
   const current=cart.find(x=>x.productId===variant.productId&&x.variantId===variant.variantId);
   const next=(current?.quantity||0)+1;
@@ -35,7 +61,7 @@
  // Read-only inventory lookup, including sold-out and non-sale variants. Never touches a cart.
  function lookupInventory(variants,raw){
   if(!Array.isArray(variants))throw Error('Invalid inventory');
-  const code=normalizeCode(raw);
+  const code=resolveProductCode(raw);
   let match=null;
   for(const variant of variants){
    if(!variant||typeof variant.sku!=='string')continue;
@@ -79,5 +105,5 @@
   return tenders.map((x,i)=>i===index?{...x,status:'verified'}:{...x});
  }
  function receiptChoice(choice){if(!['print','email','none'].includes(choice))throw Error('Invalid receipt choice');return choice;}
- return {METHODS,normalizeCode,skuFor,buildBarcodeIndex,scanCart,lookupInventory,totalWithTip,tenderSummary,addTender,verifyVenmo,receiptChoice};
+ return {METHODS,normalizeCode,resolveProductCode,tagCodeForSku,skuFor,buildBarcodeIndex,scanCart,lookupInventory,totalWithTip,tenderSummary,addTender,verifyVenmo,receiptChoice};
 });
