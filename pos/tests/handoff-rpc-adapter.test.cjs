@@ -29,7 +29,8 @@ test('checkout claim -> guest issue -> original badge resume -> revoke',async()=
  assert.equal(grant.checkoutId,id);
  assert.equal(grant.capability,'b'.repeat(64));
  await assert.rejects(a.resume({checkoutId:wrong,badge:'c'.repeat(32)}));
- assert.deepEqual(await a.resume({checkoutId:id,badge:'c'.repeat(32)}),{verified:true,checkoutId:id});
+ await assert.rejects(a.resume({checkoutId:id,badge:'1234567'}),/Invalid badge/);
+ assert.deepEqual(await a.resume({checkoutId:id,badge:'20010485'}),{verified:true,checkoutId:id});
  await grant.revoke();
  assert.equal(a.current(),null);
  assert.deepEqual(names,['pos_handoff_claim','pos_handoff_issue_guest',
@@ -129,13 +130,16 @@ test('post-sale badge-only unlock verifies original active shift and never creat
  const calls=[];
  const client={rpc:async(name,args)=>{
   calls.push({name,args});
-  if(name==='pos_staff_resume_shift')return {data:{ok:args.p_badge==='correct-owner-badge-1234567890',first_name:'Alex',role:'owner'}};
+  if(name==='pos_staff_resume_shift')return {data:{ok:['correct-owner-badge-1234567890','20010485'].includes(args.p_badge),first_name:'Alex',role:'owner'}};
   if(name==='pos_handoff_claim')return {data:{ok:true,checkoutId:id,phase:'claimed'}};
   throw Error('Unexpected RPC '+name);
  }};
  const a=adapter({client,shiftId:shift,shiftSecret:secret});
  await assert.rejects(a.verifyIdleBadge('short'),/Invalid employee badge/);
  await assert.rejects(a.verifyIdleBadge('wrong-owner-badge-123456789'),/not verified/);
+ await assert.rejects(a.verifyIdleBadge('1234567'),/Invalid employee badge/);
+ const eightDigitProof=await a.verifyIdleBadge('20010485');
+ assert.deepEqual(eightDigitProof,{verified:true,firstName:'Alex'});
  const unlocked=await a.verifyIdleBadge('correct-owner-badge-1234567890');
  assert.deepEqual(unlocked,{verified:true,firstName:'Alex'});
  const last=calls.at(-1);
