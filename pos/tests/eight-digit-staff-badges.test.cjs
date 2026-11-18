@@ -19,6 +19,7 @@ test('PIN, server roles, rate limit and grants remain on staging badge enrollmen
  assert.ok(migration.includes('auth.uid()'));
  assert.ok(migration.includes('pos_staff_auth_attempts'));
  assert.ok(migration.includes('pos_staff_register_grants'));
+ assert.equal((migration.match(/\\$function\\$;/g)||[]).length,3);
  assert.ok(migration.includes('REVOKE ALL ON FUNCTION public.pos_staff_start_shift'));
  assert.ok(migration.includes('REVOKE ALL ON FUNCTION public.pos_staff_resume_shift'));
 });
