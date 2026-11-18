@@ -123,16 +123,21 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await cashier.locator('#cart .cart-row button').last().click();
   assert.equal(await cashier.locator('#cart .cart-row').count(),0);
  });
- await step('Inventory scanner lookup does not create a sale or add cart items',async()=>{
-  await cashier.locator('#scan-mode-inventory').click();
-  await cashier.locator('#scan-code').fill('XMAS-RED-M');await cashier.locator('#scan-code').press('Enter');
-  await txt(cashier,'#scan-status','Nothing was added');await txt(cashier,'#scan-inventory-result','Christmas Hoodie');
-  assert.equal(await cashier.locator('#cart .cart-row').count(),0);
-  assert.equal((await state(cashier)).tables.pos_sales.length,0);
-  await cashier.locator('#scan-mode-sell').click();
- });
- await step('Cashier big tiles → size/color picker → cart',async()=>{
-  await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await visible(cashier,'#variant-dialog');
+ await step('Inventory Check from Employee Home does not add to a sale',async()=>{
+   await cashier.locator('#close-register').click();
+   await visible(cashier,'#employee-home');
+   await cashier.locator('#employee-home-inventory').click();
+   await cashier.locator('#scan-code').fill('XMAS-RED-M');await cashier.locator('#scan-code').press('Enter');
+   await txt(cashier,'#scan-status','Nothing was added');await txt(cashier,'#scan-inventory-result','Christmas Hoodie');
+   assert.equal(await cashier.locator('#cart .cart-row').count(),0);
+   assert.equal((await state(cashier)).tables.pos_sales.length,0);
+   await cashier.locator('#close-register').click();
+   await visible(cashier,'#employee-home');
+   await cashier.locator('#employee-home-sales').click();
+   await visible(cashier,'#catalog .quick-product');
+  });
+  await step('Cashier big tiles → size/color picker → cart',async()=>{
+  await cashier.locator('#show-product-search').click();await cashier.locator('#search').fill('Christmas Hoodie');await cashier.locator('.quick-product').first().click();await visible(cashier,'#variant-dialog');
   await cashier.getByRole('button',{name:/M · Red/i}).click();await txt(cashier,'#cart','Christmas Hoodie');
   await cashier.locator('#search').fill('');await cashier.locator('.quick-product').filter({hasText:'Winter Crewneck'}).click();
   await cashier.getByRole('button',{name:/S · Forest Green/i}).click();assert.equal(await cashier.locator('#cart .cart-row').count(),2);

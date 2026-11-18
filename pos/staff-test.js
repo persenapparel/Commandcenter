@@ -1,77 +1,33 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-const notice=value=>{$('notice').textContent=String(value||'').slice(0,280)};
-let db=null;
-async function init(){
- db=window.PA?.db;
- if(!db){notice('Staging Supabase connection not available.');return;}
- await update();
-}
-async function update(){
+const notice=value=>{$('notice').textContent=String(value||'').slice(0,260)};
+const db=window.PA?.db;
+async function ownerSession(){
+ if(!db)return false;
  const {data,error}=await db.auth.getUser();
- if(error||!data.user){
-  $('sign-out').hidden=true;notice('Sign in with your own separate staging account to test your badge.');
-  return;
- }
- $('sign-out').hidden=false;
- notice('Staging account signed in. If the owner has activated your badge, scan it and enter your employee PIN.');
+ return !error&&!!data?.user;
 }
-function formPayload(form){return new FormData(form)}
-$('sign-in').addEventListener('submit',async event=>{
- event.preventDefault();const form=event.currentTarget,button=form.querySelector('button'),f=formPayload(form);
- button.disabled=true;notice('Signing into staging…');
- try{
-  const {error}=await db.auth.signInWithPassword({
-   email:String(f.get('email')||'').trim(),password:String(f.get('password')||'')
-  });
-  if(error)throw Error('Sign-in not confirmed');
-  form.querySelector('[name=password]').value='';
-  await update();
- }catch(_){notice('Sign-in failed. Verify your separate employee email and password, then try again.')}
- finally{form.querySelector('[name=password]').value='';button.disabled=false;}
-});
-$('sign-up').addEventListener('submit',async event=>{
- event.preventDefault();const form=event.currentTarget,button=form.querySelector('button'),f=formPayload(form);
- const email=String(f.get('email')||'').trim(),password=String(f.get('password')||'');
- if(!email||password.length<12){notice('Use your own email and a unique password of at least 12 characters.');return;}
- button.disabled=true;notice('Creating separate staging account…');
- try{
-  const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+'/staff-test.html'}});
-  if(error)throw Error('Account registration failed');
-  notice('Check your email for confirmation. After confirming, tell the owner to activate your reserved badge, then sign in and test your PIN.');
- }catch(_){notice('Account registration unavailable. Check your email, or ask the owner to verify staging sign-up settings.')}
- finally{form.querySelector('[name=password]').value='';button.disabled=false;}
-});
-$('resend-confirmation').addEventListener('submit',async event=>{
- event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');
- const email=String(new FormData(form).get('email')||'').trim();
- if(!email)return;
- button.disabled=true;
- try{
-  const {error}=await db.auth.resend({type:'signup',email,
-   options:{emailRedirectTo:location.origin+'/staff-test.html'}});
-  if(error)throw error;
-  notice('If this is an unconfirmed staging account, a confirmation email has been requested. Check inbox and spam, follow the verification link, then ask the owner to activate the badge.');
- }catch(_){notice('Confirmation email could not be requested. Please check the address and try again later.')}
- finally{button.disabled=false;}
-});
-
+(async()=>{
+ notice(await ownerSession()
+  ?'Ready for badge test. Scan an active employee barcode and enter the employee PIN.'
+  :'The owner must sign into the POS staging register in this browser first. No employee email is required.');
+})();
 $('test-pin').addEventListener('submit',async event=>{
- event.preventDefault();const form=event.currentTarget,button=form.querySelector('button'),f=formPayload(form);
+ event.preventDefault();
+ const form=event.currentTarget,button=form.querySelector('button'),f=new FormData(form);
  const badge=String(f.get('badge')||'').trim(),pin=String(f.get('pin')||'');
- if(!/^[0-9]{8}$/.test(badge)||pin.length<6){notice('Scan your 8-digit employee badge and enter your private employee PIN.');return;}
- button.disabled=true;notice('Checking employee credentials on the staging server…');
+ if(!/^[0-9]{8}$/.test(badge)||pin.length<6){notice('Scan an 8-digit barcode and enter the employee PIN.');return}
+ if(!(await ownerSession())){
+  notice('Ask the owner to sign into the POS register in this browser first. No employee account is needed.');return;
+ }
+ button.disabled=true;notice('Checking cashier badge and PIN…');
  try{
-  const result=await db.rpc('pos_staff_test_badge_pin',{p_badge:badge,p_pin:pin});
-  if(result.error)throw Error('Verification unavailable');
-  notice(result.data?.verified===true
-   ?'Employee badge and PIN verified! Cashier credentials are active. This page is a login test; it does not open the register.'
-   :'Could not verify. Confirm your account is activated and your employee badge/PIN are correct; failed attempts may temporarily lock the test.');
- }catch(_){notice('Employee verification unavailable. Confirm your account and badge have been activated.')}
+  const {data,error}=await db.rpc('pos_staff_test_badge_pin',{p_badge:badge,p_pin:pin});
+  if(error)throw error;
+  notice(data?.verified===true&&data?.role==='cashier'
+    ?'Employee badge and PIN verified! Start Shift in the POS register to test Sales.'
+    :'Employee badge/PIN was not verified. Ask the owner to check the badge setup and PIN.');
+ }catch(_){notice('Staging could not verify the cashier badge and PIN. No access was granted.')}
  finally{form.querySelector('[name=pin]').value='';button.disabled=false;}
 });
-$('sign-out').addEventListener('click',async()=>{
- await db.auth.signOut();$('test-pin').reset();await update();
-});
-void init();
 })();

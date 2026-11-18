@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const read=filename=>fs.readFileSync('pos/'+filename,'utf8');
 const drawerSQL=read('epson-t20iv-staging.sql');
-const badgeSQL=read('sql/staging_employee_badge_pin_activation_20261118.sql');
+const badgeSQL=read('sql/staging_badge_pin_only_supervised_20261118.sql');
 const ownerUI=read('register.js');
 const enrollment=read('register.html');
 const portal=read('staff-test.html'),portalScript=read('staff-test.js');
@@ -35,37 +35,31 @@ test('receipt spool, browser reprint and Venmo/Apple Cash never transmit drawer 
  assert.doesNotMatch(printMonitor,/drawerKick\(|sendRawWindows\(/);
  assert.match(drawerSQL,/kind in \('cash-sale','owner-manual'\)/);
 });
-test('both employee badges can be reserved, tested and activated only with separate accounts',()=>{
+test('staff badges need only badge and PIN on an owner-paired staging kiosk',()=>{
  assert.match(badgeSQL,/slot in \(1,2\)/);
- assert.match(badgeSQL,/pos_owner_test_pending_employee_badge/);
- assert.match(badgeSQL,/v_pending\.badge_digest=extensions\.digest\(p_badge,'sha256'\)/);
- assert.match(badgeSQL,/extensions\.crypt\(p_pin,v_pending\.pin_hash\)=v_pending\.pin_hash/);
- assert.match(badgeSQL,/pos_owner_activate_pending_employee_badge/);
- assert.match(badgeSQL,/u\.email_confirmed_at is not null and u\.id<>v_uid/);
+ assert.match(badgeSQL,/pos_owner_enroll_badge/);
  assert.match(badgeSQL,/staff_role='owner'/);
+ assert.match(badgeSQL,/extensions\.digest\(v_badge,'sha256'\)/);
+ assert.match(badgeSQL,/extensions\.crypt\(v_pin,extensions\.gen_salt\('bf',12\)\)/);
  assert.match(badgeSQL,/insert into public\.pos_staff_register_grants/);
+ assert.match(badgeSQL,/pos_owner_badge_slot_status/);
  assert.match(badgeSQL,/staff_role='cashier'/);
- assert.match(badgeSQL,/pos_staff_test_badge_pin/);
- assert.match(badgeSQL,/alter table public\.pos_pending_employee_pin_checks enable row level security/);
  assert.match(enrollment,/id="test-staff-badge-pin"/);
- assert.match(enrollment,/id="activate-staff-badge"/);
- assert.match(ownerUI,/pos_owner_test_pending_employee_badge/);
- assert.match(ownerUI,/pos_owner_activate_pending_employee_badge/);
+ assert.doesNotMatch(enrollment,/Employee's email|confirm their email|activate-staff-badge/);
+ assert.match(ownerUI,/pos_owner_enroll_badge/);
+ assert.match(ownerUI,/pos_staff_test_badge_pin/);
+ assert.doesNotMatch(ownerUI,/pos_owner_activate_pending_employee_badge/);
 });
-test('staging build ships independent employee account and badge PIN test page',()=>{
+test('staging badge PIN test page has no employee signup or email login',()=>{
  assert.match(build,/'staff-test\.html'/);
  assert.match(build,/'staff-test\.js'/);
- assert.match(portal,/id="sign-up"/);
- assert.match(portal,/id="sign-in"/);
  assert.match(portal,/id="test-pin"/);
- assert.match(portal,/never opens the cash register/i);
+ assert.match(portal,/No employee email/i);
  assert.match(portalScript,/pos_staff_test_badge_pin/);
- assert.match(portalScript,/db\.auth\.signUp/);
- assert.match(portalScript,/db\.auth\.signInWithPassword/);
+ assert.doesNotMatch(portalScript,/db\.auth\.signUp|db\.auth\.signInWithPassword|db\.auth\.resend/);
  assert.doesNotMatch(portalScript,/pos_owner_confirm_external_payment|pos_staff_complete_cash|pos_authorize_manual_drawer/);
  assert.doesNotThrow(()=>new vm.Script(portalScript));
 });
-
 test('Epson receipt test can run with cash drawer explicitly disarmed',()=>{
  assert.match(agent,/const drawerArmed=process\.env\.PERSEN_DRAWER_ARMED==='YES'/);
  assert.match(agent,/const receiptsArmed=process\.env\.PERSEN_RECEIPTS_ARMED==='YES'/);

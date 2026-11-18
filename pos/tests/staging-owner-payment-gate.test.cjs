@@ -5,7 +5,7 @@ const guest=read('customer-checkout-screen.cjs');
 const published=fs.readFileSync('pos-guest/guest.js','utf8');
 const register=read('register.js'),html=read('register.html');
 const ownerSQL=read('sql/staging_owner_verified_external_payments_20261118.sql');
-const badgeSQL=read('sql/staging_pending_employee_badge_slots_20261118.sql');
+const badgeSQL=read('sql/staging_badge_pin_only_supervised_20261118.sql');
 test('customer phone uses read-only on-screen number pad; sales focuses the product scanner',()=>{
  assert.match(guest,/phone\.readOnly = true/);
  assert.match(guest,/phone\.inputMode = 'none'/);
@@ -40,14 +40,17 @@ test('server requires independent owner verification, original cashier, atomic s
  assert.match(ownerSQL,/payment_preference=v_payment/);
  assert.match(ownerSQL,/grant execute on function public\.pos_handoff_guest_submit\(uuid,text,jsonb\) to service_role/);
 });
-test('owner-only two badge setup never grants active cashier access',()=>{
+test('owner can enroll exactly two cashier badges and cannot grant owner role',()=>{
  assert.match(html,/id="staff-badge-setup-dialog"/);
  assert.match(html,/id="open-employee-badges"/);
- assert.match(register,/pos_owner_prepare_employee_badge/);
- assert.match(badgeSQL,/pos_pending_employee_badges/);
- assert.match(badgeSQL,/activated',false/);
+ assert.match(register,/pos_owner_enroll_badge/);
+ assert.match(register,/pos_staff_test_badge_pin/);
+ assert.match(badgeSQL,/slot in \(1,2\)/);
  assert.match(badgeSQL,/staff_role='owner'/);
- assert.doesNotMatch(badgeSQL,/insert into public\.pos_staff_register_grants/);
+ assert.match(badgeSQL,/\'cashier\'/);
+ assert.match(badgeSQL,/pos_staff_register_grants/);
+ assert.match(badgeSQL,/pos_owner_badge_slots/);
+ assert.doesNotMatch(html,/Employee's email|Email confirmation|Activate after email/);
 });
 test('browser scripts parse and published guest stays a restricted token client',()=>{
  assert.doesNotThrow(()=>new vm.Script(register,{filename:'pos/register.js'}));
