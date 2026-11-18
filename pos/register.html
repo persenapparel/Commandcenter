@@ -134,7 +134,7 @@
 <form id="event-setup-form"><label>Choose an event<select id="setup-event"></select></label><label>Event name<input id="setup-name" required maxlength="100"></label><label>Event date<input id="setup-date" type="date" required></label>
 <p>Choose finished Sales Products. All available colors and sizes stay together. Blank inventory is never shown.</p><label>Find Sales Products<input id="event-product-search" type="search"></label><div id="event-product-options"></div><p id="event-selection-count"></p><p id="event-setup-message" role="status"></p><button id="save-event-selection" class="primary" type="submit">Save event &amp; open register</button></form></dialog><dialog id="staff-badge-setup-dialog" class="variant-dialog staff-badge-dialog" aria-labelledby="staff-badge-title">
 <div class="picker-head"><div><span class="eyebrow">OWNER ONLY · STAGING</span><h2 id="staff-badge-title">Set up two employee badges</h2></div><button id="close-staff-badge-setup" type="button" aria-label="Close badge setup">×</button></div>
-<p class="hint">Reserve two 8-digit EAN-8 badge codes for your employees. These are pending badges, not working logins yet. A separately authorized employee account and register grant are required before activation.</p>
+<p class="hint">Complete the steps in order: <strong>1. Reserve badge</strong>, <strong>2. Test badge &amp; PIN</strong>, <strong>3. Employee confirms their email</strong>, <strong>4. Activate with owner approval</strong>. A new employee email account alone does not save the badge.</p><p id="staff-setup-readiness" role="status" aria-live="polite" class="staff-setup-readiness">Checking employee badge status…</p>
 <form id="staff-badge-setup-form" autocomplete="off">
 <label>Employee badge slot<select name="slot" required><option value="1">Employee 1</option><option value="2">Employee 2</option></select></label>
 <label>Employee's first name<input name="first_name" required maxlength="80" placeholder="First name"></label>
@@ -150,7 +150,7 @@
 <p id="staff-badge-setup-message" role="status" aria-live="polite">The badge code won't be retrievable after you save it; print the code before you close this screen.</p>
 <button id="save-staff-badge" class="primary" type="submit">Reserve employee badge (pending activation)</button>
 <button id="test-staff-badge-pin" type="button">Test this employee's badge & PIN</button>
-<button id="activate-staff-badge" type="button">Activate badge (requires employee account)</button>
+<button id="activate-staff-badge" type="button" disabled>4 · Activate after email confirmation</button>
 <p class="hint">Each employee first creates and confirms their <strong>own</strong> staging account. Then the owner can activate their reserved badge and register grant. Do not share the owner login.</p>
 <a class="backoffice-button" href="staff-test.html" target="_blank" rel="noopener noreferrer">Open employee account & PIN test page ↗</a>
 </form>
