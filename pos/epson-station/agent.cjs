@@ -181,8 +181,10 @@ async function main(){
  const printer=process.env.PERSEN_WINDOWS_PRINTER;
  if(!printer)throw Error('Set PERSEN_WINDOWS_PRINTER to the installed Epson queue name');
  if(!key)throw Error('Set PERSEN_POS_PUBLISHABLE_KEY to the staging public key');
- if(process.env.PERSEN_DRAWER_ARMED!=='YES'||process.env.PERSEN_RECEIPTS_ARMED!=='YES')
-  throw Error('Drawer and receipt printing must be separately operator-armed after physical tests');
+ const drawerArmed=process.env.PERSEN_DRAWER_ARMED==='YES';
+ const receiptsArmed=process.env.PERSEN_RECEIPTS_ARMED==='YES';
+ if(!drawerArmed&&!receiptsArmed)
+  throw Error('Epson station is disarmed. Enable receipt printing and/or the cash drawer only after the relevant physical checks.');
  const rl=readline.createInterface({input:process.stdin,output:process.stdout});
  const email=(await rl.question('Staging owner email: ')).trim();
  rl.close();
@@ -194,13 +196,15 @@ async function main(){
   logger:message=>console.error('[station]',message)
  });
  console.log('Persen POS Epson station started (staging only). Printer:',printer);
- console.log('The printer must NOT be configured to auto-open the drawer on every print.');
+ console.log('Receipts:',receiptsArmed?'ARMED':'DISARMED','· Cash drawer:',drawerArmed?'ARMED':'DISARMED');
+ console.log('Disable any printer-driver option to auto-open the drawer on printing.');
  let failures=0;
  for(;;){
   try{
-   // Drawer jobs run first for responsive cash checkout; print jobs follow.
-   const a=await processor.drawer();
-   const b=await processor.receipt();
+   // Independently armed: first test receipts with the drawer strictly OFF.
+   // No drawer claim, ESC/POS pulse or retry while PERSEN_DRAWER_ARMED!=YES.
+   const a=drawerArmed?await processor.drawer():null;
+   const b=receiptsArmed?await processor.receipt():null;
    if(a)console.log('Drawer job',a.id,a.spooled?'sent to Windows':'unconfirmed; check physically');
    if(b)console.log('Receipt job',b.id,b.spooled?'sent to Windows':'unconfirmed; check physically');
    failures=0;
