@@ -2,8 +2,7 @@
 -- Source: reviewed and disposable-Postgres-tested SQL in staging_staff_shift_auth_draft.sql.
 -- Target ONLY Supabase project naaqcspvbntzdtwuchrr (not production).
 -- Security: register-scoped grants verified for BOTH initial PIN login and badge-only resume.
--- Apply atomically; obsolete unscoped entry points must not remain executable.
-BEGIN;
+-- Use transactional migration runner; obsolete unscoped entry points must not remain executable.
 
 create or replace function public.pos_staff_start_shift(
  p_badge text, p_pin text, p_register uuid
@@ -166,7 +165,6 @@ DROP FUNCTION public.pos_staff_start_shift(text,text);
 DROP FUNCTION public.pos_staff_resume_shift(uuid,text,text);
 
 NOTIFY pgrst, 'reload schema';
-COMMIT;
 
 -- Fail-closed rollback guidance: if an issue occurs after migration, disable staging
 -- employee login and correct/reapply these scoped functions. NEVER restore the
