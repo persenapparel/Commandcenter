@@ -6,7 +6,7 @@ as $$
 declare v_uid uuid:=auth.uid();
  v_pending public.pos_pending_employee_badges%rowtype;
  v_exists boolean:=false;v_confirmed boolean:=false;
- v_activated boolean:=false;
+ v_activated boolean:=false;v_reserved boolean:=false;
 begin
  if v_uid is null or not public.is_persen_admin() or p_slot not in (1,2)
    or not exists(select 1 from public.pos_registers
@@ -15,7 +15,8 @@ begin
  end if;
  select * into v_pending from public.pos_pending_employee_badges
  where owner_id=v_uid and slot=p_slot;
- if found then
+ v_reserved:=found;
+ if v_reserved then
   select exists(select 1 from auth.users
     where lower(email)=v_pending.employee_email and id<>v_uid),
     exists(select 1 from auth.users
@@ -29,7 +30,7 @@ begin
   into v_activated;
  end if;
  return jsonb_build_object(
-  'slot',p_slot,'reserved',found,
+  'slot',p_slot,'reserved',v_reserved,
   'accountExists',v_exists,'emailConfirmed',v_confirmed,
   'alreadyAssigned',v_activated);
 end;
