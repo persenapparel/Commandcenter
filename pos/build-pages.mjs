@@ -26,7 +26,7 @@ for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css
 await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
 // Pinned customer build verified with staging-only framing CSP and CORS.
 // An explicit POS_GUEST_ENTRY_URL from Cloudflare always takes precedence.
-const guestFallback='https://3d853eca.commandcenter-4yg.pages.dev/pos-guest/';
+const guestFallback='https://7d86da09.commandcenter-4yg.pages.dev/pos-guest/';
 function secureGuestEntry(value){
  const entry=new URL(value),host=entry.hostname.toLowerCase();
  if(entry.protocol!=='https:'||entry.username||entry.password||entry.search||entry.hash||
