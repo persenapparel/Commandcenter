@@ -65,3 +65,11 @@ test('staging build ships independent employee account and badge PIN test page',
  assert.doesNotMatch(portalScript,/pos_owner_confirm_external_payment|pos_staff_complete_cash|pos_authorize_manual_drawer/);
  assert.doesNotThrow(()=>new vm.Script(portalScript));
 });
+
+test('Epson receipt test can run with cash drawer explicitly disarmed',()=>{
+ assert.match(agent,/const drawerArmed=process\.env\.PERSEN_DRAWER_ARMED==='YES'/);
+ assert.match(agent,/const receiptsArmed=process\.env\.PERSEN_RECEIPTS_ARMED==='YES'/);
+ assert.match(agent,/drawerArmed\?await processor\.drawer\(\):null/);
+ assert.match(agent,/receiptsArmed\?await processor\.receipt\(\):null/);
+ assert.doesNotMatch(agent,/PERSEN_DRAWER_ARMED!=='YES'\|\|process\.env\.PERSEN_RECEIPTS_ARMED!=='YES'/);
+});
