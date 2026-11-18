@@ -4,16 +4,338 @@ const root=document.getElementById('checkout');
 const validId=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value);
 const validToken=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 function cashierOrigin(value){try{const u=new URL(value),h=u.hostname.toLowerCase();return u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'&&(h==='persen-pos-staging.pages.dev'||h.endsWith('.persen-pos-staging.pages.dev'));}catch(_){return false}}
-let token='',checkoutId='',started=false,submitted=false,busy=false;
+let token='',checkoutId='',started=false,submitted=false,busy=false,authorizedCashierOrigin='';
 const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node};
 function unavailable(){root.replaceChildren(el('main'));const panel=root.firstChild;panel.append(el('h1','Checkout is temporarily unavailable'),el('p','Please return the iPad to your cashier. No sale was completed.'))}
 function loading(){root.replaceChildren(el('main'));root.firstChild.append(el('h1','Preparing your checkout'),el('p','Please wait while your order is loaded.'))}
 function controller(){const c=new AbortController(),timer=setTimeout(()=>c.abort(),8000);return{signal:c.signal,done:()=>clearTimeout(timer)}}
 async function request(action,body){if(!token||busy)throw Error('Checkout unavailable');busy=true;const abort=controller();try{const response=await fetch(BASE+'/guest-checkout/'+action,{method:'POST',credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:abort.signal,headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!response||!response.ok)throw Error('Checkout unavailable');const result=await response.json();if(!result||typeof result!=='object'||Array.isArray(result))throw Error('Checkout unavailable');return result;}finally{abort.done();busy=false}}
 function validSnapshot(value){return value&&value.checkoutId===checkoutId&&Array.isArray(value.items)&&value.items.length>0&&value.items.length<=80&&typeof value.total==='string'&&value.items.every(item=>item&&typeof item.name==='string'&&item.name.length<=120&&Number.isInteger(item.quantity)&&item.quantity>0&&typeof item.lineTotal==='string'&&item.lineTotal.length<=40)}
-function complete(){token='';root.replaceChildren(el('main'));const panel=root.firstChild;panel.append(el('h1','Your information is all set!'),el('p','Please turn the iPad back to your cashier to finish checking out.'),el('p','Your sale is not finished yet. The cashier will verify payment.'))}
-function review(snapshot){root.replaceChildren(el('main'));const panel=root.firstChild;panel.append(el('h1','Review your order'));const list=el('ul');for(const item of snapshot.items)list.append(el('li',item.name+' × '+item.quantity+' — '+item.lineTotal));panel.append(list,el('p','Total: '+snapshot.total));const form=el('form'),email=el('input'),phone=el('input'),marketing=el('input'),exception=el('input'),signature=el('input'),error=el('p'),submit=el('button','Submit information');const field=(caption,input)=>{const label=el('label',caption);label.append(input);form.append(label)};email.type='email';email.autocomplete='email';email.maxLength=250;phone.type='tel';phone.autocomplete='tel';phone.maxLength=40;marketing.type='checkbox';exception.type='checkbox';signature.type='text';signature.autocomplete='off';signature.maxLength=120;field('Email (optional)',email);field('Phone (optional)',phone);field('I agree to receive marketing messages (optional)',marketing);field('I cannot provide a signature (accessibility exception)',exception);field('Signature (type your name, or select the accessibility exception)',signature);error.className='error';error.setAttribute('role','alert');submit.type='submit';form.append(error,submit);form.addEventListener('submit',async event=>{event.preventDefault();if(busy||submitted)return;const signed=signature.value.trim(),excepted=exception.checked===true;if(!signed&&!excepted){error.textContent='Please sign or choose the accessibility exception.';return}submitted=true;submit.disabled=true;try{const result=await request('submit',{checkoutId,email:email.value.trim(),phone:phone.value.trim(),marketingConsent:marketing.checked===true,signature:excepted?null:signed,signatureException:excepted});if(result.accepted!==true)throw Error('Checkout unavailable');complete()}catch(_){token='';error.textContent='Unable to submit. Please return the iPad to your cashier.'}finally{busy=false}});panel.append(form)}
-async function begin(){loading();try{const snapshot=await request('view',{checkoutId});if(!validSnapshot(snapshot))throw Error('Checkout unavailable');review(snapshot)}catch(_){token='';unavailable()}}
-function onMessage(event){if(started||event.source!==window.parent||event.data?.type!=='persen:checkout-bootstrap:v1'||!cashierOrigin(event.origin))return;const nextId=event.data.checkoutId,nextToken=event.data.capability;if(!validId(nextId)||!validToken(nextToken))return;started=true;window.removeEventListener('message',onMessage);checkoutId=nextId;token=nextToken;void begin()}
+
+/* The isolated, credential-free page embeds the SAME customer-screen
+ * controller as the guest integration tests. The transport below deliberately
+ * retains the already deployed Edge Function endpoint and capability scope.
+ * Payment selection remains informational; only cashier can complete a sale.
+ */
+const createCustomerCheckout=(()=>{
+ const module={exports:{}};
+'use strict';
+
+/*
+ * Credential-free guest checkout for the single-iPad swivel flow.
+ * Each question is a separate step, following the former two-device design.
+ * Payment choice is INFORMATION ONLY: the guest API does not process or store
+ * tender. Cashier verification and server-authorized Finish Order are required.
+ * Never mount this controller on the authenticated cashier origin.
+ */
+function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
+  if (!root || typeof root.replaceChildren !== 'function') throw Error('Missing root');
+  if (!guestApi || typeof guestApi.view !== 'function' || typeof guestApi.submit !== 'function')
+    throw Error('Verified guest API required');
+  const here = new URL(origin), cashier = new URL(cashierOrigin);
+  if (here.protocol !== 'https:' || cashier.protocol !== 'https:' || here.origin === cashier.origin)
+    throw Error('Isolated HTTPS customer origin required');
+
+  const steps = ['review', 'phone', 'email', 'payment', 'confirm'];
+  const paymentNames = Object.freeze({cash:'Cash', venmo:'Venmo', applecash:'Apple Cash'});
+  const answers = {phone:'', email:'', payment:'', marketing:false, signature:'', exception:false};
+  let phase = 'loading', snapshot = null, stepIndex = 0, busy = false;
+  const doc = root.ownerDocument;
+  const el = (tag, value, className) => {
+    const node = doc.createElement(tag);
+    if (value !== undefined) node.textContent = value;
+    if (className) node.className = className;
+    return node;
+  };
+  const line = (parent, tag, value, className) => {
+    const node = el(tag, value, className);
+    parent.append(node);
+    return node;
+  };
+  function action(text, className, callback) {
+    const control = el('button', text, className);
+    control.type = 'button';
+    control.addEventListener('click', callback);
+    return control;
+  }
+  function field(parent, labelText, type, value, help) {
+    const label = el('label', labelText, 'guest-field-label');
+    const input = el('input');
+    input.type = type;
+    input.value = value;
+    input.autocomplete = type === 'email' ? 'email' : type === 'tel' ? 'tel' : 'name';
+    if (type === 'email') { input.maxLength = 250; input.autocapitalize = 'off'; input.spellcheck = false; }
+    if (type === 'tel') { input.inputMode = 'tel'; input.maxLength = 24; }
+    if (type === 'text') input.maxLength = 160;
+    label.append(input);
+    parent.append(label);
+    if (help) line(parent, 'p', help, 'guest-field-help');
+    return input;
+  }
+  function setStep(nextIndex) {
+    if (busy || nextIndex < 0 || nextIndex >= steps.length) return;
+    stepIndex = nextIndex;
+    draw();
+  }
+  function navigation(panel, nextText, onNext, showSkip) {
+    const errors = line(panel, 'p', '', 'guest-error');
+    errors.setAttribute('role', 'alert');
+    const nav = line(panel, 'div', undefined, 'guest-navigation');
+    if (stepIndex > 0) nav.append(action('Back', 'guest-back', () => setStep(stepIndex - 1)));
+    if (showSkip) nav.append(action('Skip', 'guest-skip', () => {
+      if (typeof showSkip === 'function') showSkip();
+      else setStep(stepIndex + 1);
+    }));
+    if (onNext) {
+      nav.append(action(nextText, 'guest-next', () => {
+        if (busy) return;
+        const error = onNext();
+        if (error) errors.textContent = error;
+      }));
+    }
+    return errors;
+  }
+  function progress(panel) {
+    const progressLabel = line(panel, 'div', undefined, 'guest-progress-label');
+    line(progressLabel, 'span', 'SECURE CHECKOUT', 'guest-eyebrow');
+    line(progressLabel, 'span', 'Step ' + (stepIndex + 1) + ' of ' + steps.length);
+    const track = line(panel, 'div', undefined, 'guest-progress-track');
+    track.setAttribute('role', 'progressbar');
+    track.setAttribute('aria-label', 'Checkout progress');
+    track.setAttribute('aria-valuemin', '1');
+    track.setAttribute('aria-valuemax', String(steps.length));
+    track.setAttribute('aria-valuenow', String(stepIndex + 1));
+    const bar = line(track, 'span', undefined, 'guest-progress-fill');
+    bar.style.width = String((stepIndex + 1) / steps.length * 100) + '%';
+  }
+  function draw() {
+    root.replaceChildren();
+    const panel = line(root, 'main', undefined, 'customer-checkout');
+    panel.setAttribute('aria-live', 'polite');
+    if (phase === 'loading') {
+      line(panel, 'h1', 'Preparing your checkout');
+      line(panel, 'p', 'Your cashier is getting your order ready.', 'guest-muted');
+      return;
+    }
+    if (phase === 'error') {
+      line(panel, 'h1', 'Checkout unavailable');
+      line(panel, 'p', 'Please return the iPad to your cashier. No payment was completed.', 'guest-muted');
+      return;
+    }
+    if (phase === 'complete') {
+      line(panel, 'div', '✓', 'guest-success-icon');
+      line(panel, 'h1', 'Thank you!');
+      line(panel, 'p', 'Your information was received. Please return the iPad to your cashier.', 'guest-muted');
+      line(panel, 'div', 'Selected method: ' + paymentNames[answers.payment], 'guest-selected-payment');
+      line(panel, 'p', 'Your cashier must verify payment and finish the order. This screen does not mean you have paid.', 'guest-notice');
+      return;
+    }
+    progress(panel);
+    const name = steps[stepIndex];
+    if (stepIndex > 0) {
+      const totalBar = line(panel, 'div', undefined, 'guest-total-strip');
+      line(totalBar, 'span', 'Your total');
+      line(totalBar, 'strong', snapshot.total);
+    }
+    if (name === 'review') {
+      line(panel, 'div', '01 · YOUR ORDER', 'guest-section-tag');
+      line(panel, 'h1', 'Here is your total.');
+      line(panel, 'p', 'Review your items before continuing.', 'guest-muted');
+      line(panel, 'div', snapshot.total, 'guest-grand-total');
+      const items = line(panel, 'ul', undefined, 'guest-items');
+      snapshot.items.forEach(item => {
+        const li = line(items, 'li', undefined, 'guest-item');
+        const details = line(li, 'span', undefined, 'guest-item-name');
+        line(details, 'strong', item.name);
+        line(details, 'small', 'Quantity: ' + item.quantity);
+        line(li, 'strong', item.lineTotal, 'guest-item-price');
+      });
+      navigation(panel, 'Next →', () => { setStep(1); return ''; }, false);
+    } else if (name === 'phone') {
+      line(panel, 'div', '02 · CONTACT', 'guest-section-tag');
+      line(panel, 'h1', "What's your phone number?");
+      line(panel, 'p', 'Optional — for questions about your order. We do not send text receipts.', 'guest-muted');
+      const phone = field(panel, 'Phone number', 'tel', answers.phone, 'You can skip this question.');
+      phone.addEventListener('input', () => { answers.phone = phone.value; });
+      navigation(panel, 'Next →', () => {
+        answers.phone = phone.value.trim();
+        const digits = answers.phone.replace(/[^0-9]/g, '');
+        if (answers.phone && (digits.length < 10 || digits.length > 15))
+          return 'Enter a full phone number, or choose Skip.';
+        setStep(2);
+        return '';
+      }, () => { answers.phone = ''; setStep(2); });
+    } else if (name === 'email') {
+      line(panel, 'div', '03 · CONTACT', 'guest-section-tag');
+      line(panel, 'h1', "What's your email address?");
+      line(panel, 'p', 'Optional — sharing your email does not subscribe you to promotions.', 'guest-muted');
+      const email = field(panel, 'Email address', 'email', answers.email, 'You can skip this question.');
+      email.addEventListener('input', () => { answers.email = email.value; });
+      navigation(panel, 'Next →', () => {
+        answers.email = email.value.trim();
+        if (answers.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(answers.email))
+          return 'Enter a valid email address, or choose Skip.';
+        setStep(3);
+        return '';
+      }, () => { answers.email = ''; setStep(3); });
+    } else if (name === 'payment') {
+      line(panel, 'div', '04 · PAYMENT', 'guest-section-tag');
+      line(panel, 'h1', 'How would you like to pay?');
+      line(panel, 'p', 'Choose your preferred method. Your cashier will finish the payment.', 'guest-muted');
+      const options = line(panel, 'fieldset', undefined, 'guest-payment-options');
+      line(options, 'legend', 'Payment method', 'guest-sr-only');
+      const choices = [
+        ['cash', '💵', 'Cash', 'Pay your cashier directly'],
+        ['venmo', 'V', 'Venmo', 'Your cashier will confirm the transfer'],
+        ['applecash', '●', 'Apple Cash', 'Your cashier will confirm the transfer']
+      ];
+      choices.forEach(choice => {
+        const label = line(options, 'label', undefined, 'guest-payment-option');
+        const input = el('input');
+        input.type = 'radio';
+        input.name = 'payment_preference';
+        input.value = choice[0];
+        input.checked = answers.payment === choice[0];
+        input.addEventListener('change', () => {
+          answers.payment = choice[0];
+          options.querySelectorAll && options.querySelectorAll('label').forEach(item => {
+            item.classList.toggle('selected', item === label);
+          });
+        });
+        if (input.checked) label.className += ' selected';
+        label.append(input);
+        line(label, 'span', choice[1], 'guest-choice-icon');
+        const copy = line(label, 'span', undefined, 'guest-choice-copy');
+        line(copy, 'strong', choice[2]);
+        line(copy, 'small', choice[3]);
+      });
+      line(panel, 'p', 'Selecting a method does not send money or charge your account.', 'guest-notice');
+      navigation(panel, 'Next →', () => {
+        if (!answers.payment) return 'Please select Cash, Venmo, or Apple Cash.';
+        setStep(4);
+        return '';
+      }, false);
+    } else if (name === 'confirm') {
+      line(panel, 'div', '05 · CONFIRM', 'guest-section-tag');
+      line(panel, 'h1', 'One last thing.');
+      line(panel, 'p', 'Please acknowledge your order before handing the iPad back.', 'guest-muted');
+      const recap = line(panel, 'div', undefined, 'guest-confirm-recap');
+      line(recap, 'span', 'Payment choice: ' + paymentNames[answers.payment]);
+      line(recap, 'strong', snapshot.total);
+      const signature = field(panel, 'Type your name to acknowledge the order', 'text', answers.signature, null);
+      signature.addEventListener('input', () => { answers.signature = signature.value; });
+      const exceptionLabel = line(panel, 'label', undefined, 'guest-check-row');
+      const exception = el('input');
+      exception.type = 'checkbox';
+      exception.checked = answers.exception;
+      exception.addEventListener('change', () => { answers.exception = exception.checked; });
+      exceptionLabel.append(exception);
+      line(exceptionLabel, 'span', 'I cannot enter a name (accessibility option)');
+      const marketingLabel = line(panel, 'label', undefined, 'guest-check-row');
+      const marketing = el('input');
+      marketing.type = 'checkbox';
+      marketing.checked = answers.marketing;
+      marketing.addEventListener('change', () => { answers.marketing = marketing.checked; });
+      marketingLabel.append(marketing);
+      line(marketingLabel, 'span', 'Optional: I agree to receive Persen Apparel promotional messages.');
+      const errors = navigation(panel, 'Submit & return to cashier →', () => {
+        if (busy) return '';
+        answers.signature = signature.value.trim();
+        answers.exception = exception.checked;
+        answers.marketing = marketing.checked;
+        if (!answers.signature && !answers.exception)
+          return 'Please enter your name or select the accessibility option.';
+        busy = true;
+        const submitButton = panel.querySelector ? panel.querySelector('.guest-next') : null;
+        if (submitButton) submitButton.disabled = true;
+        const payload = {
+          checkoutId: snapshot.checkoutId,
+          phone: answers.phone.trim(),
+          email: answers.email.trim(),
+          marketingConsent: answers.marketing === true,
+          signature: answers.exception ? null : answers.signature,
+          signatureException: answers.exception
+        };
+        // Never send a client-selected tender as if it were an authorized payment.
+        Promise.resolve().then(() => guestApi.submit(payload)).then(result => {
+          if (!result || result.accepted !== true) throw Error('Guest submit rejected');
+          answers.phone = ''; answers.email = ''; answers.signature = '';
+          phase = 'complete';
+          draw();
+        }).catch(() => {
+          // Submission consumes a single-use bearer even if the network fails.
+          // Fail closed; a cashier must safely recover the checkout.
+          answers.phone = ''; answers.email = ''; answers.signature = '';
+          phase = 'error';
+          draw();
+        }).finally(() => { busy = false; });
+        return '';
+      }, false);
+      if (errors) errors.textContent = '';
+    }
+  }
+  async function start() {
+    draw();
+    try {
+      const data = await guestApi.view();
+      if (!data || typeof data.checkoutId !== 'string' ||
+          !Array.isArray(data.items) || typeof data.total !== 'string' ||
+          data.items.some(item => typeof item.name !== 'string' ||
+            !Number.isInteger(item.quantity) || item.quantity < 1 ||
+            typeof item.lineTotal !== 'string')) throw Error('Invalid guest snapshot');
+      snapshot = data;
+      phase = 'ready';
+    } catch (_) {
+      phase = 'error';
+    }
+    draw();
+  }
+  return { start };
+}
+if (typeof module !== 'undefined') module.exports = { createCustomerCheckout };
+
+ return module.exports.createCustomerCheckout;
+})();
+function createGuestApi(){
+ return Object.freeze({
+   async view(){
+     if(submitted)throw Error('Checkout already submitted');
+     try{
+       const snapshot=await request('view',{checkoutId});
+       if(!validSnapshot(snapshot))throw Error('Invalid checkout snapshot');
+       return snapshot;
+     }catch(_){token='';throw Error('Checkout unavailable');}
+   },
+   async submit(answers){
+     if(submitted)throw Error('Checkout already submitted');
+     submitted=true;
+     try{
+       const payload={
+         checkoutId,
+         phone:String(answers.phone||'').trim(),
+         email:String(answers.email||'').trim(),
+         marketingConsent:answers.marketingConsent===true,
+         signature:answers.signatureException===true?null:String(answers.signature||'').trim(),
+         signatureException:answers.signatureException===true
+       };
+       const result=await request('submit',payload);
+       if(result.accepted!==true)throw Error('Checkout unavailable');
+       return {accepted:true};
+     }finally{token='';}
+   }
+ });
+}
+async function begin(){
+ try{
+   if(!cashierOrigin(authorizedCashierOrigin))throw Error('Invalid cashier origin');
+   const controller=createCustomerCheckout({
+      root, guestApi:createGuestApi(), origin:location.origin,
+      cashierOrigin:authorizedCashierOrigin
+   });
+   await controller.start();
+ }catch(_){token='';unavailable();}
+}
+
+function onMessage(event){if(started||event.source!==window.parent||event.data?.type!=='persen:checkout-bootstrap:v1'||!cashierOrigin(event.origin))return;const nextId=event.data.checkoutId,nextToken=event.data.capability;if(!validId(nextId)||!validToken(nextToken))return;started=true;window.removeEventListener('message',onMessage);checkoutId=nextId;token=nextToken;authorizedCashierOrigin=event.origin;void begin()}
 window.addEventListener('message',onMessage);try{window.parent.postMessage({type:'persen:checkout-ready:v1'},'*')}catch(_){unavailable()}
 })();
