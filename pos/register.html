@@ -27,7 +27,7 @@
     <button id="scan-mode-inventory" type="button" aria-pressed="false">Check inventory</button>
   </div>
   <label for="scan-code"><strong id="scan-label">Scan product barcode to add to cart</strong> <small>Bluetooth HID scanner · Code 128 · configure Enter suffix · tap the field to scan</small></label>
-  <div class="pos-scan-actions"><input id="scan-code" type="text" maxlength="64" autocapitalize="characters" spellcheck="false" autocomplete="off" placeholder="Scan a unique size SKU or enter it"><button id="scan-submit" class="primary" type="submit">Add scanned item</button></div>
+  <div class="pos-scan-actions"><input id="scan-code" type="text" inputmode="none" maxlength="64" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-label="Scan product barcode to add to cart" placeholder="Ready to scan a product barcode"><button id="scan-submit" class="primary" type="submit">Add item</button></div><button id="show-product-search" type="button" class="sales-search-toggle">Search products</button>
   <p id="scan-status" role="status" aria-live="polite">Product tiles and search always work without a scanner.</p>
   <div id="scan-inventory-result" class="pos-inventory-result" aria-live="polite" hidden></div>
   <button type="button" id="scan-search" hidden>Product Not Found — Search instead</button>
