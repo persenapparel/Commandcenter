@@ -61,7 +61,10 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
     errors.setAttribute('role', 'alert');
     const nav = line(panel, 'div', undefined, 'guest-navigation');
     if (stepIndex > 0) nav.append(action('Back', 'guest-back', () => setStep(stepIndex - 1)));
-    if (showSkip) nav.append(action('Skip', 'guest-skip', () => setStep(stepIndex + 1)));
+    if (showSkip) nav.append(action('Skip', 'guest-skip', () => {
+      if (typeof showSkip === 'function') showSkip();
+      else setStep(stepIndex + 1);
+    }));
     if (onNext) {
       nav.append(action(nextText, 'guest-next', () => {
         if (busy) return;
@@ -140,7 +143,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
           return 'Enter a full phone number, or choose Skip.';
         setStep(2);
         return '';
-      }, true);
+      }, () => { answers.phone = ''; setStep(2); });
     } else if (name === 'email') {
       line(panel, 'div', '03 · CONTACT', 'guest-section-tag');
       line(panel, 'h1', "What's your email address?");
@@ -153,7 +156,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
           return 'Enter a valid email address, or choose Skip.';
         setStep(3);
         return '';
-      }, true);
+      }, () => { answers.email = ''; setStep(3); });
     } else if (name === 'payment') {
       line(panel, 'div', '04 · PAYMENT', 'guest-section-tag');
       line(panel, 'h1', 'How would you like to pay?');
@@ -235,11 +238,13 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
         // Never send a client-selected tender as if it were an authorized payment.
         Promise.resolve().then(() => guestApi.submit(payload)).then(result => {
           if (!result || result.accepted !== true) throw Error('Guest submit rejected');
+          answers.phone = ''; answers.email = ''; answers.signature = '';
           phase = 'complete';
           draw();
         }).catch(() => {
           // Submission consumes a single-use bearer even if the network fails.
           // Fail closed; a cashier must safely recover the checkout.
+          answers.phone = ''; answers.email = ''; answers.signature = '';
           phase = 'error';
           draw();
         }).finally(() => { busy = false; });
