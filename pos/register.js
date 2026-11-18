@@ -379,7 +379,9 @@ function openEmployeeMode(mode){
  if(mode==='inventory')setScanMode('inventory');
  else setScanMode('sell');
  draw();
- by(mode==='inventory'?'scan-code':'search').focus();
+ // Keep the scanner input focused in both Sales and Inventory Check.
+ // On iPad a Bluetooth HID scanner can type into this field immediately.
+ const scanner=by('scan-code');scanner.value='';scanner.focus({preventScroll:true});
  return true;
 }
 async function showSecureHandoffHome(){
@@ -969,6 +971,7 @@ function setScanMode(mode){
  by('scan-status').textContent=scanMode==='inventory'?'Inventory check mode — scans do not add products to the cart.':'Add-to-cart mode — scans add products to the sale.';
  by('scan-inventory-result').hidden=true;
  by('scan-search').hidden=true;
+ document.body.dataset.salesSearch='false';
  by('scan-code').value='';
  by('scan-code').focus();
 }
@@ -1007,6 +1010,18 @@ function checkInventorySku(input){
 }
 by('scan-mode-sell').addEventListener('click',()=>setScanMode('sell'));
 by('scan-mode-inventory').addEventListener('click',()=>setScanMode('inventory'));
+by('show-product-search').addEventListener('click',()=>{
+ const opening=document.body.dataset.salesSearch!=='true';
+ document.body.dataset.salesSearch=opening?'true':'false';
+ by('show-product-search').textContent=opening?'Hide product search':'Search products';
+ if(opening)by('search').focus({preventScroll:true});
+ else by('scan-code').focus({preventScroll:true});
+});
+by('scan-search').addEventListener('click',()=>{
+ document.body.dataset.salesSearch='true';
+ by('show-product-search').textContent='Hide product search';
+ by('search').focus({preventScroll:true});
+});
 by('scan-form').addEventListener('submit',e=>{
  e.preventDefault();
  const field=by('scan-code');
