@@ -259,7 +259,10 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
           email: answers.email.trim(),
           marketingConsent: answers.marketing === true,
           signature: answers.exception ? null : answers.signature,
-          signatureException: answers.exception
+          signatureException: answers.exception,
+          // A payment preference, NOT authorization to treat it as paid.
+          paymentPreference: answers.payment==='venmo'?'venmo_info':
+            answers.payment==='applecash'?'apple_cash_info':'cash'
         };
         // Never send a client-selected tender as if it were an authorized payment.
         Promise.resolve().then(() => guestApi.submit(payload)).then(result => {
