@@ -859,8 +859,8 @@ by('owner-badge-enrollment').addEventListener('submit',async event=>{
  const badge=String(fields.get('badge')||'').trim();
  const pin=String(fields.get('pin')||'');
  const confirm=String(fields.get('pin_confirm')||'');
- if(badge.length<16||pin.length<6||pin!==confirm||!firstName){
-  out.textContent='Use a 16+ character badge code and matching 6+ digit PIN.';return;
+ if(badge.length<8||pin.length<6||pin!==confirm||!firstName){
+  out.textContent='Use an 8+ character badge code and matching 6+ digit PIN.';return;
  }
  button.disabled=true;out.textContent='Saving protected owner badge…';
  try{

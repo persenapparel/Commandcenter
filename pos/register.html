@@ -4,7 +4,7 @@
  <p class="hint">One time for staging: use the long code printed on your owner badge and choose a private 6+ digit PIN. Your badge and PIN are never stored in the browser.</p>
  <form id="owner-badge-enrollment">
   <label>First name<input name="first_name" maxlength="80" required placeholder="Luke"></label>
-  <label>Owner badge<input name="badge" minlength="16" maxlength="256" required autocomplete="off" placeholder="Scan your owner badge"></label>
+  <label>Owner badge<input name="badge" minlength="8" maxlength="256" required autocomplete="off" placeholder="Scan your owner badge"></label>
   <button id="generate-owner-badge" type="button">Generate a private badge code</button>
   <p class="hint">Save or print your new code as a Code 128 barcode before enrolling it. Short existing barcodes cannot be used for this secure login.</p>
   <label>PIN<input name="pin" type="password" inputmode="numeric" minlength="6" maxlength="128" required autocomplete="new-password" placeholder="6+ digit PIN"></label>
