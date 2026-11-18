@@ -73,7 +73,7 @@ begin
 exception when unique_violation then
  raise exception 'Badge unavailable';
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_staff_resume_shift(p_shift_id uuid, p_shift_secret text, p_badge text, p_register uuid)
@@ -150,7 +150,7 @@ begin
  return jsonb_build_object('ok',true,'staff_id',v_staff.id,
   'first_name',v_staff.first_name,'role',v_staff.staff_role);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_staff_start_shift(p_badge text, p_pin text, p_register uuid)
@@ -228,7 +228,7 @@ begin
   'shift_secret',v_secret,'first_name',v_staff.first_name,
   'role',v_staff.staff_role,'expires_at',v_expiry);
 end;
-$function$
+$function$;
 
 
 REVOKE ALL ON FUNCTION public.pos_owner_enroll_staff_self(text,text,text) FROM PUBLIC, anon;
