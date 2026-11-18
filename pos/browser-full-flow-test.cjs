@@ -97,7 +97,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(await cashier.locator('#swivel-guest-host iframe').count(),0,'Shift login must not start guest checkout');
   await visible(cashier,'#employee-home');
   await txt(cashier,'#employee-home-greeting','Hello, Test!');
-  assert.equal(await cashier.locator('#employee-home-actions button').count(),4,'Employee Home must offer exactly four choices');
+  assert.equal(await cashier.locator('.employee-home-actions button').count(),4,'Employee Home must offer exactly four choices');
   assert.equal(await cashier.locator('#catalog .quick-product:visible').count(),0,'A verified shift must not expose a cart until Sales is selected');
   await cashier.locator('#employee-home-sales').click();
   await visible(cashier,'.quick-toolbar');
