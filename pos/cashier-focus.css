@@ -67,8 +67,9 @@ body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.po
 body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #cart{
   flex:1;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain
 }
-body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout>.panel:nth-child(2)>label,
-body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .discount{display:none!important}
+body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .layout>.panel:nth-child(2)>label{display:none!important}
+/* Owner discounts remain available; cashier discounts require an owner. */
+body.fast-mode[data-employee-mode="sales"][data-staff-role="cashier"][data-cashier-stage="catalog"]:not(.pos-register-closed) .discount{display:none!important}
 body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) .total{margin-top:auto;flex:none;padding:9px 0}
 body.fast-mode[data-employee-mode="sales"][data-cashier-stage="catalog"]:not(.pos-register-closed) #start{min-height:56px;flex:none}
 @media(max-width:680px){
