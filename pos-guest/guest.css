@@ -57,3 +57,15 @@ header span{font-size:12px;font-weight:600;letter-spacing:.05em;color:#c6d9f5}
 .guest-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:600px){header{padding:14px 18px}header span{font-size:10px}#checkout{padding:10px 10px 30px}.customer-checkout{border-radius:17px;padding:22px 20px;min-height:calc(100vh - 110px)}.guest-navigation button{padding:14px 16px;min-height:54px}.guest-navigation .guest-back,.guest-navigation .guest-skip{flex:1}.guest-next{flex-basis:100%;order:3}.guest-payment-option{padding:14px;gap:12px}.guest-choice-icon{width:38px;height:38px}.guest-section-tag{margin-top:20px}}
 @media(prefers-reduced-motion:reduce){.guest-progress-fill,.guest-payment-option{transition:none}}
+
+/* The number pad is an on-screen pop-up card; read-only phone input means no
+   iOS keyboard and every key has a 48px+ touch target. */
+.guest-dialpad-popup{background:#f5f9ff;border:2px solid #d8e7f9;border-radius:22px;padding:18px;margin:13px 0 24px;box-shadow:0 16px 36px #102c5313}
+.guest-dialpad-title{text-align:center;font-size:14px;font-weight:800;color:#547296;margin:0 0 12px!important}
+.guest-dialpad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:410px;margin:0 auto}
+.guest-dialkey{min-height:63px;padding:10px 8px;border:1px solid #c8d8ed;border-radius:15px;background:#fff;color:#0d3769;font-size:28px;font-weight:800;box-shadow:0 3px 0 #d1dff0;touch-action:manipulation;cursor:pointer}
+.guest-dialkey:active{transform:translateY(2px);box-shadow:0 1px 0 #d1dff0}
+.guest-dialkey:focus-visible{outline:3px solid #1b6ac7;outline-offset:2px}
+.guest-dialkey-tool{font-size:17px;background:#e5eefb}
+.guest-field-label input[readonly]{background:#fff;font-size:27px;text-align:center;letter-spacing:.1em;font-variant-numeric:tabular-nums}
+@media (max-width:440px){.guest-dialpad-popup{padding:12px}.guest-dialkey{min-height:59px}}
