@@ -152,6 +152,17 @@ begin
  and c.enabled=true and c.credential_version=s.credential_version
  and s.secret_digest=extensions.digest(coalesce(p_shift_secret,''),'sha256')
  and c.badge_digest=extensions.digest(coalesce(p_badge,''),'sha256')
+ -- A badge alone cannot restore a register after its staff grant is revoked.
+ -- Owner/admin bypass matches the existing server-side checkout grant policy.
+ and (
+  (c.staff_role='owner' and public.is_persen_admin())
+  or exists (
+   select 1 from public.pos_staff_register_grants g
+   join public.pos_registers r on r.id=g.register_id
+   where g.staff_id=c.id and g.active=true and r.active=true
+     and g.owner_id=r.owner_id
+  )
+ )
  -- Serialize successful resume against concurrent shift revocation and
  -- credential disable/rotation. No guest checkout authorization is implied.
  for update of s,c;
