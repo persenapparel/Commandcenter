@@ -997,6 +997,49 @@ by('staff-badge-setup-form').addEventListener('submit',async event=>{
  }finally{button.disabled=false}
 });
 
+
+/* Pending badge PIN tests never start shifts or grant register access. */
+by('test-staff-badge-pin').onclick=async()=>{
+ const form=by('staff-badge-setup-form'),f=new FormData(form);
+ const button=by('test-staff-badge-pin'),out=by('staff-badge-setup-message');
+ const badge=String(f.get('badge')||'').trim(),pin=String(f.get('pin')||'');
+ if(!/^[0-9]{8}$/.test(badge)||pin.length<6){
+  out.textContent='Enter the reserved 8-digit badge and employee PIN to test them.';return;
+ }
+ button.disabled=true;out.textContent='Checking this employee PIN against staging…';
+ try{
+  const result=await check(db.rpc('pos_owner_test_pending_employee_badge',{
+   p_slot:Number(f.get('slot')),p_badge:badge,p_pin:pin
+  }));
+  out.textContent=result?.verified===true
+   ?'Employee badge and PIN match. This badge is pending activation and cannot open the register yet.'
+   :result?.locked===true
+    ?'Too many failed attempts. Try again after the 15-minute lockout.'
+    :'Badge/PIN not verified. Confirm the badge was reserved and re-enter the employee PIN.';
+ }catch(_){out.textContent='Could not verify employee PIN. Staging setup or owner access may be unavailable.'}
+ finally{form.querySelector('[name=pin]').value='';form.querySelector('[name=pin_confirm]').value='';button.disabled=false;}
+};
+by('activate-staff-badge').onclick=async()=>{
+ const form=by('staff-badge-setup-form'),f=new FormData(form);
+ const button=by('activate-staff-badge'),out=by('staff-badge-setup-message');
+ const ownerBadge=String(f.get('owner_badge')||'').trim(),ownerPin=String(f.get('owner_pin')||'');
+ if(ownerBadge.length<8||ownerPin.length<6){
+  out.textContent='Scan your owner badge and enter your private owner PIN to activate this employee.';return;
+ }
+ button.disabled=true;out.textContent='Checking employee account and owner approval…';
+ try{
+  const result=await check(db.rpc('pos_owner_activate_pending_employee_badge',{
+   p_slot:Number(f.get('slot')),p_owner_badge:ownerBadge,p_owner_pin:ownerPin
+  }));
+  out.textContent=result?.activated===true
+   ?'Employee activated as cashier. They can test their own account, badge and PIN on the Employee PIN Test page.'
+   :result?.reason==='employee_account_missing'
+    ?'Not activated: the employee must first create and confirm their own separate staging account with the email you reserved.'
+    :'Owner approval failed. Check the badge/PIN and try again after any lockout.';
+ }catch(_){out.textContent='Activation not verified. No cashier permissions were granted. Check that this employee does not already have an assigned account.'}
+ finally{form.querySelector('[name=owner_badge]').value='';form.querySelector('[name=owner_pin]').value='';button.disabled=false;}
+};
+
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
 // A non-blocking, accessible one-second scan confirmation. It never captures scanner focus.
 let scanConfirmationTimer;
