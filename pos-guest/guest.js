@@ -37,6 +37,15 @@ const createCustomerCheckout=(()=>{
  * tender. Cashier verification and server-authorized Finish Order are required.
  * Never mount this controller on the authenticated cashier origin.
  */
+'use strict';
+
+/*
+ * Credential-free guest checkout for the single-iPad swivel flow.
+ * Each question is a separate step, following the former two-device design.
+ * Payment choice is INFORMATION ONLY: the guest API does not process or store
+ * tender. Cashier verification and server-authorized Finish Order are required.
+ * Never mount this controller on the authenticated cashier origin.
+ */
 function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
   if (!root || typeof root.replaceChildren !== 'function') throw Error('Missing root');
   if (!guestApi || typeof guestApi.view !== 'function' || typeof guestApi.submit !== 'function')
@@ -289,7 +298,10 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
           email: answers.email.trim(),
           marketingConsent: answers.marketing === true,
           signature: answers.exception ? null : answers.signature,
-          signatureException: answers.exception
+          signatureException: answers.exception,
+          // A payment preference, NOT authorization to treat it as paid.
+          paymentPreference: answers.payment==='venmo'?'venmo_info':
+            answers.payment==='applecash'?'apple_cash_info':'cash'
         };
         // Never send a client-selected tender as if it were an authorized payment.
         Promise.resolve().then(() => guestApi.submit(payload)).then(result => {
@@ -330,6 +342,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
 if (typeof module !== 'undefined') module.exports = { createCustomerCheckout };
 
 
+
  return module.exports.createCustomerCheckout;
 })();
 function createGuestApi(){
@@ -352,7 +365,8 @@ function createGuestApi(){
          email:String(answers.email||'').trim(),
          marketingConsent:answers.marketingConsent===true,
          signature:answers.signatureException===true?null:String(answers.signature||'').trim(),
-         signatureException:answers.signatureException===true
+         signatureException:answers.signatureException===true,
+         paymentPreference:['cash','venmo_info','apple_cash_info'].includes(answers.paymentPreference)?answers.paymentPreference:'cash'
        };
        const result=await request('submit',payload);
        if(result.accepted!==true)throw Error('Checkout unavailable');
