@@ -253,7 +253,9 @@ begin
  and phase='customer_complete' and capability_digest is null
  for update;
  if not found then raise exception 'Checkout authorization denied'; end if;
- v_proof:=public.pos_staff_resume_shift(p_shift_id,p_shift_secret,p_badge);
+ v_proof:=public.pos_staff_resume_shift(
+  p_shift_id,p_shift_secret,p_badge,v_checkout.register_id
+ );
  if coalesce((v_proof->>'ok')::boolean,false) is not true then
   -- Return failure instead of raising; otherwise PostgreSQL rolls back the
   -- nested badge attempt counter and defeats the PIN/badge throttle.

@@ -9,12 +9,12 @@ const {createHandoffCoordinator}=require('./checkout-handoff-coordinator.cjs');
 const UUID=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
 const SECRET=/^[0-9a-f]{64}$/i;
 function createStagingHandoffBridge({
- client, getStaffCheckoutRequest, lockAndVerifyCashier, openGuest,
+ client, getRegisterId, getStaffCheckoutRequest, lockAndVerifyCashier, openGuest,
  restoreCashier, unlockRegisterForNextSale,
  finishAuthoritativeSale, clearGuest, showHome
 }) {
  if(!client || typeof client.rpc!=='function')throw Error('Authenticated RPC client required');
- const tasks={getStaffCheckoutRequest,lockAndVerifyCashier,openGuest,
+ const tasks={getRegisterId,getStaffCheckoutRequest,lockAndVerifyCashier,openGuest,
   restoreCashier,unlockRegisterForNextSale,finishAuthoritativeSale,
   clearGuest,showHome};
  for(const [name,fn] of Object.entries(tasks))if(typeof fn!=='function')
@@ -35,14 +35,20 @@ function createStagingHandoffBridge({
    throw Error('Invalid employee credentials');
   starting=true;
   try{
-   const auth=await call('pos_staff_start_shift',{p_badge:badge,p_pin:pin});
+   const registerId=await getRegisterId();
+   if(!UUID.test(registerId||''))throw Error('Register is not ready for employee sign-in');
+   const auth=await call('pos_staff_start_shift',{
+    p_badge:badge,p_pin:pin,p_register:registerId
+   });
    if(auth.ok!==true || !UUID.test(auth.shift_id||'') ||
       !SECRET.test(auth.shift_secret||'') ||
       typeof auth.first_name!=='string' || !auth.first_name ||
       !['owner','cashier'].includes(auth.role) ||
       !(Date.parse(auth.expires_at)>Date.now()))
     throw Error('Employee authorization denied');
-   adapter=createHandoffRpcAdapter({client,shiftId:auth.shift_id,shiftSecret:auth.shift_secret});
+   adapter=createHandoffRpcAdapter({
+    client,shiftId:auth.shift_id,shiftSecret:auth.shift_secret,registerId
+   });
    cashier=Object.freeze({firstName:auth.first_name.slice(0,80),
      role:auth.role,expiresAt:auth.expires_at});
    newCoordinator=()=>createHandoffCoordinator({

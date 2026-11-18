@@ -16,7 +16,8 @@ test('guest cleanup keeps opaque cashier cover until branded badge lock',()=>{
  assert.match(bridge,/const reopened=await unlockRegisterForNextSale\(\)/);
  assert.match(bridge,/if\(reopened!==true\)throw Error\('Verified register reopening failed'\)/);
  assert.match(register,/function reopenRegisterAfterVerifiedBadge\(\)/);
- assert.match(register,/setRegisterOpen\(true\);/);
+ assert.match(register,/setRegisterOpen\(false,true\);/);
+ assert.match(ui,/showEmployeeHome\(bridge\?\.state\?\.\(\)\.employee\)/);
  assert.doesNotMatch(ui,/bridge=null;/);
  assert.match(ui,/function ensureFreshGuestFrame\(\)/);
  assert.match(ui,/ensureFreshGuestFrame\(\);\s*const active=ensureBridge\(\)/);
@@ -24,7 +25,7 @@ test('guest cleanup keeps opaque cashier cover until branded badge lock',()=>{
 });
 test('employee badge unlock is server-bound to original shift and not PIN reset',()=>{
  assert.match(adapter,/rpc\('pos_staff_resume_shift'/);
- assert.match(adapter,/p_shift_id:shiftId,p_shift_secret:shiftSecret,p_badge:badge/);
+ assert.match(adapter,/p_shift_id:shiftId,p_shift_secret:shiftSecret,p_badge:badge,p_register:registerId/);
  assert.match(adapter,/if\(active\)throw Error\('Guest checkout must be closed/);
  assert.match(bridge,/const proof=await adapter\.verifyIdleBadge\(badge\)/);
  assert.match(bridge,/if\(locked\)throw Error\('Scan staff badge to unlock register/);

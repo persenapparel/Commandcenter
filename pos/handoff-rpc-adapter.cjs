@@ -5,12 +5,14 @@
  * The caller must hold a valid server-verified shift in MEMORY ONLY and
  * independently enforce the UI lock and isolated browsing-context lifecycle.
  */
-function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
+function createHandoffRpcAdapter({client,shiftId,shiftSecret,registerId}) {
  if (!client || typeof client.rpc!=='function') throw Error('Supabase RPC client required');
  if (typeof shiftId!=='string' || !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(shiftId))
   throw Error('Invalid staff shift id');
  if (typeof shiftSecret!=='string' || !/^[a-f0-9]{64}$/.test(shiftSecret))
   throw Error('Invalid staff shift secret');
+ if (typeof registerId!=='string' || !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(registerId))
+  throw Error('Invalid staff register');
  let active=null;
  async function rpc(name,args) {
   const {data,error}=await client.rpc(name,args);
@@ -25,11 +27,13 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
    throw Error('Invalid checkout id');
   if (active!==id) throw Error('Checkout is not claimed for this cashier');
  }
- async function beginStaffCheckout({registerId,items,discountBps=0,taxMilli=0,eventId=null}) {
+ async function beginStaffCheckout({registerId:requestedRegisterId,items,discountBps=0,taxMilli=0,eventId=null}) {
   if(active) throw Error('Another checkout is already claimed');
-  if(typeof registerId!=='string' || !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(registerId) ||
+  if(typeof requestedRegisterId!=='string' || !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(requestedRegisterId) ||
      !Array.isArray(items) || items.length<1 || items.length>80)
    throw Error('Invalid employee checkout request');
+  if(requestedRegisterId!==registerId)
+   throw Error('Employee checkout is not authorized for this register');
   if(!Number.isInteger(discountBps) || discountBps!==0 ||
      !Number.isInteger(taxMilli) || taxMilli!==0)
    throw Error('Employee checkout requires approved zero discount and tax');
@@ -140,7 +144,7 @@ function createHandoffRpcAdapter({client,shiftId,shiftSecret}) {
   if(typeof badge!=='string'||badge.length<16||badge.length>256)
    throw Error('Invalid employee badge');
   const result=await rpc('pos_staff_resume_shift',{
-   p_shift_id:shiftId,p_shift_secret:shiftSecret,p_badge:badge
+   p_shift_id:shiftId,p_shift_secret:shiftSecret,p_badge:badge,p_register:registerId
   });
   if(result.ok!==true||typeof result.first_name!=='string'||
      result.first_name.length<1||result.first_name.length>80)

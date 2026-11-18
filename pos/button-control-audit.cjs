@@ -52,7 +52,6 @@ assert.ok(build.includes("handoff-config.js"),'Staging handoff config must be ge
 assert.ok(!build.includes("'test-fake-supabase.js'")&&!build.includes("'browser-full-flow-test.cjs'"),'Mock test files must not deploy');
 const epsonCenter=read('epson-center.js');
 assert.ok(!/\.rpc\(|\.insert\(|\.update\(|\.delete\(/.test(epsonCenter),'Epson browser center must be read-only');
-assert.ok(!build.includes("'print-station.js'")&&!build.includes("'print-station.css'"),'Legacy NELKO printing worker must not ship');
-assert.ok(read('print-station.html').includes('old NELKO browser print worker is disabled'),'Legacy route must be inert');
+assert.ok(!build.includes("'print-station.js'")&&!build.includes("'print-station.css'")&&!build.includes("'print-station.html'"),'Legacy browser printer route must not ship');
 require('./swivel-pairing-regression-test.cjs');
 console.log('PASS: '+checked+' named controls, four unique-ID checks, additional forms and generated controls');

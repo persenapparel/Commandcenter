@@ -56,7 +56,6 @@ jobs:
           node --check pos/epson-center.js
           node --check pos/checkout-flow.js
           node --check pos/display.js
-          node --check pos/print-station.js
           node --check pos/epson-station/agent.cjs
       - name: Run POS unit tests
         run: node pos/tests.cjs
@@ -114,6 +113,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f pos/sql/staging_owner_badge_enrollment_draft.sql
           psql -v ON_ERROR_STOP=1 -f pos/tests/staging-owner-self-enrollment-sql-test.sql
           psql -v ON_ERROR_STOP=1 -f pos/tests/staging-staff-authorized-begin-sql-test.sql
+          psql -v ON_ERROR_STOP=1 -f pos/tests/staging-register-scoped-resume-sql-test.sql
       - name: Build separate credential-free customer-origin project (CI placeholders only)
         run: |
           node pos/build-guest-pages.mjs
@@ -136,6 +136,7 @@ jobs:
           test -f pos-dist/epson-center.css
           test ! -e pos-dist/print-station.js
           test ! -e pos-dist/print-station.css
+          test ! -e pos-dist/print-station.html
           test ! -e pos-dist/test-fake-supabase.js
           test ! -e pos-dist/browser-full-flow-test.cjs
           test -f pos-dist/register.html
@@ -144,7 +145,6 @@ jobs:
           test -f pos-dist/display.html
           test -f pos-dist/checkout-flow.js
           test -f pos-dist/customer-guest-client.js
-          test -f pos-dist/print-station.html
           test -f pos-dist/pos-cash.js
           test -f pos-dist/pos-experience.js
           test -f pos-dist/pos-digital-receipt.js

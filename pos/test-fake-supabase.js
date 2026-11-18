@@ -72,7 +72,7 @@ function rpc(name,p={}){
  const write=x=>{save(state);return result(x)};
  switch(name){
  case 'pos_staff_start_shift':{
-  if(p.p_badge!=='TEST-BADGE-ONLY-0001'||p.p_pin!=='654321')return result({ok:false});
+  if(p.p_badge!=='TEST-BADGE-ONLY-0001'||p.p_pin!=='654321'||p.p_register!==REG)return result({ok:false});
   return result({ok:true,shift_id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',shift_secret:'a'.repeat(64),first_name:'Test',role:'owner',expires_at:new Date(Date.now()+3600000).toISOString()});
  }
  case 'pos_create_product_group':{

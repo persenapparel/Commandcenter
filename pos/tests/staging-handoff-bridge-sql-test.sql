@@ -25,13 +25,13 @@ begin
  insert into public.pos_staff_credentials(auth_user_id,first_name,staff_role,badge_digest,pin_hash)
  values(v_uid,'Test Cashier','owner',extensions.digest(repeat('B',32),'sha256'),
    extensions.crypt('123456',extensions.gen_salt('bf')));
- v_login:=public.pos_staff_start_shift(repeat('B',32),'123456');
+ insert into public.pos_registers(owner_id,label)
+ values(v_uid,'Isolated CI cash register') returning id into v_register;
+ v_login:=public.pos_staff_start_shift(repeat('B',32),'123456',v_register);
  if coalesce((v_login->>'ok')::boolean,false) is not true then
   raise exception 'Shift PIN login failed'; end if;
  v_shift:=(v_login->>'shift_id')::uuid;
  v_secret:=v_login->>'shift_secret';
- insert into public.pos_registers(owner_id,label)
- values(v_uid,'Isolated CI cash register') returning id into v_register;
  insert into public.pos_checkouts(register_id,owner_id,items,total_cents)
  values(v_register,v_uid,
   '[{"name":"CI Test Hoodie","qty":1,"unit_cents":2500}]'::jsonb,2500)

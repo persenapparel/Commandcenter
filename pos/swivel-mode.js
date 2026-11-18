@@ -12,6 +12,7 @@
  const returnForm=$('swivel-return-form'),returnBadge=$('swivel-return-badge');
  const returnMessage=$('swivel-return-message'),lock=$('swivel-lock');
  const keepCustomer=$('swivel-keep-customer'),resume=$('swivel-resume');
+ const workspace=$('workspace'),launch=$('register-launch');
  const api=window.PersenPOSRegister,secure=window.PersenPOSSecureHandoff;
  const config=window.PersenPOSHandoffConfig;
  const blocked='Customer handoff is unavailable until the isolated staging connection is verified. Do not turn this signed-in iPad toward a customer.';
@@ -37,11 +38,66 @@
  }
  let cashier=null,entry=null,bridge=null,guestFrame=null,transition=false;
  let lastActivity=Date.now();
+ let employeeHome=null,employeeHomeClock=null;
  const cashierSurfaces=Array.from(document.querySelectorAll('body > main, body > header'));
  function coverCashier(covered){
   for(const surface of cashierSurfaces)surface.inert=covered;
  }
  function state(){return bridge?.state?.().checkout||null}
+ function updateEmployeeHomeClock(){
+  if(!employeeHomeClock)return;
+  employeeHomeClock.textContent=new Intl.DateTimeFormat('en-US',{
+   hour:'numeric',minute:'2-digit',weekday:'long'
+  }).format(new Date());
+ }
+ function ensureEmployeeHome(){
+  if(employeeHome)return employeeHome;
+  if(!workspace||!launch||typeof document.createElement!=='function')return null;
+  const home=document.createElement('section');
+  home.id='employee-home';home.className='employee-home panel';home.hidden=true;
+  home.setAttribute('aria-label','Employee home');
+  home.innerHTML='<div class="employee-home-brand"><img src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div><span class="eyebrow">PERSEN APPAREL · EMPLOYEE HOME</span><h2 id="employee-home-greeting">Welcome to Persen Apparel</h2><p id="employee-home-role" class="employee-home-role"></p></div></div><div class="employee-home-idle"><span aria-hidden="true">❄</span><time id="employee-home-clock"></time><span aria-hidden="true">✦</span></div><p class="employee-home-intro">Choose what you need to do. The register stays locked until you select Sales or Inventory Check.</p><div class="employee-home-actions"><button id="employee-home-sales" type="button"><span aria-hidden="true">🛍️</span><strong>Sales</strong><small>Start a customer order</small></button><button id="employee-home-returns" type="button"><span aria-hidden="true">↩</span><strong>Returns</strong><small>Look up an original sale</small></button><button id="employee-home-refunds" type="button"><span aria-hidden="true">↺</span><strong>Refunds</strong><small>Owner approval required</small></button><button id="employee-home-inventory" type="button"><span aria-hidden="true">⌁</span><strong>Inventory Check</strong><small>Scan without adding to a sale</small></button></div><p id="employee-home-status" class="employee-home-status" role="status" aria-live="polite"></p>';
+  if(typeof launch.insertAdjacentElement==='function')launch.insertAdjacentElement('afterend',home);
+  else workspace.append(home);
+  const status=home.querySelector('#employee-home-status');
+  const unavailable=action=>{
+   const role=bridge?.state?.().employee?.role||'cashier';
+   status.textContent=role==='owner'
+    ? action+' is not enabled in the supervised cash-sale test. No sale, payment, or stock was changed.'
+    : action+' needs an owner or authorized-manager approval. No sale, payment, or stock was changed.';
+  };
+  home.querySelector('#employee-home-sales').addEventListener('click',()=>{
+   try{api.openEmployeeMode('sales');hideEmployeeHome();message('Sales register ready. Scan products to start a sale.')}catch(error){status.textContent=error.message}
+  });
+  home.querySelector('#employee-home-inventory').addEventListener('click',()=>{
+   try{api.openEmployeeMode('inventory');hideEmployeeHome();message('Inventory Check is ready. Scan a product barcode; nothing will be added to a sale.')}catch(error){status.textContent=error.message}
+  });
+  home.querySelector('#employee-home-returns').addEventListener('click',()=>unavailable('Returns'));
+  home.querySelector('#employee-home-refunds').addEventListener('click',()=>unavailable('Refunds'));
+  employeeHome=home;employeeHomeClock=home.querySelector('#employee-home-clock');
+  updateEmployeeHomeClock();
+  return home;
+ }
+ function hideEmployeeHome(){
+  if(employeeHome)employeeHome.hidden=true;
+  delete document.body.dataset.employeeHome;
+ }
+ function showEmployeeHome(employee=bridge?.state?.().employee){
+  if(!employee||bridge?.state?.().locked||state()?.phase!=='cashier')return false;
+  const home=ensureEmployeeHome();
+  if(!home)return false;
+  home.hidden=false;
+  home.querySelector('#employee-home-greeting').textContent='Hello, '+employee.firstName+'!';
+  home.querySelector('#employee-home-role').textContent=employee.role==='owner'
+   ? 'Owner access · select an action to continue'
+   : 'Cashier access · sales and read-only inventory are ready';
+  home.querySelector('#employee-home-status').textContent='Ready for your next action.';
+  document.body.dataset.employeeHome='true';
+  document.body.dataset.staffRole=employee.role||'cashier';
+  updateEmployeeHomeClock();lastActivity=Date.now();
+  return true;
+ }
+ setInterval(updateEmployeeHomeClock,30000);
  function resetOverlay(){
   returnForm.hidden=true;
   overlay.hidden=true;
@@ -139,6 +195,7 @@
   ensureFreshGuestFrame();
   bridge=secure.createStagingHandoffBridge({
    client:api.secureHandoffClient,
+   getRegisterId:()=>api.getRegisterId(),
    getStaffCheckoutRequest:()=>api.getStaffCheckoutRequest(),
    lockAndVerifyCashier:async checkoutId=>{
     api.lockHandoffCheckout(checkoutId);
@@ -218,10 +275,10 @@
    const employee=await active.startShift({badge,pin});
    shiftBadge.value='';shiftPin.value='';
    shiftMessage.textContent='';
+   if(!showEmployeeHome(employee))throw Error('Employee home is unavailable');
    shiftDialog.close();
-   api.reopenRegisterAfterVerifiedBadge();
    lastActivity=Date.now();
-   message('Hello, '+employee.firstName+'! Scan products to start your sale.');
+   message('Hello, '+employee.firstName+'! Choose Sales, Returns, Refunds, or Inventory Check.');
    transition=false;
   }catch(_){
    shiftBadge.value='';shiftPin.value='';
@@ -259,9 +316,11 @@
     message('Hello, '+verified.firstName+'! Continue your current order.');
    }else if(state()?.phase==='home'&&bridge?.state?.().locked){
     const verified=await bridge.unlockNextSale(badge);
+    if(!showEmployeeHome(bridge?.state?.().employee))
+     throw Error('Employee home is unavailable');
     returnBadge.value='';
     resetOverlay();
-    message('Hello, '+verified.firstName+'! Register unlocked for the next sale.');
+    message('Hello, '+verified.firstName+'! Choose your next action.');
    }else{
     await bridge.resumeWithBadge(badge);
     returnBadge.value='';
@@ -281,6 +340,8 @@
  window.PersenPOSSwivel=Object.freeze({
   mode:()=> 'swivel',
   canUseRegister,
+  employee:()=>bridge?.state?.().employee||null,
+  showEmployeeHome:()=>showEmployeeHome(),
   requestRegisterOpen:openShiftDialog,
   active:()=>!!state(),
   ownsCheckout:checkoutId=>state()?.checkoutId===checkoutId&&state()?.phase==='payment',

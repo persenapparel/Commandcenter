@@ -37,6 +37,7 @@ function fake(overrides={}) {
  let locked=true;
  const bridge=createStagingHandoffBridge({
   client:registerClient(client),
+  getRegisterId:async()=>ORDER,
   getStaffCheckoutRequest:async()=>{calls.push('checkout request');return {
    registerId:ORDER,items:[{stock_id:ORDER,qty:1,unit_cents:2500}],
    discountBps:0,taxMilli:0
@@ -61,6 +62,7 @@ test('single iPad secure sequence is shift -> claim -> lock -> guest -> badge ->
  const shift=await bridge.startShift({badge:'12345678901234567890',pin:'123456'});
  assert.deepEqual(shift,{firstName:'Alex',role:'owner',expiresAt:'2099-01-01T00:00:00Z'});
  assert.doesNotMatch(JSON.stringify(shift),new RegExp(SECRET));
+ assert.equal(rpcArgs.find(x=>x.name==='pos_staff_start_shift').args.p_register,ORDER);
  await bridge.handToCustomer();
  assert.deepEqual(calls.slice(0,6),['pos_staff_start_shift','checkout request',
   'pos_staff_begin_checkout','pos_handoff_claim','lock','pos_handoff_issue_guest']);
@@ -127,6 +129,7 @@ test('staff handoff refuses a forged discount before checkout creation and stays
 });
 test('missing staff checkout request prevents any owner-account fallback',()=>{
  assert.throws(()=>fake({getStaffCheckoutRequest:null}),/Missing staging handoff dependency: getStaffCheckoutRequest/);
+ assert.throws(()=>fake({getRegisterId:null}),/Missing staging handoff dependency: getRegisterId/);
 });
 
 test('a fake successful UI response cannot finish an unpaid order',async()=>{

@@ -65,7 +65,7 @@ const secureHandoffBundle=[
  ''
 ].join('\n');
 await writeFile(join(dest,'secure-handoff-browser.js'),secureHandoffBundle);
-for(const f of ['register.html','display.html','index.html','print-station.html','admin.html','inventory.html']){
+for(const f of ['register.html','display.html','index.html','admin.html','inventory.html']){
  let s=await readFile(join('pos',f),'utf8');
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  await writeFile(join(dest,f),s);
