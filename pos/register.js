@@ -413,6 +413,7 @@ window.PersenPOSRegister=Object.freeze({
  showHandoffHome:showSecureHandoffHome,
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
+ openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
  notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
@@ -879,6 +880,61 @@ by('owner-badge-enrollment').addEventListener('submit',async event=>{
  }finally{button.disabled=false}
 });
 
+
+
+/* Owner-only reservation of two separate future employee badge identities.
+ * Never treat pending reservations as an active cashier login. The server
+ * protects this action with the already enrolled owner's badge and PIN.
+ */
+const badgeSetupDialog=by('staff-badge-setup-dialog');
+by('open-employee-badges').onclick=()=>window.PersenPOSRegister.openEmployeeBadgeSetup();
+by('close-staff-badge-setup').onclick=()=>badgeSetupDialog.close();
+function ownerOpenEmployeeBadgeSetup(){
+ if(!db||!user)return notice('Sign in as owner to set up employee badges.');
+ if(badgeSetupDialog.open)return;
+ badgeSetupDialog.showModal();
+}
+function validEan8(data){
+ const sum=[...data].reduce((total,digit,i)=>total+Number(digit)*(i%2===0?3:1),0);
+ return data+String((10-sum%10)%10);
+}
+by('generate-staff-badge').onclick=()=>{
+ if(!window.crypto?.getRandomValues)return by('staff-badge-setup-message').textContent='Secure badge generation is unavailable.';
+ const numbers=new Uint32Array(2);crypto.getRandomValues(numbers);
+ const firstSeven=String((numbers[0]^numbers[1])%10000000).padStart(7,'0');
+ const code=validEan8(firstSeven);
+ const field=by('staff-badge-setup-form').querySelector('[name=badge]');
+ field.value=code;field.select();
+ by('staff-badge-setup-message').textContent='Generated badge '+code+'. Print a verified EAN-8 barcode tag before you close this form. The code is never stored in the browser.';
+};
+by('staff-badge-setup-form').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const form=event.currentTarget,out=by('staff-badge-setup-message'),button=by('save-staff-badge');
+ const f=new FormData(form),pin=String(f.get('pin')||''),pinAgain=String(f.get('pin_confirm')||'');
+ const code=String(f.get('badge')||'').trim();
+ if(pin.length<6||pin!==pinAgain||!/^[0-9]{8}$/.test(code)){
+  out.textContent='Enter a valid 8-digit EAN-8 code and matching 6+ digit employee PIN.';return;
+ }
+ if(!db||!user){out.textContent='Owner login required.';return}
+ button.disabled=true;out.textContent='Verifying owner approval and reserving badge…';
+ try{
+  const result=await check(db.rpc('pos_owner_prepare_employee_badge',{
+   p_slot:Number(f.get('slot')),p_first_name:String(f.get('first_name')||'').trim(),
+   p_email:String(f.get('email')||'').trim(),p_badge:code,p_pin:pin,
+   p_owner_badge:String(f.get('owner_badge')||'').trim(),
+   p_owner_pin:String(f.get('owner_pin')||'')
+  }));
+  if(!result?.saved||result.activated)throw Error('Badge reservation was not accepted');
+  form.querySelector('[name=pin]').value='';
+  form.querySelector('[name=pin_confirm]').value='';
+  form.querySelector('[name=owner_pin]').value='';
+  form.querySelector('[name=owner_badge]').value='';
+  out.textContent='Employee '+f.get('slot')+' badge reserved. Keep the printed number private. Not activated: separate employee account and register authorization still required.';
+ }catch(_){
+  for(const field of ['pin','pin_confirm','owner_pin'])form.querySelector('[name='+field+']').value='';
+  out.textContent='Badge not saved. Confirm your owner badge/PIN and that the staging reservation system is installed.';
+ }finally{button.disabled=false}
+});
 
 by('login').onsubmit=async e=>{e.preventDefault();try{const f=new FormData(e.target);await PA.signIn(String(f.get('email')),String(f.get('password')));await boot()}catch(err){notice(err.message)}};
 // A non-blocking, accessible one-second scan confirmation. It never captures scanner focus.
