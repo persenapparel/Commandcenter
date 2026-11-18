@@ -37,7 +37,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
    assert.equal(await p.locator('a[href="'+file+'"]').count(),1);
   // Do not advertise the customer-only route on the signed-in owner dashboard.
   assert.equal(await p.locator('a[href="display.html"]').count(),0);
-  assert.equal((await p.request.get(url+'display.html')).status(),200,'Controlled customer route must remain bundled');
+  assert.equal((await p.request.get(localUrl+'display.html')).status(),200,'Controlled customer route must remain bundled in the local CI artifact');
    assert.equal(await p.locator('a[href="admin.html#print-center"]').count(),1,'Epson Print Center must be on the dashboard');
   await p.reload();await visible(p,'#device-dashboard');
  });
@@ -178,7 +178,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   await visible(admin,'#print-center');
   await txt(admin,'#epson-monitor-status','Showing staging queue history');
   assert.ok(await admin.locator('#epson-refresh').isEnabled());
-  assert.equal((await ctx.request.get(url+'print-station.html')).status(),404,'Legacy browser printer route must not deploy');
+  assert.equal((await ctx.request.get(localUrl+'print-station.html')).status(),404,'Legacy browser printer route must not exist in the local CI artifact');
   const snapshot=await state(admin);
   assert.equal(snapshot.tables.pos_print_jobs.length,0);
   assert.equal(snapshot.tables.pos_drawer_open_jobs.length,0);
