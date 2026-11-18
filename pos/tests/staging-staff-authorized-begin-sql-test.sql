@@ -258,6 +258,10 @@ BEGIN
   IF SQLERRM='Revoked guest token remained valid' THEN RAISE; END IF;
  END;
  PERFORM set_config('request.jwt.claim.sub',v_staff::text,true);
+ -- A previously valid shift and correct badge must not bypass grant revocation.
+ v_grant:=public.pos_staff_resume_shift(v_shift,v_secret,repeat('S',32));
+ IF v_grant->>'ok' IS DISTINCT FROM 'false'
+ THEN RAISE EXCEPTION 'Revoked cashier badge reopened register'; END IF;
  BEGIN
   PERFORM public.pos_staff_begin_checkout(v_shift,v_secret,v_reg,v_items,0,0,null);
   RAISE EXCEPTION 'Revoked cashier created another checkout';
