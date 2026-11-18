@@ -259,7 +259,7 @@ function showPaidAwaitingHandoff(saved,record){
   :'After handing back any change, tap Finish Order.';
  by('epson-drawer-status').hidden=external;
  if(!external)void updateEpsonDrawerStatus(saved.id);
- draw();syncCashierStage();
+ draw();syncCashierStage();updateExternalApprovalPanel();
  notice(external?'Owner verified this transfer. Tap Finish Order.':
   'Cash payment saved. Return '+C.money(saved.change_cents)+' in change, then Finish Order.');
 }
@@ -474,6 +474,7 @@ window.PersenPOSRegister=Object.freeze({
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
  openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
+ refreshExternalApprovalUI:updateExternalApprovalPanel,
  notice:message=>notice(String(message||'').slice(0,240))
 });
 async function status(){
