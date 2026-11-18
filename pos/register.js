@@ -962,7 +962,7 @@ function validEan8(data){
 by('generate-staff-badge').onclick=()=>{
  if(!window.crypto?.getRandomValues)return by('staff-badge-setup-message').textContent='Secure badge generation is unavailable.';
  const numbers=new Uint32Array(2);crypto.getRandomValues(numbers);
- const firstSeven=String((numbers[0]^numbers[1])%10000000).padStart(7,'0');
+ const firstSeven=String(((numbers[0]^numbers[1])>>>0)%10000000).padStart(7,'0');
  const code=validEan8(firstSeven);
  const field=by('staff-badge-setup-form').querySelector('[name=badge]');
  field.value=code;field.select();
