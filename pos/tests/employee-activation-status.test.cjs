@@ -21,7 +21,7 @@ test('employee owner setup shows step order and disables activation before serve
 test('owner slot status leaks no badge or email and checks the server',()=>{
  assert.match(statusSQL,/not public\.is_persen_admin\(\)/);
  assert.match(statusSQL,/where owner_id=v_uid and slot=p_slot/);
- assert.match(statusSQL,/u\.id<>v_uid/);
+ assert.match(statusSQL,/and id<>v_uid/);
  assert.match(statusSQL,/v_reserved:=found/);
  assert.match(statusSQL,/'reserved',v_reserved/);
  assert.match(statusSQL,/'emailConfirmed',v_confirmed/);
