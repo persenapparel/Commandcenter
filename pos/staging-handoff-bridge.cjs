@@ -141,6 +141,9 @@ function createStagingHandoffBridge({
   const proof=await adapter.verifyIdleBadge(badge);
   if(proof.verified!==true||proof.firstName!==cashier.firstName)
    throw Error('Original employee badge not verified');
+  // The badge RPC can outlive the shift expiry. Never reopen the register
+  // using a shift that expired while the network verification was pending.
+  assertReady();
   // Reopening must complete while the opaque overlay is still visible.
   // If inventory, network or initialization fails, keep the badge gate locked.
   const reopened=await unlockRegisterForNextSale();
