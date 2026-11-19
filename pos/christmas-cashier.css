@@ -388,3 +388,17 @@
     padding-top:0!important;
   }
 }
+
+/* Passive winter corner on the locked register welcome only.
+   The illustration is background paint, not an overlay or touch surface. */
+:root[data-pos-season="christmas"] .register-launch{
+  background-image:url("christmas-winter-corner.svg"),url("christmas-lights.svg"),linear-gradient(145deg,#fffefa 0%,#f0f8f0 78%,#fcefeb 100%);
+  background-position:right top,left bottom,center;
+  background-size:160px 100px,320px 30px,auto;
+  background-repeat:no-repeat,repeat-x,no-repeat;
+}
+@media (max-width:540px), (max-height:680px), (forced-colors:active), print{
+  :root[data-pos-season="christmas"] .register-launch{
+    background-image:none!important;
+  }
+}
