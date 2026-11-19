@@ -163,6 +163,15 @@
 <button id="test-staff-badge-pin" type="button" disabled>Test employee badge and PIN</button>
 <p class="hint">For this supervised staging test, the owner signs into the POS once. Staff use badge + PIN for their own restricted cashier shift. Do not leave an owner-signed browser unattended.</p>
 </form>
+<section id="staff-register-access" class="staff-register-access" hidden aria-labelledby="staff-register-access-title">
+  <h3 id="staff-register-access-title">Employee register access</h3>
+  <p class="hint">This controls the selected employee badge on this staging register only. Revoking access also ends this employee's active shifts, including any in-progress customer handoff.</p>
+  <p id="staff-register-access-status" role="status" aria-live="polite">Checking register access…</p>
+  <div class="staff-register-access-actions">
+    <button id="staff-grant-register" type="button" disabled>Allow this register</button>
+    <button id="staff-revoke-register" type="button" disabled>Revoke register access</button>
+  </div>
+</section>
 </dialog></main><dialog id="swivel-shift-dialog" class="swivel-shift-dialog" aria-labelledby="swivel-shift-title">
 <form id="swivel-shift-form" novalidate>
 <h2 id="swivel-shift-title">Start your shift</h2>

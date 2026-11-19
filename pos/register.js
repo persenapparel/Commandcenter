@@ -1014,17 +1014,49 @@ by('recover-unpaid-form').addEventListener('submit',async event=>{
 const badgeSetupDialog=by('staff-badge-setup-dialog');
 by('open-employee-badges').onclick=()=>window.PersenPOSRegister.openEmployeeBadgeSetup();
 by('close-staff-badge-setup').onclick=()=>badgeSetupDialog.close();
-let employeeSlotStatus=null;
+let employeeSlotStatus=null,permissionUpdatePending=false;
+function showEmployeeRegisterAccess(status){
+ const section=by('staff-register-access'),allow=by('staff-grant-register'),
+  revoke=by('staff-revoke-register'),display=by('staff-register-access-status');
+ const active=status?.activated===true;
+ section.hidden=!active;
+ allow.disabled=true;revoke.disabled=true;
+ if(!active)return;
+ const ready=typeof status?.staffId==='string'&&
+  /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(status.staffId)&&
+  typeof status.registerAllowed==='boolean'&&!!register?.id;
+ if(!ready){
+  display.textContent='Register permission controls need the reviewed staging database update. No permissions were changed.';
+  return;
+ }
+ const granted=status.registerAllowed===true;
+ display.textContent=granted
+  ?'This employee badge is allowed on this staging register.'
+  :'This employee badge is NOT allowed on this staging register.';
+ allow.disabled=granted;revoke.disabled=!granted;
+}
 async function refreshEmployeeSlotStatus(){
  const form=by('staff-badge-setup-form'),slot=Number(form.querySelector('[name=slot]').value),
   out=by('staff-setup-readiness'),save=by('save-staff-badge'),test=by('test-staff-badge-pin');
  employeeSlotStatus=null;save.disabled=true;test.disabled=true;
  out.textContent='Checking Employee '+slot+'…';
  try{
-  const status=await check(db.rpc('pos_owner_badge_slot_status',{p_slot:slot}));
+  if(!register?.id)throw Error('Active staging register required');
+  let status;
+  try{
+   status=await check(db.rpc('pos_owner_badge_slot_status',{p_slot:slot,p_register:register.id}));
+  }catch(error){
+   // Read-only legacy status is safe for displaying badges. Never use its
+   // user-ID permissions or the legacy six-argument enrollment RPC.
+   if(error?.code!=='PGRST202'&&
+      !/Could not find the function\s+(?:public\.)?pos_owner_badge_slot_status/i.test(String(error?.message||'')))
+    throw error;
+   status=await check(db.rpc('pos_owner_badge_slot_status',{p_slot:slot}));
+  }
   if(slot!==Number(form.querySelector('[name=slot]').value))return;
   if(!status||status.slot!==slot)throw Error('Employee setup status unavailable');
   employeeSlotStatus=status;
+  showEmployeeRegisterAccess(status);
   if(status.activated){
    out.textContent='Employee '+slot+' is active: '+status.firstName+'. Have them scan their badge and enter their PIN at Start Shift. No email is required.';
   }else{
@@ -1033,13 +1065,60 @@ async function refreshEmployeeSlotStatus(){
   save.disabled=!!status.reserved;
   test.disabled=!status.activated;
  }catch(_){
+  showEmployeeRegisterAccess(null);
   out.textContent='Cannot verify the employee badge slots. Saving is disabled until staging responds.';
  }
 }
+async function changeEmployeeRegisterAccess(allowed){
+ const form=by('staff-badge-setup-form'),slot=Number(form.querySelector('[name=slot]').value);
+ const snapshot=employeeSlotStatus;
+ const result=by('staff-register-access-status');
+ const allow=by('staff-grant-register'),revoke=by('staff-revoke-register');
+ if(permissionUpdatePending||!db||!user||!register?.id||snapshot?.slot!==slot||
+    snapshot?.activated!==true||typeof snapshot?.registerAllowed!=='boolean'||
+    !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(snapshot?.staffId||'')){
+  result.textContent='Employee register permission is unavailable. No access was changed.';
+  return;
+ }
+ if(snapshot.registerAllowed===allowed)return;
+ if(!allowed&&!window.confirm('Revoke this employee badge from the current register? All active shifts for this badge, including customer handoffs, will be ended.'))return;
+ permissionUpdatePending=true;
+ allow.disabled=true;revoke.disabled=true;
+ result.textContent='Verifying owner permission and updating this register…';
+ try{
+  const updated=await check(db.rpc('pos_owner_set_badge_register_access',{
+   p_register:register.id,p_staff_id:snapshot.staffId,p_allowed:allowed
+  }));
+  if(updated!==true)throw Error('Register permission change was not verified');
+  // Only refresh the selected employee. A slot change during the RPC must
+  // never apply the previous person's stale screen state to a new employee.
+  if(slot===Number(form.querySelector('[name=slot]').value)){
+   await refreshEmployeeSlotStatus();
+   by('staff-badge-setup-message').textContent=allowed
+    ?'Employee register access granted for this staging register only.'
+    :'Employee access revoked and active shifts invalidated. A new owner approval is required before future shifts.';
+  }
+ }catch(error){
+  result.textContent=error?.code==='PGRST202'
+   ?'The credential-scoped permission RPC needs the staging database update. No access was changed.'
+   :'Could not verify the owner permission update. No success was confirmed. Refresh before retrying.';
+  // Never restore stale enable/disable controls after a failed or ambiguous RPC.
+  employeeSlotStatus=null;
+  allow.disabled=true;revoke.disabled=true;
+ }finally{
+  permissionUpdatePending=false;
+  if(employeeSlotStatus&&slot===Number(form.querySelector('[name=slot]').value))
+   showEmployeeRegisterAccess(employeeSlotStatus);
+ }
+}
+by('staff-grant-register').addEventListener('click',()=>void changeEmployeeRegisterAccess(true));
+by('staff-revoke-register').addEventListener('click',()=>void changeEmployeeRegisterAccess(false));
 by('staff-badge-setup-form').querySelector('[name=slot]').addEventListener('change',()=>{
  const form=by('staff-badge-setup-form');
  for(const field of ['first_name','badge','pin','pin_confirm','owner_badge','owner_pin'])
   form.querySelector('[name='+field+']').value='';
+ employeeSlotStatus=null;
+ showEmployeeRegisterAccess(null);
  by('staff-badge-setup-message').textContent='New employee slot selected. Generate a fresh badge and PIN.';
  void refreshEmployeeSlotStatus();
 });
