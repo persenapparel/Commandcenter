@@ -87,3 +87,17 @@ test('Inventory Check also requires verified employee authorization',()=>{
  assert.throws(()=>h.context.openEmployeeMode('inventory'),/Employee shift is not active/);
  assert.equal(h.classes.contains('pos-register-closed'),true);
 });
+
+test('failed open restores Employee Home and previous mode instead of hiding controls',()=>{
+ const h=harness({hasSaleable:true});
+ h.context.document.body.dataset.employeeHome='true';
+ h.context.document.body.dataset.staffRole='owner';
+ // Simulate a denied or interrupted register open: the closed class stays.
+ h.classes.toggle=(name,on)=>{if(name!=='pos-register-closed'&&on)throw Error('Unexpected class');};
+ assert.throws(()=>h.context.openEmployeeMode('inventory'),/Register did not open/);
+ assert.equal(h.context.employeeMode,'sales');
+ assert.equal(h.context.document.body.dataset.employeeHome,'true');
+ assert.equal(h.context.document.body.dataset.staffRole,'owner');
+ assert.equal(h.context.document.body.dataset.employeeMode,undefined);
+ assert.deepEqual(h.state.modes,[]);
+});
