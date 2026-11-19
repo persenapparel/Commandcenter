@@ -72,6 +72,6 @@ for(const f of ['register.html','display.html','index.html','admin.html','invent
 }
 await writeFile(join(dest,'_headers'),'/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
 const commit=process.env.CF_PAGES_COMMIT_SHA;
-await writeFile(join(dest,'deployment.json'),JSON.stringify({environment:'staging',commit:/^[a-f0-9]{40}$/i.test(commit||'')?commit:null})+'\n');
+await writeFile(join(dest,'deployment.json'),JSON.stringify({environment:'staging',commit:/^[a-f0-9]{40}$/i.test(commit||'')?commit:null,guestEntryUrl:guestEntry,guestOrigin:new URL(guestEntry).origin})+'\n');
 // Root route now serves index.html (device dashboard); no redirect to cashier.
 console.log('Prepared isolated POS Pages output in '+dest);
