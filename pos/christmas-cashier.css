@@ -423,3 +423,15 @@
 @media(max-width:540px),(max-height:740px),(forced-colors:active),print{
  :root[data-pos-season="christmas"] .employee-home-actions::before{display:none!important}
 }
+
+/* Original static snowflakes painted behind cashier-stage header content.
+   Seasonal and decorative only; no hit areas or checkout state changes. */
+:root[data-pos-season="christmas"] .cashier-stage-header{
+ background-image:url("christmas-header-snowfall.svg"),linear-gradient(110deg,#103c30,#266047 70%,#963442);
+ background-repeat:repeat-x,no-repeat;
+ background-size:420px 64px,auto;
+ background-position:center top,center;
+}
+@media (forced-colors:active), print{
+ :root[data-pos-season="christmas"] .cashier-stage-header{background-image:none!important}
+}
