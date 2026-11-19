@@ -1061,12 +1061,20 @@ async function refreshEmployeeSlotStatus(){
   if(!status||status.slot!==slot)throw Error('Employee setup status unavailable');
   employeeSlotStatus=status;
   showEmployeeRegisterAccess(status);
-  if(status.activated){
+  // The register-scoped owner status RPC ships alongside credential-specific
+  // grants and the seven-argument enrollment RPC. Do not prompt an owner to
+  // enter badge/PIN secrets when the staging deployment is still on the
+  // legacy, owner-wide status contract.
+  const scopedReady=typeof status.registerAllowed==='boolean'&&
+   (status.staffId==null||/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(status.staffId));
+  if(!scopedReady){
+   out.textContent='Staging employee setup needs its reviewed register-scoped database update before new badges can be enrolled. Existing badges can still be tested.';
+  }else if(status.activated){
    out.textContent='Employee '+slot+' is active: '+status.firstName+'. Have them scan their badge and enter their PIN at Start Shift. No email is required.';
   }else{
    out.textContent='Employee '+slot+' is available. Enter a name, generate a badge, choose a PIN, then confirm with your owner badge and PIN.';
   }
-  save.disabled=!!status.reserved;
+  save.disabled=!scopedReady||!!status.reserved;
   test.disabled=!status.activated;
  }catch(_){
   showEmployeeRegisterAccess(null);
@@ -1153,7 +1161,8 @@ by('staff-badge-setup-form').addEventListener('submit',async event=>{
  const slot=Number(f.get('slot')),name=String(f.get('first_name')||'').trim(),
  badge=String(f.get('badge')||'').trim(),pin=String(f.get('pin')||''),
  confirm=String(f.get('pin_confirm')||'');
- if(!employeeSlotStatus||employeeSlotStatus.slot!==slot||employeeSlotStatus.reserved){
+ if(!employeeSlotStatus||employeeSlotStatus.slot!==slot||employeeSlotStatus.reserved||
+    typeof employeeSlotStatus.registerAllowed!=='boolean'){
   output.textContent='This employee slot is not available. Check the status before saving.';return;
  }
  if(!name||!/^[0-9]{8}$/.test(badge)||pin.length<6||pin!==confirm){
