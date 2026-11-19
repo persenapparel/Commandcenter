@@ -154,15 +154,17 @@ function renderQuickCatalog(){
  if(pinned.length&&!q&&chosenCategory==='All'){const hint=document.createElement('p');hint.className='quick-event-hint';hint.textContent='Showing '+pinned.length+' event products. Use Add products to change your selection.';host.append(hint)}
  const readyCount=stock.filter(readyToSell).length;
  by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
- by('open-register').disabled=readyCount===0;
+ // The employee shift and Inventory Check must remain accessible with an
+ // empty catalog. The Sales mode itself enforces priced, in-stock products.
+ by('open-register').disabled=!db||!user||!register;
 }
 function setRegisterOpen(open,verifiedBadge=false){
  if(!open&&checkout)return notice('Finish or cancel the open checkout before closing the register.');
- if(open&&employeeMode!=='inventory'&&!stock.some(readyToSell))return notice('First add at least one priced Sales Product. Inventory Check is still available from Employee Home.');
  if(open&&!verifiedBadge&&!window.PersenPOSSwivel?.canUseRegister?.()){
   window.PersenPOSSwivel?.requestRegisterOpen?.();
   return;
  }
+ if(open&&employeeMode!=='inventory'&&!stock.some(readyToSell))return notice('First add at least one priced Sales Product. Inventory Check is still available from Employee Home.');
  document.body.classList.toggle('pos-register-closed',!open);
  if(open)document.body.dataset.employeeHome='false';
  if(!open){employeeMode='sales';delete document.body.dataset.employeeMode;}
