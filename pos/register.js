@@ -1014,7 +1014,7 @@ by('recover-unpaid-form').addEventListener('submit',async event=>{
 const badgeSetupDialog=by('staff-badge-setup-dialog');
 by('open-employee-badges').onclick=()=>window.PersenPOSRegister.openEmployeeBadgeSetup();
 by('close-staff-badge-setup').onclick=()=>badgeSetupDialog.close();
-let employeeSlotStatus=null;
+let employeeSlotStatus=null,permissionUpdatePending=false;
 function showEmployeeRegisterAccess(status){
  const section=by('staff-register-access'),allow=by('staff-grant-register'),
   revoke=by('staff-revoke-register'),display=by('staff-register-access-status');
@@ -1049,7 +1049,7 @@ async function refreshEmployeeSlotStatus(){
    // Read-only legacy status is safe for displaying badges. Never use its
    // user-ID permissions or the legacy six-argument enrollment RPC.
    if(error?.code!=='PGRST202'&&
-      !/Could not find the function\\s+(?:public\\.)?pos_owner_badge_slot_status/i.test(String(error?.message||'')))
+      !/Could not find the function\s+(?:public\.)?pos_owner_badge_slot_status/i.test(String(error?.message||'')))
     throw error;
    status=await check(db.rpc('pos_owner_badge_slot_status',{p_slot:slot}));
   }
@@ -1074,7 +1074,7 @@ async function changeEmployeeRegisterAccess(allowed){
  const snapshot=employeeSlotStatus;
  const result=by('staff-register-access-status');
  const allow=by('staff-grant-register'),revoke=by('staff-revoke-register');
- if(!db||!user||!register?.id||snapshot?.slot!==slot||
+ if(permissionUpdatePending||!db||!user||!register?.id||snapshot?.slot!==slot||
     snapshot?.activated!==true||typeof snapshot?.registerAllowed!=='boolean'||
     !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(snapshot?.staffId||'')){
   result.textContent='Employee register permission is unavailable. No access was changed.';
@@ -1082,6 +1082,7 @@ async function changeEmployeeRegisterAccess(allowed){
  }
  if(snapshot.registerAllowed===allowed)return;
  if(!allowed&&!window.confirm('Revoke this employee badge from the current register? All active shifts for this badge, including customer handoffs, will be ended.'))return;
+ permissionUpdatePending=true;
  allow.disabled=true;revoke.disabled=true;
  result.textContent='Verifying owner permission and updating this register…';
  try{
@@ -1101,8 +1102,12 @@ async function changeEmployeeRegisterAccess(allowed){
   result.textContent=error?.code==='PGRST202'
    ?'The credential-scoped permission RPC needs the staging database update. No access was changed.'
    :'Could not verify the owner permission update. No success was confirmed. Refresh before retrying.';
+  // Never restore stale enable/disable controls after a failed or ambiguous RPC.
+  employeeSlotStatus=null;
+  allow.disabled=true;revoke.disabled=true;
  }finally{
-  if(slot===Number(form.querySelector('[name=slot]').value))
+  permissionUpdatePending=false;
+  if(employeeSlotStatus&&slot===Number(form.querySelector('[name=slot]').value))
    showEmployeeRegisterAccess(employeeSlotStatus);
  }
 }
