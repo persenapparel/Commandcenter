@@ -353,3 +353,18 @@
   background-image:none!important;padding-bottom:initial;
  }
 }
+
+/* Original holiday gift-ribbon footer for the employee four-choice Home.
+   It sits in normal flow below actions, never on top of buttons or PIN fields. */
+:root[data-pos-season="christmas"] .employee-home-actions::after{
+  content:"";display:block;grid-column:1/-1;
+  width:min(100%,360px);height:58px;margin:8px auto 0;
+  background:url("christmas-gift-ribbon.svg") center/contain no-repeat;
+  pointer-events:none;user-select:none;
+}
+@media(max-height:680px), (max-width:420px){
+  :root[data-pos-season="christmas"] .employee-home-actions::after{display:none}
+}
+@media(forced-colors:active), print{
+  :root[data-pos-season="christmas"] .employee-home-actions::after{display:none!important}
+}

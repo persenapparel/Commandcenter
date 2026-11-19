@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="58" viewBox="0 0 360 58" role="img" aria-label="Decorative holiday gift ribbon">
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M0 30H126M234 30H360" stroke="#b88a45" stroke-width="2" stroke-dasharray="3 8"/>
+<path d="M110 30q22-20 42 0-20 19-42 0Zm140 0q-22-20-42 0 20 19 42 0Z" fill="#a22c3a" stroke="#7c2330" stroke-width="1.6"/>
+<path d="M150 30q-20-25-1-24 18 1 31 24-18-3-30 0Zm60 0q20-25 1-24-18 1-31 24 18-3 30 0Z" fill="#19543d" stroke="#123e2e" stroke-width="1.5"/>
+<path d="M180 29v23" stroke="#b88a45" stroke-width="4"/>
+<rect x="163" y="24" width="34" height="18" rx="4" fill="#a22c3a" stroke="#7c2330" stroke-width="1.5"/>
+<path d="M180 24v18M163 32h34" stroke="#f2d9a0" stroke-width="3"/>
+<circle cx="180" cy="28" r="5" fill="#f2d9a0" stroke="#b88a45" stroke-width="1.4"/>
+<path d="m92 24 3 6-3 6-3-6Zm176 0 3 6-3 6-3-6Z" fill="#b88a45"/>
+</g></svg>
