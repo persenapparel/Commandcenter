@@ -12,3 +12,35 @@
 :root[data-pos-season="christmas"] .customer-checkout button:focus-visible,:root[data-pos-season="christmas"] input:focus-visible{outline:3px solid #b27824;outline-offset:3px}
 @media(max-width:520px){:root[data-pos-season="christmas"] #checkout:before{height:106px;background-size:auto 95px;background-position:right 6px center}:root[data-pos-season="christmas"] #checkout:after{top:24px;left:32px;width:48%;font-size:13px}}
 @media(prefers-reduced-motion:reduce){:root[data-pos-season="christmas"] *, :root[data-pos-season="christmas"] *:before,:root[data-pos-season="christmas"] *:after{animation:none!important;transition:none!important}}
+
+/* Original winter confetti: tiny static snow points, not an overlay on controls. */
+:root[data-pos-season="christmas"] body{
+  background-image:radial-gradient(circle at 15% 5%,#e7f3eb 0,transparent 38%),radial-gradient(circle at 90% 20%,#f9e9e8 0,transparent 35%),radial-gradient(circle,#b5d2c4 1.5px,transparent 2px),radial-gradient(circle,#e5c6a2 1px,transparent 2px);
+  background-size:auto,auto,78px 78px,113px 113px;
+  background-position:center,center,0 0,24px 39px;
+}
+:root[data-pos-season="christmas"] .guest-eyebrow,
+:root[data-pos-season="christmas"] .guest-section-tag{color:#245d46}
+:root[data-pos-season="christmas"] .guest-progress-track{background:#e5efe7;height:9px}
+:root[data-pos-season="christmas"] .guest-progress-fill{background:linear-gradient(90deg,#176047,#a82d39);min-width:0}
+:root[data-pos-season="christmas"] .guest-progress-label{color:#466454}
+:root[data-pos-season="christmas"] .guest-next{background:#175640;border-color:#175640!important;color:#fff;box-shadow:0 4px 0 #0e382a}
+:root[data-pos-season="christmas"] .guest-next:hover:not(:disabled){background:#104431}
+:root[data-pos-season="christmas"] .guest-back,
+:root[data-pos-season="christmas"] .guest-skip{background:#f6faf6;color:#164c3a;border-color:#b6d1be}
+:root[data-pos-season="christmas"] .guest-total-strip,
+:root[data-pos-season="christmas"] .guest-confirm-recap{background:#f0f7f0;border-color:#bfd7c5;color:#234c3d}
+:root[data-pos-season="christmas"] .guest-grand-total,
+:root[data-pos-season="christmas"] .guest-total-strip strong{color:#174b3c}
+:root[data-pos-season="christmas"] .guest-payment-option.selected,
+:root[data-pos-season="christmas"] .guest-payment-option:has(input:checked){background:#f0f8f1;border-color:#267452}
+:root[data-pos-season="christmas"] .guest-payment-option input,
+:root[data-pos-season="christmas"] .guest-check-row input{accent-color:#176047}
+:root[data-pos-season="christmas"] .guest-field-label input:focus{border-color:#176047;box-shadow:0 0 0 4px #d9ecdf}
+:root[data-pos-season="christmas"] .guest-dialpad-popup{background:#f4faf5;border-color:#c5dfcc}
+:root[data-pos-season="christmas"] .guest-dialkey{border-color:#b8d2c0;color:#174b3c}
+:root[data-pos-season="christmas"] .guest-dialkey:focus-visible{outline:3px solid #956319;outline-offset:3px}
+@media (max-width:520px){
+ :root[data-pos-season="christmas"] .guest-next{box-shadow:none}
+ :root[data-pos-season="christmas"] .customer-checkout{padding-inline:20px}
+}
