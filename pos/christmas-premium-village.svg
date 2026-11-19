@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 210" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Snowy evergreen village with glowing Christmas windows">
+<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#143f37"/><stop offset=".63" stop-color="#25634f"/><stop offset="1" stop-color="#e3ece7"/></linearGradient><linearGradient id="ground" x2="0" y2="1"><stop stop-color="#fffdfa"/><stop offset="1" stop-color="#d4e2db"/></linearGradient></defs>
+<rect width="1200" height="210" fill="url(#sky)"/><g fill="#f9e5b0"><circle cx="40" cy="26" r="2"/><circle cx="136" cy="53" r="2"/><circle cx="287" cy="20" r="2"/><circle cx="440" cy="52" r="2"/><circle cx="579" cy="19" r="2"/><circle cx="727" cy="47" r="2"/><circle cx="914" cy="20" r="2"/><circle cx="1046" cy="44" r="2"/><circle cx="1154" cy="25" r="2"/></g>
+<path d="M0 169Q185 109 356 163T780 159T1200 135V210H0Z" fill="#dce9e2"/>
+<g fill="#164638">
+<path d="M20 163l44-111 46 111zM72 162l25-71 30 71zM150 176l55-133 59 133zM246 170l38-102 43 102zM363 169l46-128 49 128zM450 167l28-82 30 82zM675 162l40-114 44 114zM760 165l27-78 32 78zM920 170l49-121 51 121zM1011 176l29-89 34 89zM1088 172l43-128 49 128z"/>
+</g>
+<g fill="#f5faf3" opacity=".94"><path d="M64 52l-17 40h35zM205 43l-18 43h36zM409 41l-15 37h30zM716 48l-14 38h28zM968 49l-17 42h34zM1131 44l-16 39h32z"/></g>
+<g transform="translate(515 62)">
+<rect x="0" y="62" width="139" height="99" rx="3" fill="#7b4539" stroke="#d5ab7c" stroke-width="3"/>
+<path d="M-15 68L69 1l87 67z" fill="#69352f" stroke="#d1a878" stroke-width="5"/>
+<path d="M-15 65L70-2l84 65" fill="none" stroke="#fcf8eb" stroke-width="10" stroke-linecap="round"/>
+<rect x="20" y="86" width="28" height="30" fill="#f3bd69" stroke="#8b583f" stroke-width="5"/><rect x="94" y="86" width="28" height="30" fill="#f3bd69" stroke="#8b583f" stroke-width="5"/>
+<rect x="60" y="104" width="27" height="58" fill="#5e3129" stroke="#d3a06e" stroke-width="4"/><circle cx="68" cy="134" r="3" fill="#f5c774"/>
+<circle cx="70" cy="49" r="18" fill="#f8ce7e" stroke="#e8af66" stroke-width="4"/>
+<path d="M70 32v34M53 49h34" stroke="#864d35" stroke-width="4"/>
+</g>
+<path d="M0 181Q220 155 374 182T763 179T1200 177V210H0z" fill="url(#ground)"/>
+<path d="M0 199Q180 170 300 204M863 205q185-32 337-6" stroke="#fff" stroke-width="15" stroke-linecap="round" fill="none" opacity=".8"/>
+</svg>

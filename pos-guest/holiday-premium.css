@@ -1,0 +1,137 @@
+/* Premium seasonal visuals for credential-free customer checkout.
+   Scoped to Christmas, decoration only, no checkout/payment logic. */
+:root[data-pos-season="christmas"] body {
+  background:url("/christmas-premium-village.svg") center bottom/auto 145px repeat-x,
+    radial-gradient(circle at 12% 9%,#e0eee3,transparent 40%),
+    radial-gradient(circle at 88% 12%,#f4e4e0,transparent 37%),#f7f5ed;
+  color:#183f32;
+}
+:root[data-pos-season="christmas"] header {
+  min-height:69px;background:linear-gradient(112deg,#0b3028,#19513d 72%,#702a39);
+  border-bottom:3px solid #d6b16d;box-shadow:0 9px 26px #0d3d2a2e;
+}
+:root[data-pos-season="christmas"] header strong{color:#fff8e9;letter-spacing:.14em}
+:root[data-pos-season="christmas"] header span{color:#f7deab}
+:root[data-pos-season="christmas"] #checkout{padding-top:14px;padding-bottom:120px}
+:root[data-pos-season="christmas"] #checkout::before {
+ content:"";display:block;width:min(100%,740px);height:172px;margin:0 auto -25px;
+ border:2px solid #d6b16d;border-bottom:0;border-radius:25px 25px 0 0;
+ background:url("/christmas-premium-reindeer.svg") right 20px bottom -14px/178px auto no-repeat,
+ url("/christmas-premium-village.svg") center bottom/auto 68px repeat-x,
+ linear-gradient(115deg,#0c312b,#1a5a43 80%,#2b5041);
+ box-shadow:0 16px 40px #0d34252e;pointer-events:none;
+}
+:root[data-pos-season="christmas"] #checkout::after{
+ content:"Merry Christmas from Persen Apparel";position:absolute;z-index:1;
+ left:max(calc((100% - 695px)/2),38px);top:48px;max-width:48%;width:350px;
+ font:700 clamp(22px,3vw,34px)/1.15 Georgia,"Times New Roman",serif;
+ letter-spacing:-.02em;text-shadow:0 3px 14px #061d178a;color:#fff9e7;pointer-events:none;
+}
+:root[data-pos-season="christmas"] .customer-checkout{
+ width:min(100%,740px);background:linear-gradient(150deg,#fffdf8,#fffaf0);
+ border:2px solid #d6b16d;border-top:0;border-radius:0 0 23px 23px;
+ box-shadow:0 25px 70px #173c3223;padding:clamp(24px,4vw,42px);color:#173c33;
+}
+:root[data-pos-season="christmas"] .customer-checkout h1{
+ font:700 clamp(29px,4.6vw,44px)/1.13 Georgia,"Times New Roman",serif;
+ letter-spacing:-.03em;color:#173f33;
+}
+:root[data-pos-season="christmas"] .guest-grand-total{
+ color:#942b3c;font-family:Georgia,"Times New Roman",serif;
+}
+:root[data-pos-season="christmas"] .guest-eyebrow,
+:root[data-pos-season="christmas"] .guest-section-tag{color:#8a3341;letter-spacing:.13em}
+:root[data-pos-season="christmas"] .guest-total-strip,
+:root[data-pos-season="christmas"] .guest-confirm-recap{
+ border:1px solid #d2ad6c;background:linear-gradient(110deg,#f6f0e1,#fffaf0);
+ color:#325843;box-shadow:inset 0 1px 0 #fff;
+}
+:root[data-pos-season="christmas"] .guest-total-strip strong,
+:root[data-pos-season="christmas"] .guest-confirm-recap strong{color:#8c2535}
+:root[data-pos-season="christmas"] .guest-progress-track{background:#e9e0cd;height:9px}
+:root[data-pos-season="christmas"] .guest-progress-fill{
+ background:linear-gradient(90deg,#154e38,#bd3c4c,#e0b969);
+}
+:root[data-pos-season="christmas"] .guest-items{border-color:#dec59a;background:#fffefa}
+:root[data-pos-season="christmas"] .guest-item{border-color:#ebdebf}
+:root[data-pos-season="christmas"] .guest-item-price{color:#8c2938;font-weight:800}
+:root[data-pos-season="christmas"] .guest-field-label{color:#204c3a}
+:root[data-pos-season="christmas"] .guest-field-label input{
+ background:#fffefa;color:#163e31;border-color:#d5c5a4;min-height:58px;
+}
+:root[data-pos-season="christmas"] .guest-field-label input:focus{
+ border-color:#a67639;box-shadow:0 0 0 4px #f1e5c8;
+}
+:root[data-pos-season="christmas"] .guest-next{
+ background:linear-gradient(110deg,#a22b3b,#752438);border:1px solid #d7af65!important;
+ box-shadow:0 4px 0 #62252b;color:#fff7e8;
+}
+:root[data-pos-season="christmas"] .guest-next:hover:not(:disabled){
+ background:linear-gradient(110deg,#b03344,#84273a);
+}
+:root[data-pos-season="christmas"] .guest-back,
+:root[data-pos-season="christmas"] .guest-skip{
+ background:#f8f1e3;border-color:#dbc6a0;color:#20513e;
+}
+:root[data-pos-season="christmas"] .guest-payment-option{
+ border:1.5px solid #dbc59b;border-radius:17px;background:linear-gradient(135deg,#fffdf7,#faf5ea);
+ box-shadow:0 5px 13px #183e2c12;min-height:86px;
+}
+:root[data-pos-season="christmas"] .guest-payment-option.selected,
+:root[data-pos-season="christmas"] .guest-payment-option:has(input:checked){
+ border:2px solid #962b3c;background:#fff5ef;box-shadow:0 0 0 3px #f2dcd7;
+}
+:root[data-pos-season="christmas"] .guest-choice-icon{
+ background:#f4ead5;color:#8a303e;border:1px solid #e2c899;
+}
+:root[data-pos-season="christmas"] .guest-choice-copy strong{color:#194836}
+:root[data-pos-season="christmas"] .guest-dialpad-popup{background:#fcf7e9;border-color:#d9c9a7}
+:root[data-pos-season="christmas"] .guest-dialkey{
+ background:#fffdf7;color:#174734;border-color:#ddc69d;box-shadow:0 3px 0 #e8dcc3;
+}
+:root[data-pos-season="christmas"] .guest-notice{
+ background:#eff5eb;color:#496552;border-left-color:#b79252;
+}
+:root[data-pos-season="christmas"] .customer-checkout :is(button,input):focus-visible{
+ outline:3px solid #b17b32;outline-offset:3px;
+}
+@media(max-width:600px){
+ :root[data-pos-season="christmas"] #checkout{padding:8px 10px 100px}
+ :root[data-pos-season="christmas"] #checkout::before{
+  height:117px;margin-bottom:-15px;border-radius:18px 18px 0 0;
+  background-size:117px auto,auto 50px,auto;background-position:right 7px bottom -7px,center bottom,center;
+ }
+ :root[data-pos-season="christmas"] #checkout::after{
+  top:27px;left:30px;width:54%;max-width:220px;font-size:clamp(18px,4vw,24px);
+ }
+ :root[data-pos-season="christmas"] .customer-checkout{
+  min-height:calc(100vh - 180px);border-radius:0 0 17px 17px;padding:21px 18px 28px;
+ }
+ :root[data-pos-season="christmas"] .guest-grand-total{font-size:clamp(41px,10vw,56px)}
+}
+@media(max-width:390px),(max-height:540px){
+ :root[data-pos-season="christmas"] #checkout::before{height:75px;background-size:82px auto,auto 35px,auto}
+ :root[data-pos-season="christmas"] #checkout::after{font-size:16px;top:21px;left:26px}
+}
+@media(prefers-reduced-motion:reduce){
+ :root[data-pos-season="christmas"] .guest-progress-fill,
+ :root[data-pos-season="christmas"] .guest-payment-option{transition:none!important}
+}
+@media(forced-colors:active),print{
+ :root[data-pos-season="christmas"] #checkout::before,
+ :root[data-pos-season="christmas"] #checkout::after{display:none!important}
+ :root[data-pos-season="christmas"] body{background-image:none!important}
+ :root[data-pos-season="christmas"] .customer-checkout{background:#fff!important}
+}
+
+/* Same official branded asset as cashier, copied onto credential-free origin. */
+:root[data-pos-season="christmas"] .guest-brand{display:flex;align-items:center;gap:12px;min-width:0}
+:root[data-pos-season="christmas"] .guest-brand-logo{
+ width:46px;height:46px;flex:none;object-fit:contain;
+ background:#fff8e7;padding:5px;border:1.5px solid #dcb775;
+ border-radius:12px;box-shadow:0 3px 12px #0b332a44;
+}
+@media(max-width:430px){
+ :root[data-pos-season="christmas"] .guest-brand-logo{width:39px;height:39px}
+ :root[data-pos-season="christmas"] .guest-brand{gap:8px}
+}

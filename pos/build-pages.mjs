@@ -15,17 +15,17 @@ if(parsed.protocol!=='https:'||!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(u
 if(parsed.hostname==='icxeuhkqxxhdkfdappio.supabase.co')throw Error('Refusing to build POS against production Supabase');
 if(!ciDryRun&&parsed.hostname!=='naaqcspvbntzdtwuchrr.supabase.co')throw Error('Refusing to build POS against an unapproved Supabase project');
 if(!key.startsWith('sb_publishable_'))throw Error('Use a staging publishable key, never a secret or service_role key');
-const dest='pos-dist';
-await mkdir(dest,{recursive:true});
-await mkdir(join(dest,'assets'),{recursive:true});
-await copyFile(join('assets','persen-logo.png'),join(dest,'assets','persen-logo.png'));
-await copyFile(join('pos','christmas-tree.svg'),join(dest,'christmas-tree.svg'));
-await copyFile(join('pos','christmas-garland.svg'),join(dest,'christmas-garland.svg'));
-for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashier.css','christmas-dashboard.css','christmas-dashboard.js','deployment-readiness.js','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','barcode-tender-model.js','register.js','swivel-mode.js','display.js','customer-guest-client.js','epson-center.js','epson-center.css','admin.css','admin.js','inventory.js','staff-test.css','staff-test.js']){
- await copyFile(join('pos',f),join(dest,f));
-}
-for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
-await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
+// Validate deployment identity before creating any output files, so an invalid
+// protected Pages build cannot leave behind a partial publishable artifact.
+const commit=process.env.CF_PAGES_COMMIT_SHA;
+// A protected Pages deployment must identify its exact source revision. Without
+// this, a successful build can publish an untraceable cashier/guest pairing.
+if(process.env.CF_PAGES && !/^[a-f0-9]{40}$/i.test(commit||''))
+ throw Error('Cloudflare POS staging build requires a valid CF_PAGES_COMMIT_SHA');
+// Never let a misconfigured Pages project publish the isolated cashier artifact.
+// Cloudflare provides CF_PAGES_PROJECT_NAME on its hosted build workers.
+if(process.env.CF_PAGES && process.env.CF_PAGES_PROJECT_NAME!=='persen-pos-staging')
+ throw Error('Refusing POS cashier build outside persen-pos-staging Cloudflare project');
 // Pinned customer build for CI only. Real protected deployments MUST name
 // the exact independently deployed guest preview; a stale default could point
 // at the wrong customer's release and block or misroute checkout.
@@ -41,6 +41,31 @@ function secureGuestEntry(value){
  return entry.href;
 }
 const guestEntry=secureGuestEntry(process.env.POS_GUEST_ENTRY_URL||guestFallback);
+// Guest origin and required pairing must be validated before creating publishable files.
+const dest='pos-dist';
+await mkdir(dest,{recursive:true});
+await mkdir(join(dest,'assets'),{recursive:true});
+await copyFile(join('assets','persen-logo.png'),join(dest,'assets','persen-logo.png'));
+// Include the original Christmas assets used by all of the employee screens.
+const christmasArtwork=[
+ 'christmas-tree.svg','christmas-garland.svg','christmas-snowflakes.svg',
+ 'christmas-lights.svg','christmas-gift-ribbon.svg','christmas-sales-trim.svg',
+ 'christmas-winter-corner.svg','christmas-home-stars.svg',
+ 'christmas-premium-santa.svg','christmas-premium-reindeer.svg','christmas-premium-village.svg'
+];
+const christmasCss=(await Promise.all([
+ readFile(join('pos','christmas-cashier.css'),'utf8'),
+ readFile(join('pos','christmas-premium.css'),'utf8')
+])).join('\n');
+const artworkReferences=[...christmasCss.matchAll(/url\(\s*['"]?(christmas-[a-z0-9-]+\.svg)['"]?\s*\)/g)].map(match=>match[1]);
+const missingArtwork=[...new Set(artworkReferences)].filter(name=>!christmasArtwork.includes(name));
+if(missingArtwork.length)throw Error('Missing Christmas artwork in cashier build: '+missingArtwork.join(', '));
+for(const file of christmasArtwork)await copyFile(join('pos',file),join(dest,file));
+for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashier.css','christmas-premium.css','christmas-dashboard.css','christmas-dashboard.js','deployment-readiness.js','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','barcode-tender-model.js','register.js','swivel-mode.js','display.js','customer-guest-client.js','epson-center.js','epson-center.css','admin.css','admin.js','inventory.js','staff-test.css','staff-test.js']){
+ await copyFile(join('pos',f),join(dest,f));
+}
+for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
+await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
 await writeFile(join(dest,'handoff-config.js'),
  `window.PersenPOSHandoffConfig=Object.freeze(${JSON.stringify({guestEntryUrl:guestEntry})});\n`);
 function bundleModule(source,resolver=''){
@@ -75,8 +100,33 @@ for(const f of ['register.html','display.html','index.html','admin.html','invent
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  await writeFile(join(dest,f),s);
 }
-await writeFile(join(dest,'_headers'),'/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
-const commit=process.env.CF_PAGES_COMMIT_SHA;
+await writeFile(join(dest,'_headers'),[
+ '/*',
+ '  X-Robots-Tag: noindex, nofollow',
+ '  X-Content-Type-Options: nosniff',
+ '  Referrer-Policy: no-referrer',
+ // Protect every employee navigation shell, including the root dashboard route.
+ '/',
+ '  Cache-Control: no-store',
+ '/index.html',
+ '  Cache-Control: no-store',
+ '/register.html',
+ '  Cache-Control: no-store',
+ '/display.html',
+ '  Cache-Control: no-store',
+ '/inventory.html',
+ '  Cache-Control: no-store',
+ '/admin.html',
+ '  Cache-Control: no-store',
+ '/staff-test.html',
+ '  Cache-Control: no-store',
+ '/deployment.json',
+ '  Cache-Control: no-store',
+ '/handoff-config.js',
+ '  Cache-Control: no-store',
+ '/config.js',
+ '  Cache-Control: no-store',
+ ''].join('\n'));
 await writeFile(join(dest,'deployment.json'),JSON.stringify({environment:'staging',commit:/^[a-f0-9]{40}$/i.test(commit||'')?commit:null,guestEntryUrl:guestEntry,guestOrigin:new URL(guestEntry).origin})+'\n');
 // Root route now serves index.html (device dashboard); no redirect to cashier.
 console.log('Prepared isolated POS Pages output in '+dest);

@@ -38,6 +38,7 @@ jobs:
           if [ -f pos/tests/employee-scoped-enrollment-preflight.test.cjs ]; then node --test pos/tests/employee-scoped-enrollment-preflight.test.cjs; fi
           if [ -f pos/tests/two-unique-sales-handoff.test.cjs ]; then node --test pos/tests/two-unique-sales-handoff.test.cjs; fi
           if [ -f pos/tests/staging-release-readiness-audit.test.cjs ]; then node --test pos/tests/staging-release-readiness-audit.test.cjs; fi
+          if [ -f pos/tests/staging-badge-migration-contract.test.cjs ]; then node --test pos/tests/staging-badge-migration-contract.test.cjs; fi
           if [ -f pos/tests/staging-deployment-guard.test.cjs ]; then node --test pos/tests/staging-deployment-guard.test.cjs; fi
       - name: Test Resend receipt worker with offline mock provider
         run: node pos/receipt-worker-smoke.cjs
@@ -48,6 +49,24 @@ jobs:
         run: node pos/build-pages.mjs
       - name: Verify cashier and isolated guest pairing manifest
         run: node pos/tests/deployment-guest-origin.cjs
+      - name: Verify Christmas artwork in both isolated staging artifacts
+        run: |
+          node pos/build-guest-pages.mjs
+          for image in christmas-tree.svg christmas-garland.svg christmas-snowflakes.svg christmas-lights.svg christmas-gift-ribbon.svg christmas-sales-trim.svg christmas-winter-corner.svg christmas-home-stars.svg christmas-premium-santa.svg christmas-premium-reindeer.svg christmas-premium-village.svg; do
+            test -s "pos-dist/$image" || { echo "Missing cashier Christmas asset: $image"; exit 1; }
+          done
+          for asset in holiday.css holiday.js holiday-tree.svg holiday-premium.css christmas-premium-reindeer.svg christmas-premium-village.svg; do
+            test -s "pos-guest-dist/$asset" || { echo "Missing guest Christmas asset: $asset"; exit 1; }
+          done
+          grep -q '/holiday.css' pos-guest-dist/index.html
+          grep -q '/holiday-premium.css' pos-guest-dist/index.html
+          grep -q 'christmas-premium.css' pos-dist/register.html
+          test -s pos-dist/christmas-premium.css
+          grep -q '/holiday.js' pos-guest-dist/index.html
+          grep -q "img-src 'self'" pos-guest-dist/_headers
+          test ! -e pos-guest-dist/config.js
+      - name: Verify actual Persen Apparel logo on every POS and guest screen
+        run: PERSEN_POS_BRAND_POSTBUILD=1 node --test pos/tests/branding-bundle-regression.test.cjs
       - name: Verify staging build cannot leak production database or draft SQL
         run: |
           test ! -e pos-dist/pos-schema-review.sql
