@@ -55,7 +55,8 @@ test('activated cashier slot stays reserved but can test existing badge',async()
  await h.ctx.refreshEmployeeSlotStatus();
  assert.equal(h.field('save-staff-badge').disabled,true);
  assert.equal(h.field('test-staff-badge-pin').disabled,false);
- assert.equal(h.access.length,1);
+ assert.equal(h.field('staff-register-access').hidden,false);
+ assert.match(h.field('staff-register-access-status').textContent,/allowed on this staging register/);
 });
 test('malformed or incomplete scoped response cannot enable enrollment',async()=>{
  const h=harness({status:{slot:1,reserved:false,activated:false,staffId:'not-a-uuid',registerAllowed:false}});
