@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 104" aria-hidden="true">
+  <defs>
+    <linearGradient id="pine" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#358765"/><stop offset="1" stop-color="#144d3b"/></linearGradient>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff4c2"/><stop offset="1" stop-color="#cc9b4c"/></linearGradient>
+    <linearGradient id="berry" x1="0" x2="1"><stop stop-color="#d44856"/><stop offset="1" stop-color="#942838"/></linearGradient>
+  </defs>
+  <path d="M0 13Q80 28 160 13T320 13T480 13T640 13" fill="none" stroke="#946835" stroke-width="4" stroke-linecap="round"/>
+  <g stroke="url(#pine)" stroke-width="8" stroke-linecap="round" fill="none">
+    <path d="M20 24l26 32m0-22 23 24m32-36 33 36m3-35 28 34m22-34 28 34m26-33 31 34m23-39 30 43m29-43 28 39m29-39 29 42m28-38 29 40m27-42 25 35m22-39 21 36"/>
+    <path d="M72 20 48 51m30-24-18 40m91-46-25 37m54-38-26 42m85-47-21 42m80-39-24 44m84-39-26 41m80-42-24 36m75-39-23 38m79-36-23 36m84-36-21 40"/>
+  </g>
+  <g stroke="#2d7353" stroke-width="5" stroke-linecap="round">
+    <path d="M44 36 24 48m34-14-12 37m72-35-24 18m38-14-16 34m80-43-16 28m45-31-12 37m72-31-21 27m45-34-14 37m76-42-18 27m41-28-12 34m69-35-23 22m35-20-10 27"/>
+  </g>
+  <g fill="url(#berry)" stroke="#7f2836" stroke-width="1.5">
+    <circle cx="98" cy="44" r="9"/><circle cx="108" cy="57" r="7"/><circle cx="93" cy="61" r="6"/>
+    <circle cx="322" cy="40" r="8"/><circle cx="331" cy="53" r="7"/><circle cx="316" cy="56" r="6"/>
+    <circle cx="545" cy="43" r="9"/><circle cx="554" cy="57" r="7"/><circle cx="539" cy="58" r="6"/>
+  </g>
+  <g stroke="#e8cc83" stroke-width="2" fill="none">
+    <path d="M202 25v31M424 23v35"/>
+    <path d="M194 55h16M416 57h16"/>
+  </g>
+  <g fill="url(#gold)" stroke="#a47838" stroke-width="1.5"><circle cx="202" cy="67" r="12"/><circle cx="424" cy="69" r="12"/></g>
+  <path d="M201 60v14m-7-7h14M423 61v15m-7-8h14" stroke="#fff7dd" stroke-width="1.8" stroke-linecap="round"/>
+  <g fill="#fff0bf"><circle cx="30" cy="20" r="3"/><circle cx="164" cy="18" r="3"/><circle cx="278" cy="18" r="3"/><circle cx="384" cy="18" r="3"/><circle cx="498" cy="20" r="3"/><circle cx="611" cy="20" r="3"/></g>
+</svg>

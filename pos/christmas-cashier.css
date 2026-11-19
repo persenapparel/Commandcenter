@@ -205,3 +205,43 @@
 :root[data-pos-season="christmas"] #staff-revoke-register:not(:disabled){border-color:#b66370;background:#fff7f5;color:#942e3f}
 @media(max-width:480px){.staff-register-access-actions{grid-template-columns:1fr}}
 @media print{.staff-register-access{display:none!important}}
+
+
+/* Original garland art: passive, seasonal decoration only. It never captures
+   taps/scans and cannot become a security or checkout overlay. */
+:root[data-pos-season="christmas"] .employee-home::before,
+:root[data-pos-season="christmas"] .register-launch::after{
+ height:30px;border-top:0;opacity:.95;
+ background:url("christmas-garland.svg") center top/auto 54px repeat-x;
+}
+:root[data-pos-season="christmas"] .swivel-shift-dialog form::before{
+ content:"";display:block;flex:none;width:min(100%,340px);height:49px;
+ margin:-12px auto 2px;pointer-events:none;
+ background:url("christmas-garland.svg") center/contain no-repeat;
+}
+:root[data-pos-season="christmas"] .swivel-unlock-form::before{
+ content:"";display:block;flex:none;align-self:center;
+ width:min(100%,300px);height:52px;
+ margin:0 0 7px;pointer-events:none;
+ background:url("christmas-garland.svg") center/contain no-repeat;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:active:not(:disabled){
+ transform:translateY(1px);
+}
+@media(max-height:680px){
+ :root[data-pos-season="christmas"] .swivel-unlock-form::before,
+ :root[data-pos-season="christmas"] .swivel-shift-dialog form::before{
+  display:none;
+ }
+}
+@media(max-width:450px){
+ :root[data-pos-season="christmas"] .swivel-unlock-form::before{
+  height:39px;width:min(100%,230px);
+ }
+}
+@media print{
+ :root[data-pos-season="christmas"] .swivel-unlock-form::before,
+ :root[data-pos-season="christmas"] .swivel-shift-dialog form::before{
+  display:none!important;
+ }
+}

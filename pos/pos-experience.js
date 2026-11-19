@@ -45,6 +45,15 @@ function daysUntilChristmas(now=new Date()){
  if(today>christmas)christmas=Date.UTC(year+1,11,25);
  return Math.round((christmas-today)/86400000);
 }
+/* After Christmas, show a holiday greeting instead of a nearly year-long
+   countdown while the seasonal theme is still active through December 31. */
+function christmasCountdownText(now=new Date()){
+ const date=new Date(now);
+ if(!Number.isFinite(date.getTime()))return '';
+ if(date.getMonth()===11&&date.getDate()>25)return '🎄 Happy Holidays!';
+ const days=daysUntilChristmas(date);
+ return days===0?'🎄 Merry Christmas!':`🎄 ${days} ${days===1?'day':'days'} until Christmas`;
+}
 /* Respect active campaigns; otherwise use a local, staging-only Christmas
    fallback during the holiday season. Simple mode always wins. */
 function automaticHoliday(now=new Date()){
@@ -80,16 +89,16 @@ function apply(doc,campaign){
  const countdownAnchor=doc.querySelector('.experience-overline');
  const priorCountdown=doc.getElementById(countdownId);
  if(!simple&&p.key==='christmas'&&countdownAnchor){
-  const days=daysUntilChristmas();
-  if(days!==null){
+  const countdownText=christmasCountdownText();
+  if(countdownText){
    const countdown=priorCountdown||doc.createElement('p');
    if(!priorCountdown){countdown.id=countdownId;countdown.className='pos-christmas-countdown';countdownAnchor.insertAdjacentElement('afterend',countdown)}
-   countdown.textContent=days===0?'🎄 Merry Christmas!':`🎄 ${days} ${days===1?'day':'days'} until Christmas`;
+   countdown.textContent=countdownText;
   }
  }else{priorCountdown?.remove()}
  return p;
 }
 function mountControls(doc){if(doc.getElementById('pos-appearance-control'))return;const control=doc.createElement('label');control.id='pos-appearance-control';control.className='pos-appearance-control';const title=doc.createElement('span');title.textContent='Appearance';const select=doc.createElement('select');select.setAttribute('aria-label','POS appearance');for(const [value,label] of [['auto','Automatic holiday'],['simple','Simple black'],...Object.entries(presets).filter(([k])=>k!=='default').map(([k,v])=>[k,v.name])]){const option=doc.createElement('option');option.value=value;option.textContent=label;select.append(option)}select.value=mode();select.addEventListener('change',()=>setMode(select.value));control.append(title,select);doc.body.append(control);apply(doc,window.__persenPosCampaign||null)}
 if(typeof document!=='undefined'){const init=()=>{if(!document.body)return;const customer=!!document.body.classList.contains('kiosk-body');if(customer)apply(document,window.__persenPosCampaign||null);else mountControls(document)};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init()}
-return {presets,presetFor,palette,apply,mode,setMode,mountControls,daysUntilChristmas};
+return {presets,presetFor,palette,apply,mode,setMode,mountControls,daysUntilChristmas,christmasCountdownText};
 });
