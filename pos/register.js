@@ -1103,9 +1103,16 @@ by('staff-badge-setup-form').addEventListener('submit',async event=>{
   await refreshEmployeeSlotStatus();
  }catch(err){
   const text=String(err?.message||'');
-  output.textContent=text.includes('No active staging register')
-   ?'No active staging register was found. Open the staging register first.'
-   :'Unable to save the employee badge. No permissions were changed. Check your owner badge and PIN.';
+  // PostgREST PGRST202 signals that the reviewed register-scoped enrollment
+  // function is not installed in staging. Do not mislabel this as a duplicate
+  // badge, and never fall back to the legacy owner-wide six-argument RPC.
+  const migrationMissing=err?.code==='PGRST202'||
+    /Could not find the function\s+(?:public\.)?pos_owner_enroll_badge/i.test(text);
+  output.textContent=migrationMissing
+   ?'Employee badge enrollment needs a staging database update. No badge was activated. Owner: install the reviewed register-scoped enrollment migration first.'
+   :text.includes('No active staging register')
+    ?'No active staging register was found. Open the staging register first.'
+    :'Unable to save the employee badge. No permissions were changed. Check your owner badge and PIN.';
   await refreshEmployeeSlotStatus();
  }finally{
   for(const field of ['pin','pin_confirm','owner_badge','owner_pin'])
