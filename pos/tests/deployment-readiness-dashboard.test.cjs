@@ -27,6 +27,7 @@ assert.match(markup,/src="deployment-readiness\.js"/);
 assert.match(build,/'deployment-readiness\.js'/);
 assert.doesNotMatch(source,/localStorage|sessionStorage|service_role|supabase\.auth|password|Authorization:/i);
 async function fakeUI(){
+ globalThis.PersenPOSHandoffConfig=client;
  const fields=new Map(['staging-readiness-status','staging-readiness-commit','staging-readiness-guest'].map(id=>[id,{textContent:''}]));
  const document={getElementById:id=>fields.get(id)||null};
  await mount(document,async()=>({ok:true,json:async()=>valid}));
