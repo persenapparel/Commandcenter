@@ -154,15 +154,17 @@ function renderQuickCatalog(){
  if(pinned.length&&!q&&chosenCategory==='All'){const hint=document.createElement('p');hint.className='quick-event-hint';hint.textContent='Showing '+pinned.length+' event products. Use Add products to change your selection.';host.append(hint)}
  const readyCount=stock.filter(readyToSell).length;
  by('launch-product-count').textContent=readyCount+' ready-to-sell size'+(readyCount===1?'':'s')+' available';
- by('open-register').disabled=readyCount===0;
+ // The employee shift and Inventory Check must remain accessible with an
+ // empty catalog. The Sales mode itself enforces priced, in-stock products.
+ by('open-register').disabled=!db||!user||!register;
 }
 function setRegisterOpen(open,verifiedBadge=false){
  if(!open&&checkout)return notice('Finish or cancel the open checkout before closing the register.');
- if(open&&!stock.some(readyToSell))return notice('First add at least one priced Sales Product.');
  if(open&&!verifiedBadge&&!window.PersenPOSSwivel?.canUseRegister?.()){
   window.PersenPOSSwivel?.requestRegisterOpen?.();
   return;
  }
+ if(open&&employeeMode!=='inventory'&&!stock.some(readyToSell))return notice('First add at least one priced Sales Product. Inventory Check is still available from Employee Home.');
  document.body.classList.toggle('pos-register-closed',!open);
  if(open)document.body.dataset.employeeHome='false';
  if(!open){employeeMode='sales';delete document.body.dataset.employeeMode;}
@@ -410,8 +412,8 @@ function reopenRegisterAfterVerifiedBadge(){
  // dropping straight into a new cart.
  if(!db||!user||!register||busy||checkout||pendingCash)
   throw Error('Next-sale register is not ready');
- if(!stock.some(readyToSell))
-  throw Error('No ready-to-sell products available for the next sale');
+ // Employee Home and Inventory Check remain available even when stock is
+ // empty or every product is sold out. Sales itself still requires stock.
  setRegisterOpen(false,true);
  if(!document.body.classList.contains('pos-register-closed'))
   throw Error('Register did not return to the employee home after badge verification');
@@ -436,6 +438,8 @@ function openEmployeeMode(mode){
   throw Error('Employee shift is not active');
  if(checkout||pendingCash)throw Error('Finish or cancel the current checkout first');
  if(mode!=='sales'&&mode!=='inventory')throw Error('Unknown employee action');
+ if(mode==='sales'&&!stock.some(readyToSell))
+  throw Error('No priced, in-stock Sales Products available. Choose Inventory Check or add products before starting a sale.');
  const previousMode=employeeMode;
  employeeMode=mode;
  document.body.dataset.employeeHome='false';
