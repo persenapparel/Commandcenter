@@ -15,6 +15,13 @@ if(parsed.protocol!=='https:'||!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(u
 if(parsed.hostname==='icxeuhkqxxhdkfdappio.supabase.co')throw Error('Refusing to build POS against production Supabase');
 if(!ciDryRun&&parsed.hostname!=='naaqcspvbntzdtwuchrr.supabase.co')throw Error('Refusing to build POS against an unapproved Supabase project');
 if(!key.startsWith('sb_publishable_'))throw Error('Use a staging publishable key, never a secret or service_role key');
+// Validate deployment identity before creating any output files, so an invalid
+// protected Pages build cannot leave behind a partial publishable artifact.
+const commit=process.env.CF_PAGES_COMMIT_SHA;
+// A protected Pages deployment must identify its exact source revision. Without
+// this, a successful build can publish an untraceable cashier/guest pairing.
+if(process.env.CF_PAGES && !/^[a-f0-9]{40}$/i.test(commit||''))
+ throw Error('Cloudflare POS staging build requires a valid CF_PAGES_COMMIT_SHA');
 const dest='pos-dist';
 await mkdir(dest,{recursive:true});
 await mkdir(join(dest,'assets'),{recursive:true});
@@ -87,11 +94,6 @@ await writeFile(join(dest,'_headers'),[
  '/config.js',
  '  Cache-Control: no-store',
  ''].join('\n'));
-const commit=process.env.CF_PAGES_COMMIT_SHA;
-// A protected Pages deployment must identify its exact source revision. Without
-// this, a successful build can publish an untraceable cashier/guest pairing.
-if(process.env.CF_PAGES && !/^[a-f0-9]{40}$/i.test(commit||''))
- throw Error('Cloudflare POS staging build requires a valid CF_PAGES_COMMIT_SHA');
 await writeFile(join(dest,'deployment.json'),JSON.stringify({environment:'staging',commit:/^[a-f0-9]{40}$/i.test(commit||'')?commit:null,guestEntryUrl:guestEntry,guestOrigin:new URL(guestEntry).origin})+'\n');
 // Root route now serves index.html (device dashboard); no redirect to cashier.
 console.log('Prepared isolated POS Pages output in '+dest);
