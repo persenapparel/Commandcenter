@@ -39,7 +39,7 @@ test('register opening fails closed without runtime and routes event opening thr
  const src=fs.readFileSync('pos/register.js','utf8');
  const fn=src.slice(src.indexOf('function setRegisterOpen('),src.indexOf("by('open-register').onclick"));
  const effects=[];const runtime={canUseRegister:()=>false,requestRegisterOpen:()=>effects.push('gate')};
- const context=vm.createContext({window:{PersenPOSSwivel:runtime},checkout:null,stock:[{}],readyToSell:()=>true,notice(){},document:{body:{dataset:{},classList:{toggle:()=>effects.push('open')}}},sessionStorage:{setItem(){}},queueCustomerPreview(){}});
+ const context=vm.createContext({window:{PersenPOSSwivel:runtime},checkout:null,stock:[{}],employeeMode:'sales',readyToSell:()=>true,notice(){},document:{body:{dataset:{},classList:{toggle:()=>effects.push('open')}}},sessionStorage:{setItem(){}},queueCustomerPreview(){}});
  vm.runInContext(fn,context);context.setRegisterOpen(true);assert.deepEqual(effects,['gate']);
  context.window.PersenPOSSwivel=undefined;context.setRegisterOpen(true);assert.deepEqual(effects,['gate']);
  context.window.PersenPOSSwivel={canUseRegister:()=>true};context.setRegisterOpen(true);assert.deepEqual(effects,['gate','open']);
