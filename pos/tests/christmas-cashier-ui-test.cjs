@@ -19,7 +19,7 @@ assert.match(css, /url\("christmas-tree\.svg"\)/, 'seasonal artwork must be refe
 assert.match(css, /prefers-reduced-motion:reduce/, 'seasonal motion must be optional');
 assert.match(css, /\[data-pos-season="christmas"\]/, 'styles must not leak into other seasonal themes');
 assert.match(art, /^<svg[\s\S]*<\/svg>\s*$/, 'holiday illustration should be a standalone SVG');
-assert.doesNotMatch(art, /<script|<foreignObject|https?:\/\//i, 'art must not embed scripts or external content');
+assert.doesNotMatch(art, /<script|<foreignObject|(?:href|xlink:href)=["']https?:/i, 'art must not embed scripts or external content');
 
 function checkAppearance(dateIso, appearance, campaign, expectedSeason) {
   class MockDate extends Date {
