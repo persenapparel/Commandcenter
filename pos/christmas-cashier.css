@@ -368,3 +368,23 @@
 @media(forced-colors:active), print{
   :root[data-pos-season="christmas"] .employee-home-actions::after{display:none!important}
 }
+
+/* Passive seasonal Sales toolbar trim. Reserve its own 12px strip so no
+   barcode, totals, controls or tap targets are covered. */
+:root[data-pos-season="christmas"] .quick-toolbar{
+  background-image:url("christmas-sales-trim.svg");
+  background-position:left top;
+  background-size:360px 12px;
+  background-repeat:repeat-x;
+  padding-top:max(12px,env(safe-area-inset-top,0px));
+}
+@media (max-height:680px), (forced-colors:active), print{
+  :root[data-pos-season="christmas"] .quick-toolbar{
+    background-image:none!important;
+  }
+}
+@media print{
+  :root[data-pos-season="christmas"] .quick-toolbar{
+    padding-top:0!important;
+  }
+}
