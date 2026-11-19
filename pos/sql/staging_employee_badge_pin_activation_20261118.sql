@@ -65,7 +65,7 @@ grant execute on function public.pos_owner_test_pending_employee_badge(integer,t
 -- The pending badge can activate ONLY if employee owns a *different*,
 -- email-confirmed staging auth account. Owner's private badge+PIN required.
 create or replace function public.pos_owner_activate_pending_employee_badge(
- p_slot integer,p_owner_badge text,p_owner_pin text
+ p_slot integer,p_owner_badge text,p_owner_pin text,p_register_id uuid
 ) returns jsonb
 language plpgsql security definer set search_path=''
 as $$
@@ -105,6 +105,12 @@ begin
  select * into v_pending from public.pos_pending_employee_badges
  where owner_id=v_uid and slot=p_slot for update;
  if not found then raise exception 'Employee badge slot not found'; end if;
+ if p_register_id is null or not exists (
+   select 1 from public.pos_registers r
+   where r.id=p_register_id and r.owner_id=v_uid and r.active=true
+ ) then
+   raise exception 'Active owned staging register required';
+ end if;
  select u.id into v_user from auth.users u
  where lower(u.email)=v_pending.employee_email
    and u.email_confirmed_at is not null and u.id<>v_uid;
@@ -123,7 +129,7 @@ begin
  insert into public.pos_staff_register_grants(
    register_id,staff_id,owner_id,granted_by,active)
  select id,v_staff_id,v_uid,v_uid,true from public.pos_registers
- where owner_id=v_uid and active=true;
+ where id=p_register_id and owner_id=v_uid and active=true;
  get diagnostics v_affected=row_count;
  if v_affected<1 then raise exception 'Active staging register required'; end if;
  delete from public.pos_pending_employee_badges
@@ -136,9 +142,11 @@ begin
   'role','cashier','firstName',v_pending.first_name);
 end;
 $$;
-revoke all on function public.pos_owner_activate_pending_employee_badge(integer,text,text)
+-- Remove the legacy three-argument entrypoint: it could grant every active register.
+drop function if exists public.pos_owner_activate_pending_employee_badge(integer,text,text);
+revoke all on function public.pos_owner_activate_pending_employee_badge(integer,text,text,uuid)
  from public,anon,authenticated;
-grant execute on function public.pos_owner_activate_pending_employee_badge(integer,text,text)
+grant execute on function public.pos_owner_activate_pending_employee_badge(integer,text,text,uuid)
  to authenticated;
 
 -- Employees test their credentials with their *own* staging auth JWT.
