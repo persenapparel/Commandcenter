@@ -183,3 +183,25 @@
 @media (prefers-reduced-motion:reduce){
  :root[data-pos-season="christmas"] #recover-unpaid-dialog::backdrop{backdrop-filter:none}
 }
+
+
+/* Staff permission controls are owner-verified on the server, not by theme. */
+.staff-register-access{
+ margin-top:18px;padding:18px;border:1px solid #b7cbe0;
+ background:#f4f8fc;border-radius:16px;color:#173d61;
+}
+.staff-register-access[hidden]{display:none!important}
+.staff-register-access h3{margin:0 0 8px;font-size:18px}
+.staff-register-access p{line-height:1.5;font-size:13px}
+.staff-register-access-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.staff-register-access-actions button{min-height:50px;padding:12px;border-radius:11px;font-weight:800;border:1px solid #9bb7d0;background:#fff;color:#173e65}
+.staff-register-access-actions button:disabled{opacity:.55;cursor:not-allowed}
+.staff-register-access-actions button:focus-visible{outline:3px solid #bd8b42;outline-offset:3px}
+#staff-revoke-register:not(:disabled){color:#8d2637;border-color:#d5a5aa}
+:root[data-pos-season="christmas"] .staff-register-access{
+ background:linear-gradient(135deg,#f8fdf8,#fff9ef);border-color:#d9ba75;color:#194c38;
+}
+:root[data-pos-season="christmas"] .staff-register-access-actions button{border-color:#b7d3bd;color:#194c38}
+:root[data-pos-season="christmas"] #staff-revoke-register:not(:disabled){border-color:#b66370;background:#fff7f5;color:#942e3f}
+@media(max-width:480px){.staff-register-access-actions{grid-template-columns:1fr}}
+@media print{.staff-register-access{display:none!important}}
