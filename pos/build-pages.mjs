@@ -26,9 +26,12 @@ for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashi
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
 await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
-// Pinned customer build verified with staging-only framing CSP and CORS.
-// An explicit POS_GUEST_ENTRY_URL from Cloudflare always takes precedence.
+// Pinned customer build for CI only. Real protected deployments MUST name
+// the exact independently deployed guest preview; a stale default could point
+// at the wrong customer's release and block or misroute checkout.
 const guestFallback='https://7d86da09.commandcenter-4yg.pages.dev/pos-guest/';
+if(!ciDryRun&&!process.env.POS_GUEST_ENTRY_URL)
+ throw Error('Staging deployment blocked: set POS_GUEST_ENTRY_URL to the verified isolated guest preview');
 function secureGuestEntry(value){
  const entry=new URL(value),host=entry.hostname.toLowerCase();
  if(entry.protocol!=='https:'||entry.username||entry.password||entry.search||entry.hash||
@@ -72,8 +75,23 @@ for(const f of ['register.html','display.html','index.html','admin.html','invent
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  await writeFile(join(dest,f),s);
 }
-await writeFile(join(dest,'_headers'),'/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
+await writeFile(join(dest,'_headers'),[
+ '/*',
+ '  X-Robots-Tag: noindex, nofollow',
+ '  X-Content-Type-Options: nosniff',
+ '  Referrer-Policy: no-referrer',
+ '/deployment.json',
+ '  Cache-Control: no-store',
+ '/handoff-config.js',
+ '  Cache-Control: no-store',
+ '/config.js',
+ '  Cache-Control: no-store',
+ ''].join('\n'));
 const commit=process.env.CF_PAGES_COMMIT_SHA;
+// A protected Pages deployment must identify its exact source revision. Without
+// this, a successful build can publish an untraceable cashier/guest pairing.
+if(process.env.CF_PAGES && !/^[a-f0-9]{40}$/i.test(commit||''))
+ throw Error('Cloudflare POS staging build requires a valid CF_PAGES_COMMIT_SHA');
 await writeFile(join(dest,'deployment.json'),JSON.stringify({environment:'staging',commit:/^[a-f0-9]{40}$/i.test(commit||'')?commit:null,guestEntryUrl:guestEntry,guestOrigin:new URL(guestEntry).origin})+'\n');
 // Root route now serves index.html (device dashboard); no redirect to cashier.
 console.log('Prepared isolated POS Pages output in '+dest);

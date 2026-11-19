@@ -441,15 +441,27 @@ function openEmployeeMode(mode){
  if(mode==='sales'&&!stock.some(readyToSell))
   throw Error('No priced, in-stock Sales Products available. Choose Inventory Check or add products before starting a sale.');
  const previousMode=employeeMode;
+ const previousHome=document.body.dataset.employeeHome;
+ const previousDatasetMode=document.body.dataset.employeeMode;
+ const previousStaffRole=document.body.dataset.staffRole;
  employeeMode=mode;
  document.body.dataset.employeeHome='false';
  document.body.dataset.employeeMode=mode;
  document.body.dataset.staffRole=activeStaffRole();
- setRegisterOpen(true,true);
- if(document.body.classList.contains('pos-register-closed')){
+ try{
+  setRegisterOpen(true,true);
+  if(document.body.classList.contains('pos-register-closed'))
+   throw Error('Register did not open after employee authorization');
+ }catch(error){
+  // Preserve Employee Home if a verified register open fails.
   employeeMode=previousMode;
-  document.body.dataset.employeeMode=previousMode;
-  throw Error('Register did not open after employee authorization');
+  for(const [key,value] of Object.entries({
+   employeeHome:previousHome,employeeMode:previousDatasetMode,staffRole:previousStaffRole
+  })){
+   if(value===undefined)delete document.body.dataset[key];
+   else document.body.dataset[key]=value;
+  }
+  throw error;
  }
  if(mode==='inventory')setScanMode('inventory');
  else setScanMode('sell');
