@@ -62,6 +62,20 @@ test('Sales opens when products are available and badge is authorized',()=>{
  assert.equal(h.classes.contains('pos-register-closed'),false);
  assert.deepEqual(h.state.modes,['sell']);
 });
+test('Initial Open Register requests employee badge even if inventory is empty',()=>{
+ const h=harness({hasSaleable:false,authorized:false});
+ h.context.setRegisterOpen(true);
+ assert.equal(h.classes.contains('pos-register-closed'),true);
+ assert.deepEqual(h.state.requests,['badge']);
+ assert.deepEqual(h.state.notices,[]);
+});
+test('Signed-in Sales remains blocked with empty stock',()=>{
+ const h=harness({hasSaleable:false,authorized:true});
+ h.context.setRegisterOpen(true);
+ assert.equal(h.classes.contains('pos-register-closed'),true);
+ assert.match(h.state.notices[0],/First add at least one priced Sales Product/);
+});
+
 test('No employee may bypass the badge gate to open a register',()=>{
  const h=harness({hasSaleable:true,authorized:false});
  h.context.setRegisterOpen(true);
