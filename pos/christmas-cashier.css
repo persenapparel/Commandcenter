@@ -1,0 +1,147 @@
+/* Persen POS staging — original Christmas cashier artwork.
+   Decorative CSS only: no auth, cart, payment, register, or handoff logic. */
+:root[data-pos-season="christmas"]{
+ --holiday-pine:#174b3c;--holiday-berry:#a82d39;
+ --holiday-gold:#d3a858;--holiday-cream:#fffaf0;
+}
+:root[data-pos-season="christmas"] body{
+ background:radial-gradient(ellipse at 8% 7%,#e3f2e6,transparent 36%),
+ radial-gradient(ellipse at 94% 11%,#faebeb,transparent 30%),#f8faf6;
+}
+:root[data-pos-season="christmas"] body>header{
+ background:linear-gradient(112deg,#102f29 0%,#1b5944 67%,#7e2e39 100%);
+ border-bottom:3px solid var(--holiday-gold);
+}
+:root[data-pos-season="christmas"] body>header strong span{color:#f4d596}
+:root[data-pos-season="christmas"] .employee-home,
+:root[data-pos-season="christmas"] .register-launch{
+ position:relative;isolation:isolate;
+ background:linear-gradient(145deg,#fffefa 0%,#f0f8f0 78%,#fcefeb 100%);
+ border:2px solid #d6b977;
+ box-shadow:0 18px 46px #1947341b;
+ overflow:hidden;
+}
+:root[data-pos-season="christmas"] .employee-home::before,
+:root[data-pos-season="christmas"] .register-launch::after{
+ content:"";position:absolute;inset:0 0 auto;height:14px;
+ pointer-events:none;z-index:0;
+ background:radial-gradient(ellipse at 15px 0,#285f43 14px,transparent 15px) 0 0/38px 15px repeat-x;
+ border-top:3px solid #d4ad5b;
+}
+:root[data-pos-season="christmas"] .employee-home>*,
+:root[data-pos-season="christmas"] .register-launch>*{position:relative;z-index:1}
+:root[data-pos-season="christmas"] .employee-home-brand{
+ display:grid;grid-template-columns:66px minmax(0,1fr) 154px;
+ align-items:center;gap:16px;text-align:left;
+ border-bottom:1px solid #d7e5d8;padding:8px 0 16px;
+}
+:root[data-pos-season="christmas"] .employee-home-brand::after{
+ content:"";display:block;width:154px;height:140px;
+ background:url("christmas-tree.svg") center/contain no-repeat;
+ pointer-events:none;
+}
+:root[data-pos-season="christmas"] .employee-home-brand img{
+ width:66px;height:66px;border-radius:14px;
+ background:#fff;padding:4px;border:1px solid #d5e4d6;
+}
+:root[data-pos-season="christmas"] .employee-home-brand .eyebrow,
+:root[data-pos-season="christmas"] .employee-home-role{color:#356650}
+:root[data-pos-season="christmas"] .employee-home-brand h2{color:#173d32}
+:root[data-pos-season="christmas"] .employee-home-idle{
+ margin:12px 0;color:#a7283a;
+}
+:root[data-pos-season="christmas"] .employee-home-idle time{color:#174b3c}
+:root[data-pos-season="christmas"] .employee-home-intro{color:#466c5c}
+:root[data-pos-season="christmas"] .employee-home-actions button{
+ position:relative;min-height:130px;
+ background:linear-gradient(145deg,#fffef9,#f4f9f3);
+ border:2px solid #c5dccb;color:#174b3c;
+ box-shadow:0 5px 15px #154c3714;
+ transition:transform .16s ease,border-color .16s ease,background .16s ease;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button::after{
+ content:"✦";position:absolute;top:11px;right:16px;color:#bd9250;font-size:17px;pointer-events:none;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:hover:not(:disabled){
+ transform:translateY(-2px);background:#fff8ec;border-color:#bc9750;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:focus-visible,
+:root[data-pos-season="christmas"] .quick-product:focus-visible,
+:root[data-pos-season="christmas"] .swivel-unlock-form input:focus-visible,
+:root[data-pos-season="christmas"] .swivel-shift-dialog input:focus-visible{
+ outline:3px solid #98651f;outline-offset:3px;
+}
+:root[data-pos-season="christmas"] .employee-home-actions small{color:#4d705d}
+:root[data-pos-season="christmas"] .employee-home-status{color:#24523e}
+:root[data-pos-season="christmas"] .register-launch::before{
+ content:"";display:block;margin:0 auto 8px;width:190px;height:142px;
+ background:url("christmas-tree.svg") center/contain no-repeat;pointer-events:none;
+}
+:root[data-pos-season="christmas"] .register-launch h2{color:#184c38}
+:root[data-pos-season="christmas"] .register-launch p{color:#466557}
+:root[data-pos-season="christmas"] .register-launch .primary{
+ background:linear-gradient(110deg,#a42b3a,#812637);color:#fff;border:1px solid #923344;
+}
+:root[data-pos-season="christmas"] .quick-toolbar{
+ background:linear-gradient(110deg,#e7f3e8,#fff6e8);
+ border:1px solid #d8c48f;color:#224d3d;
+}
+:root[data-pos-season="christmas"] .quick-toolbar .manual-register-lock{
+ background:#153e32!important;color:#fff!important;border-color:#153e32!important;
+}
+:root[data-pos-season="christmas"] .quick-product{
+ border-color:#c5dfcb!important;background:linear-gradient(150deg,#fffefa,#f2f9f2)!important;
+}
+:root[data-pos-season="christmas"] .quick-product .quick-price,
+:root[data-pos-season="christmas"] .total strong{color:#98293a}
+:root[data-pos-season="christmas"] .cashier-stage-header{
+ background:linear-gradient(110deg,#103c30,#266047 70%,#963442);
+ border-bottom:3px solid var(--holiday-gold);
+}
+:root[data-pos-season="christmas"] .swivel-topbar{
+ background:linear-gradient(110deg,#103b31,#1b5a44);border-bottom:2px solid #d4ad5b;
+}
+:root[data-pos-season="christmas"] .swivel-shift-dialog{
+ background:#fffdf7;border:2px solid #d2b876;
+}
+:root[data-pos-season="christmas"] .swivel-shift-dialog h2,
+:root[data-pos-season="christmas"] .swivel-unlock-form h2{color:#164b38}
+:root[data-pos-season="christmas"] .swivel-unlock-form{
+ background:radial-gradient(circle at 13% 18%,#e2f1e7 0,transparent 35%),#fffaf2;
+}
+:root[data-pos-season="christmas"] .swivel-unlock-form input{
+ border:2px solid #aac7b5;color:#123b2f;
+}
+:root[data-pos-season="christmas"] #swivel-lock{
+ background:#fff6e1;color:#164535;border:1px solid #d3b16e;
+}
+:root[data-pos-season="christmas"] .cash-handoff{
+ background:linear-gradient(145deg,#edf7ed,#fff9e8);border:2px solid #d9bd7a;
+}
+/* Original tree is outside the cashier input column on wide iPads only. */
+@media(min-width:850px){
+ :root[data-pos-season="christmas"] .swivel-unlock-form{
+  background-image:url("christmas-tree.svg"),radial-gradient(circle at 13% 18%,#e2f1e7 0,transparent 35%);
+  background-repeat:no-repeat;background-size:220px auto,auto;
+  background-position:calc(50% + 380px) center,center;
+  background-color:#fffaf2;
+ }
+}
+@media(max-width:670px){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  grid-template-columns:52px minmax(0,1fr);gap:10px;
+ }
+ :root[data-pos-season="christmas"] .employee-home-brand::after{display:none}
+ :root[data-pos-season="christmas"] .employee-home-brand img{width:52px;height:52px}
+ :root[data-pos-season="christmas"] .employee-home-actions button{min-height:106px}
+ :root[data-pos-season="christmas"] .register-launch::before{width:145px;height:112px}
+}
+@media(prefers-reduced-motion:reduce){
+ :root[data-pos-season="christmas"] .employee-home-actions button{transition:none;transform:none!important}
+}
+@media print{
+ :root[data-pos-season="christmas"] .register-launch::before,
+ :root[data-pos-season="christmas"] .employee-home-brand::after,
+ :root[data-pos-season="christmas"] .employee-home::before,
+ :root[data-pos-season="christmas"] .register-launch::after{display:none!important}
+}
