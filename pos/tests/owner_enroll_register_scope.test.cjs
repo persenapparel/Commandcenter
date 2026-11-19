@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const sql=fs.readFileSync(path.join(__dirname,'../sql/staging_owner_enroll_register_scope_20261119.sql'),'utf8');
+const js=fs.readFileSync(path.join(__dirname,'../register.js'),'utf8');
+assert.match(sql,/p_owner_badge text,p_owner_pin text,p_register_id uuid/);
+assert.match(sql,/id=p_register_id and owner_id=v_uid and active=true/);
+assert.match(sql,/values \(p_register_id,v_staff,v_uid,v_uid,true\)/);
+assert.doesNotMatch(sql,/select id,v_staff,v_uid,v_uid,true from public\.pos_registers/);
+assert.match(sql,/revoke all on function public\.pos_owner_enroll_badge\(integer,text,text,text,text,text\) from public,anon,authenticated/);
+assert.match(js,/p_owner_badge:ownerBadge,p_owner_pin:ownerPIN,p_register_id:register\.id/);
+assert.match(js,/if\(!register\?\.id\)/);
+console.log('Owner enrollment register scope static checks passed');
