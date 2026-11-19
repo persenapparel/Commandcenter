@@ -417,6 +417,17 @@ function reopenRegisterAfterVerifiedBadge(){
   throw Error('Register did not return to the employee home after badge verification');
  return true;
 }
+function closeEmployeeSalesViewForHome(){
+ // Preserve the verified employee shift while closing the Sales-only viewport.
+ // Never discard an active cart or sensitive checkout to reveal employee controls.
+ if(checkout||pendingCash)throw Error('Finish or cancel the open checkout before returning to Employee Home.');
+ if(cart.length)throw Error('Clear the current cart before returning to Employee Home.');
+ setRegisterOpen(false,true);
+ if(!document.body.classList.contains('pos-register-closed'))
+  throw Error('The register could not close safely');
+ delete document.body.dataset.employeeMode;
+ return true;
+}
 function activeStaffRole(){
  return window.PersenPOSSwivel?.employee?.()?.role||'';
 }
@@ -473,6 +484,7 @@ window.PersenPOSRegister=Object.freeze({
  showHandoffHome:showSecureHandoffHome,
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
+ closeEmployeeSalesViewForHome,
  openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
  refreshExternalApprovalUI:updateExternalApprovalPanel,
  notice:message=>notice(String(message||'').slice(0,240))
@@ -506,7 +518,8 @@ async function status(){
    }
    checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
    document.body.classList.toggle('checkout-active',!!checkout);
-   if(checkout)document.body.classList.remove('pos-register-closed');
+   if(checkout&&document.body.classList.contains('pos-register-closed'))
+    notice('Unfinished staging checkout detected. Owner recovery is required before another sale.');
   }
   const progressing=!!checkout;
   const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
