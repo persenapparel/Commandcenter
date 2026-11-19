@@ -52,13 +52,16 @@ jobs:
       - name: Verify Christmas artwork in both isolated staging artifacts
         run: |
           node pos/build-guest-pages.mjs
-          for image in christmas-tree.svg christmas-garland.svg christmas-snowflakes.svg christmas-lights.svg christmas-gift-ribbon.svg christmas-sales-trim.svg christmas-winter-corner.svg christmas-home-stars.svg; do
+          for image in christmas-tree.svg christmas-garland.svg christmas-snowflakes.svg christmas-lights.svg christmas-gift-ribbon.svg christmas-sales-trim.svg christmas-winter-corner.svg christmas-home-stars.svg christmas-premium-santa.svg christmas-premium-reindeer.svg christmas-premium-village.svg; do
             test -s "pos-dist/$image" || { echo "Missing cashier Christmas asset: $image"; exit 1; }
           done
-          for asset in holiday.css holiday.js holiday-tree.svg; do
+          for asset in holiday.css holiday.js holiday-tree.svg holiday-premium.css christmas-premium-reindeer.svg christmas-premium-village.svg; do
             test -s "pos-guest-dist/$asset" || { echo "Missing guest Christmas asset: $asset"; exit 1; }
           done
           grep -q '/holiday.css' pos-guest-dist/index.html
+          grep -q '/holiday-premium.css' pos-guest-dist/index.html
+          grep -q 'christmas-premium.css' pos-dist/register.html
+          test -s pos-dist/christmas-premium.css
           grep -q '/holiday.js' pos-guest-dist/index.html
           grep -q "img-src 'self'" pos-guest-dist/_headers
           test ! -e pos-guest-dist/config.js
