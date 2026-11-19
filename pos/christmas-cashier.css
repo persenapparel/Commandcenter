@@ -245,3 +245,171 @@
   display:none!important;
  }
 }
+
+
+/* Winter 2026: original static snow-glimmer motif, limited to the noninteractive
+   employee landing surface. Does not overlay the Home action controls. */
+:root[data-pos-season="christmas"] .employee-home{
+ background-image:
+  radial-gradient(circle at 12% 24%,#fff 0 2px,transparent 2.5px),
+  radial-gradient(circle at 82% 18%,#fff 0 3px,transparent 3.5px),
+  radial-gradient(circle at 92% 76%,#e4f2e8 0 2px,transparent 2.5px),
+  linear-gradient(145deg,#fffefa 0%,#f0f8f0 78%,#fcefeb 100%);
+ background-repeat:no-repeat;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:focus-visible{
+ outline:3px solid #a22b39;
+ outline-offset:4px;
+ box-shadow:0 0 0 7px #fffaf0;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:disabled{
+ cursor:not-allowed;
+ filter:grayscale(.15);
+ opacity:.65;
+}
+@media (forced-colors:active){
+ :root[data-pos-season="christmas"] .employee-home-actions button:focus-visible{
+  outline:3px solid Highlight;box-shadow:none;
+ }
+}
+@media print{
+ :root[data-pos-season="christmas"] .employee-home{
+  background:#fff!important;box-shadow:none!important;
+ }
+}
+
+/* Original winter snowflake illustration: decorative only, never overlaid on
+   interactive checkout, badge, PIN, or cash tender controls. */
+:root[data-pos-season="christmas"] .employee-home-brand{
+ background-image:url("christmas-snowflakes.svg");
+ background-position:right 18px center;
+ background-size:132px 44px;
+ background-repeat:no-repeat;
+}
+:root[data-pos-season="christmas"] .register-launch h2{
+ text-wrap:balance;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button{
+ border-radius:18px;
+ letter-spacing:.01em;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:focus-visible{
+ outline-offset:4px;
+}
+@media(max-width:720px){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:none;
+ }
+}
+@media(forced-colors:active){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:none;
+ }
+}
+@media print{
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:none!important;
+ }
+}
+
+/* Original static string-light trim, limited to decorative borders.
+   Never intercepts pointer events or obscures controls and receipt content. */
+:root[data-pos-season="christmas"] .employee-home-brand{
+  padding-bottom:34px;
+  background-image:url("christmas-lights.svg"),url("christmas-snowflakes.svg");
+  background-repeat:repeat-x,no-repeat;
+  background-size:320px 30px,132px 44px;
+  background-position:left bottom,right 18px center;
+}
+:root[data-pos-season="christmas"] .register-launch{
+  padding-bottom:32px;
+  background-image:url("christmas-lights.svg"),linear-gradient(145deg,#fffefa 0%,#f0f8f0 78%,#fcefeb 100%);
+  background-size:320px 30px,auto;
+  background-position:left bottom,center;
+  background-repeat:repeat-x,no-repeat;
+}
+@media(max-width:720px){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:url("christmas-lights.svg");
+  background-size:320px 30px;
+  background-position:left bottom;
+ }
+}
+@media(max-height:680px){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  padding-bottom:16px;background-image:none;
+ }
+ :root[data-pos-season="christmas"] .register-launch{
+  padding-bottom:16px;background-image:none;
+ }
+}
+@media(forced-colors:active){
+ :root[data-pos-season="christmas"] .employee-home-brand,
+ :root[data-pos-season="christmas"] .register-launch{background-image:none}
+}
+@media print{
+ :root[data-pos-season="christmas"] .employee-home-brand,
+ :root[data-pos-season="christmas"] .register-launch{
+  background-image:none!important;padding-bottom:initial;
+ }
+}
+
+/* Original holiday gift-ribbon footer for the employee four-choice Home.
+   It sits in normal flow below actions, never on top of buttons or PIN fields. */
+:root[data-pos-season="christmas"] .employee-home-actions::after{
+  content:"";display:block;grid-column:1/-1;
+  width:min(100%,360px);height:58px;margin:8px auto 0;
+  background:url("christmas-gift-ribbon.svg") center/contain no-repeat;
+  pointer-events:none;user-select:none;
+}
+@media(max-height:680px), (max-width:420px){
+  :root[data-pos-season="christmas"] .employee-home-actions::after{display:none}
+}
+@media(forced-colors:active), print{
+  :root[data-pos-season="christmas"] .employee-home-actions::after{display:none!important}
+}
+
+/* Passive seasonal Sales toolbar trim. Reserve its own 12px strip so no
+   barcode, totals, controls or tap targets are covered. */
+:root[data-pos-season="christmas"] .quick-toolbar{
+  background-image:url("christmas-sales-trim.svg");
+  background-position:left top;
+  background-size:360px 12px;
+  background-repeat:repeat-x;
+  padding-top:max(12px,env(safe-area-inset-top,0px));
+}
+@media (max-height:680px), (forced-colors:active), print{
+  :root[data-pos-season="christmas"] .quick-toolbar{
+    background-image:none!important;
+  }
+}
+@media print{
+  :root[data-pos-season="christmas"] .quick-toolbar{
+    padding-top:0!important;
+  }
+}
+
+/* Passive winter corner on the locked register welcome only.
+   The illustration is background paint, not an overlay or touch surface. */
+:root[data-pos-season="christmas"] .register-launch{
+  background-image:url("christmas-winter-corner.svg"),url("christmas-lights.svg"),linear-gradient(145deg,#fffefa 0%,#f0f8f0 78%,#fcefeb 100%);
+  background-position:right top,left bottom,center;
+  background-size:160px 100px,320px 30px,auto;
+  background-repeat:no-repeat,repeat-x,no-repeat;
+}
+@media (max-width:540px), (max-height:680px), (forced-colors:active), print{
+  :root[data-pos-season="christmas"] .register-launch{
+    background-image:none!important;
+  }
+}
+
+/* Original static holiday star divider below employee Home branding.
+   Decorative background only; no overlays or interactive hit areas. */
+:root[data-pos-season="christmas"] .employee-home-brand::after{
+ content:"";display:block;width:min(100%,320px);height:48px;
+ margin:8px auto 0;pointer-events:none;
+ background:url("christmas-home-stars.svg") center/contain no-repeat;
+}
+@media(max-height:700px), (max-width:420px), (forced-colors:active), print{
+ :root[data-pos-season="christmas"] .employee-home-brand::after{display:none!important}
+}

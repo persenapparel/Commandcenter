@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="14" viewBox="0 0 360 14" role="img" aria-label="Decorative winter greenery">
+<path d="M0 7H360" stroke="#1d5946" stroke-width="2" opacity=".5"/>
+<g fill="none" stroke="#286a50" stroke-width="2" stroke-linecap="round">
+<path d="M25 7l-8-5m8 5l-8 5M75 7l-8-5m8 5l-8 5M125 7l-8-5m8 5l-8 5M175 7l-8-5m8 5l-8 5M225 7l-8-5m8 5l-8 5M275 7l-8-5m8 5l-8 5M325 7l-8-5m8 5l-8 5"/>
+</g>
+<g fill="#a32f3c"><circle cx="45" cy="7" r="3"/><circle cx="145" cy="7" r="3"/><circle cx="245" cy="7" r="3"/><circle cx="345" cy="7" r="3"/></g>
+<g fill="#c49b51"><circle cx="95" cy="7" r="2.5"/><circle cx="195" cy="7" r="2.5"/><circle cx="295" cy="7" r="2.5"/></g>
+</svg>
