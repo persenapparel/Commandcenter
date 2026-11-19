@@ -413,3 +413,13 @@
 @media(max-height:700px), (max-width:420px), (forced-colors:active), print{
  :root[data-pos-season="christmas"] .employee-home-brand::after{display:none!important}
 }
+
+/* Seasonal Home garland in reserved flow space; no control overlays. */
+:root[data-pos-season="christmas"] .employee-home-actions::before{
+ content:"";display:block;grid-column:1/-1;width:min(100%,480px);
+ height:52px;margin:0 auto 4px;pointer-events:none;user-select:none;
+ background:url("christmas-evergreen-garland.svg") center/contain no-repeat;
+}
+@media(max-width:540px),(max-height:740px),(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .employee-home-actions::before{display:none!important}
+}
