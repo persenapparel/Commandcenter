@@ -245,3 +245,35 @@
   display:none!important;
  }
 }
+
+
+/* Winter 2026: original static snow-glimmer motif, limited to the noninteractive
+   employee landing surface. Does not overlay the Home action controls. */
+:root[data-pos-season="christmas"] .employee-home{
+ background-image:
+  radial-gradient(circle at 12% 24%,#fff 0 2px,transparent 2.5px),
+  radial-gradient(circle at 82% 18%,#fff 0 3px,transparent 3.5px),
+  radial-gradient(circle at 92% 76%,#e4f2e8 0 2px,transparent 2.5px),
+  linear-gradient(145deg,#fffefa 0%,#f0f8f0 78%,#fcefeb 100%);
+ background-repeat:no-repeat;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:focus-visible{
+ outline:3px solid #a22b39;
+ outline-offset:4px;
+ box-shadow:0 0 0 7px #fffaf0;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:disabled{
+ cursor:not-allowed;
+ filter:grayscale(.15);
+ opacity:.65;
+}
+@media (forced-colors:active){
+ :root[data-pos-season="christmas"] .employee-home-actions button:focus-visible{
+  outline:3px solid Highlight;box-shadow:none;
+ }
+}
+@media print{
+ :root[data-pos-season="christmas"] .employee-home{
+  background:#fff!important;box-shadow:none!important;
+ }
+}
