@@ -291,3 +291,21 @@
  }
  :root[data-pos-season="christmas"] .employee-home-actions::after{display:none!important}
 }
+
+/* The real Persen Apparel mark remains visible on every employee POS screen. */
+:root[data-pos-season="christmas"] body>header img.pos-brand-logo,
+:root[data-pos-season="christmas"] body>header img.logo,
+:root[data-pos-season="christmas"] body>header .brand img{
+ width:43px;height:43px;max-width:43px;object-fit:contain;flex:none;
+ padding:5px;border-radius:11px;background:#fff9eb;
+ border:1px solid #e2c58c;box-shadow:0 2px 10px #051e1940;
+}
+:root[data-pos-season="christmas"] body>header .staff-brand{
+ display:flex;align-items:center;gap:11px;min-width:0;
+}
+:root[data-pos-season="christmas"] body>header .staff-brand strong{font-size:clamp(12px,2vw,17px)}
+@media(max-width:470px){
+ :root[data-pos-season="christmas"] body>header img.pos-brand-logo,
+ :root[data-pos-season="christmas"] body>header img.logo,
+ :root[data-pos-season="christmas"] body>header .brand img{width:37px;height:37px;max-width:37px}
+}

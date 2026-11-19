@@ -65,6 +65,8 @@ jobs:
           grep -q '/holiday.js' pos-guest-dist/index.html
           grep -q "img-src 'self'" pos-guest-dist/_headers
           test ! -e pos-guest-dist/config.js
+      - name: Verify actual Persen Apparel logo on every POS and guest screen
+        run: PERSEN_POS_BRAND_POSTBUILD=1 node --test pos/tests/branding-bundle-regression.test.cjs
       - name: Verify staging build cannot leak production database or draft SQL
         run: |
           test ! -e pos-dist/pos-schema-review.sql
