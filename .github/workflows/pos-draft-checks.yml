@@ -39,6 +39,8 @@ jobs:
           if [ -f pos/structural-tests.cjs ]; then node pos/structural-tests.cjs; fi
       - name: Build isolated POS site
         run: node pos/build-pages.mjs
+      - name: Verify cashier and isolated guest pairing manifest
+        run: node pos/tests/deployment-guest-origin.cjs
       - name: Verify staging build cannot leak production database or draft SQL
         run: |
           test ! -e pos-dist/pos-schema-review.sql
