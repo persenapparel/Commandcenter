@@ -43,6 +43,13 @@ test('Employee Home only exposes owner recovery after verified owner shift',()=>
  assert.match(register,/window\.PersenPOSSwivel\.employee\?\.\(\)\?\.role!=='owner'/);
 });
 
+test('missing register-scoped enrollment migration is clearly reported and never falls back',()=>{
+ assert.match(register,/err\?\.code==='PGRST202'/);
+ assert.match(register,/Employee badge enrollment needs a staging database update/);
+ assert.match(register,/p_register_id:register\.id/);
+ assert.doesNotMatch(register,/db\.rpc\('pos_owner_enroll_badge',\{\s*p_slot:slot[^}]*\}\)\.catch\(/);
+});
+
 test('owner recovery needs explicit acknowledgement and refreshes browser after success',()=>{
  assert.match(markup,/id="recover-unpaid-dialog"/);
  assert.match(markup,/id="open-checkout-recovery"/);
