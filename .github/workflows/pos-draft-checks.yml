@@ -48,6 +48,19 @@ jobs:
         run: node pos/build-pages.mjs
       - name: Verify cashier and isolated guest pairing manifest
         run: node pos/tests/deployment-guest-origin.cjs
+      - name: Verify Christmas artwork in both isolated staging artifacts
+        run: |
+          node pos/build-guest-pages.mjs
+          for image in christmas-tree.svg christmas-garland.svg christmas-snowflakes.svg christmas-lights.svg christmas-gift-ribbon.svg christmas-sales-trim.svg christmas-winter-corner.svg christmas-home-stars.svg; do
+            test -s "pos-dist/$image" || { echo "Missing cashier Christmas asset: $image"; exit 1; }
+          done
+          for asset in holiday.css holiday.js holiday-tree.svg; do
+            test -s "pos-guest-dist/$asset" || { echo "Missing guest Christmas asset: $asset"; exit 1; }
+          done
+          grep -q '/holiday.css' pos-guest-dist/index.html
+          grep -q '/holiday.js' pos-guest-dist/index.html
+          grep -q "img-src 'self'" pos-guest-dist/_headers
+          test ! -e pos-guest-dist/config.js
       - name: Verify staging build cannot leak production database or draft SQL
         run: |
           test ! -e pos-dist/pos-schema-review.sql
