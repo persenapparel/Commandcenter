@@ -1016,11 +1016,12 @@ by('staff-badge-setup-form').addEventListener('submit',async event=>{
  if(ownerBadge.length<8||ownerPIN.length<6){
   output.textContent='Scan your owner badge and enter your owner PIN to authorize creating this cashier badge.';return;
  }
+ if(!register?.id){output.textContent='Open an authorized staging register before enrolling an employee.';return;}
  button.disabled=true;output.textContent='Securely verifying owner and activating the employee badge…';
  try{
   const result=await check(db.rpc('pos_owner_enroll_badge',{
    p_slot:slot,p_first_name:name,p_badge:badge,p_pin:pin,
-   p_owner_badge:ownerBadge,p_owner_pin:ownerPIN
+   p_owner_badge:ownerBadge,p_owner_pin:ownerPIN,p_register_id:register.id
   }));
   if(result?.saved!==true||result?.activated!==true){
    const reasons={
