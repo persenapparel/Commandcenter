@@ -19,7 +19,8 @@ const dest='pos-dist';
 await mkdir(dest,{recursive:true});
 await mkdir(join(dest,'assets'),{recursive:true});
 await copyFile(join('assets','persen-logo.png'),join(dest,'assets','persen-logo.png'));
-for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','barcode-tender-model.js','register.js','swivel-mode.js','display.js','customer-guest-client.js','epson-center.js','epson-center.css','admin.css','admin.js','inventory.js','staff-test.css','staff-test.js']){
+await copyFile(join('pos','christmas-tree.svg'),join(dest,'christmas-tree.svg'));
+for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashier.css','christmas-dashboard.css','christmas-dashboard.js','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','barcode-tender-model.js','register.js','swivel-mode.js','display.js','customer-guest-client.js','epson-center.js','epson-center.css','admin.css','admin.js','inventory.js','staff-test.css','staff-test.js']){
  await copyFile(join('pos',f),join(dest,f));
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));

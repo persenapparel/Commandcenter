@@ -27,6 +27,9 @@ jobs:
           for f in pos/*.js pos/*.cjs pos/*.mjs; do node --check "$f"; done
       - name: Run POS unit tests
         run: node pos/tests.cjs
+      - name: Check seasonal staging visual wiring
+        run: |
+          if [ -f pos/tests/christmas-cashier-ui-test.cjs ]; then node pos/tests/christmas-cashier-ui-test.cjs; fi
       - name: Test Resend receipt worker with offline mock provider
         run: node pos/receipt-worker-smoke.cjs
       - name: Run POS structural checks

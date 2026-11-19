@@ -1,0 +1,84 @@
+/* Staging-only festive device dashboard. Every treatment is conditional. */
+:root[data-pos-season="christmas"] body{
+  background:radial-gradient(circle at 10% 5%,#e3f1e6,transparent 39%),
+             radial-gradient(circle at 90% 15%,#fbeaec,transparent 32%),#f7f9f4;
+  color:#183e31;
+}
+:root[data-pos-season="christmas"] body>header{
+  position:relative;isolation:isolate;
+  background:linear-gradient(112deg,#102e29,#1d573e 68%,#852e3e);
+  border-bottom:3px solid #d3ad64;
+}
+:root[data-pos-season="christmas"] body>header:after{
+  content:"";position:absolute;bottom:0;left:0;right:0;height:11px;
+  pointer-events:none;
+  background:radial-gradient(ellipse at 15px 0,#39805b 13px,transparent 14px) 0 0/37px 12px repeat-x;
+  opacity:.75;
+}
+:root[data-pos-season="christmas"] header strong em{color:#f4daa0}
+:root[data-pos-season="christmas"] #device-dashboard{position:relative;isolation:isolate}
+:root[data-pos-season="christmas"] #device-dashboard .eyebrow{color:#336d4b}
+:root[data-pos-season="christmas"] #device-dashboard h1{color:#174b3c;max-width:590px}
+:root[data-pos-season="christmas"] #device-dashboard .subtitle{color:#47685b}
+.christmas-dashboard-scene{display:none}
+:root[data-pos-season="christmas"] .christmas-dashboard-scene{
+  position:absolute;top:13px;right:0;width:clamp(190px,26vw,315px);
+  max-height:240px;display:block;z-index:-1;
+  pointer-events:none;opacity:.97;
+}
+:root[data-pos-season="christmas"] .christmas-dashboard-scene img{
+  width:100%;height:100%;max-height:240px;object-fit:contain;
+  filter:drop-shadow(0 11px 18px #23473420);
+}
+:root[data-pos-season="christmas"] #device-dashboard>.test{
+  position:relative;border:1px solid #d4b773;background:#fff8e8;color:#634716;
+  box-shadow:0 4px 16px #7d54230c;
+}
+:root[data-pos-season="christmas"] #device-dashboard .card{
+  border:1px solid #c9ddcd;
+  background:linear-gradient(148deg,#fffefa,#f5faf3);
+  box-shadow:0 13px 29px #194a3016;
+  position:relative;overflow:hidden;
+}
+:root[data-pos-season="christmas"] #device-dashboard .card:before{
+  content:"";position:absolute;top:0;left:0;right:0;height:5px;
+  background:linear-gradient(90deg,#1f6448 0%,#d4b56f 48%,#a52d3e 100%);
+}
+:root[data-pos-season="christmas"] #device-dashboard .card .icon{
+  background:#e5f2e9;border:1px solid #bdd6c3;color:#174b3c;
+}
+:root[data-pos-season="christmas"] #device-dashboard .card h2{color:#184935}
+:root[data-pos-season="christmas"] #device-dashboard .card p,
+:root[data-pos-season="christmas"] #device-dashboard .card .small{color:#4d6b5d}
+:root[data-pos-season="christmas"] #device-dashboard .card a{
+  display:grid;place-items:center;background:#9b2a3b;color:#fff;min-height:48px;
+  transition:background-color .15s ease,transform .15s ease;
+}
+:root[data-pos-season="christmas"] #device-dashboard .card a:hover{
+  background:#7b2533;transform:translateY(-2px);
+}
+:root[data-pos-season="christmas"] #device-dashboard .card a:focus-visible{
+  outline:3px solid #b38d4c;outline-offset:3px;
+}
+:root[data-pos-season="christmas"] #device-dashboard .note{
+  background:#fffdf7;border:1px solid #d7e3d6;
+}
+:root[data-pos-season="christmas"] #device-dashboard .note h3{color:#194e3a}
+:root[data-pos-season="christmas"] #device-dashboard .note p{color:#4d6b5d}
+:root[data-pos-season="christmas"] footer{color:#476658}
+@media(max-width:730px){
+ :root[data-pos-season="christmas"] .christmas-dashboard-scene{
+   position:relative;float:right;top:auto;width:140px;height:119px;
+   margin:-8px 0 0 12px;z-index:0;
+ }
+ :root[data-pos-season="christmas"] #device-dashboard h1{font-size:clamp(27px,6vw,40px)}
+}
+@media(max-width:440px){
+ :root[data-pos-season="christmas"] .christmas-dashboard-scene{width:110px;height:100px}
+ :root[data-pos-season="christmas"] #device-dashboard .card{min-height:220px}
+}
+@media(prefers-reduced-motion:reduce){
+ :root[data-pos-season="christmas"] #device-dashboard .card a{transition:none}
+ :root[data-pos-season="christmas"] #device-dashboard .card a:hover{transform:none}
+}
+@media print{.christmas-dashboard-scene{display:none!important}}
