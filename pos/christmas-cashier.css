@@ -277,3 +277,37 @@
   background:#fff!important;box-shadow:none!important;
  }
 }
+
+/* Original winter snowflake illustration: decorative only, never overlaid on
+   interactive checkout, badge, PIN, or cash tender controls. */
+:root[data-pos-season="christmas"] .employee-home-brand{
+ background-image:url("christmas-snowflakes.svg");
+ background-position:right 18px center;
+ background-size:132px 44px;
+ background-repeat:no-repeat;
+}
+:root[data-pos-season="christmas"] .register-launch h2{
+ text-wrap:balance;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button{
+ border-radius:18px;
+ letter-spacing:.01em;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:focus-visible{
+ outline-offset:4px;
+}
+@media(max-width:720px){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:none;
+ }
+}
+@media(forced-colors:active){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:none;
+ }
+}
+@media print{
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:none!important;
+ }
+}
