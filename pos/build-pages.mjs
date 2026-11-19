@@ -75,7 +75,7 @@ for(const f of ['register.html','display.html','index.html','admin.html','invent
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  await writeFile(join(dest,f),s);
 }
-await writeFile(join(dest,'_headers'),'/*\n  X-Robots-Tag: noindex, nofollow\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n');
+await writeFile(join(dest,'_headers'),[\n '/*',\n '  X-Robots-Tag: noindex, nofollow',\n '  X-Content-Type-Options: nosniff',\n '  Referrer-Policy: no-referrer',\n '/deployment.json',\n '  Cache-Control: no-store',\n '/handoff-config.js',\n '  Cache-Control: no-store',\n '/config.js',\n '  Cache-Control: no-store',\n ''].join('\n'));
 const commit=process.env.CF_PAGES_COMMIT_SHA;
 // A protected Pages deployment must identify its exact source revision. Without
 // this, a successful build can publish an untraceable cashier/guest pairing.
