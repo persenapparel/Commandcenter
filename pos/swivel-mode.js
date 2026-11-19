@@ -87,6 +87,13 @@
  }
  function showEmployeeHome(employee=bridge?.state?.().employee){
   if(!employee||bridge?.state?.().locked||state()?.phase!=='cashier')return false;
+  // Closing the Sales view is required before showing Employee Home.
+  // Otherwise compact Sales CSS hides the home with display:none!important.
+  // This never skips the badge gate or clears an open cart/checkout.
+  try{api.closeEmployeeSalesViewForHome()}catch(error){
+    message(error.message||'Unable to return to Employee Home.');
+    return false;
+  }
   const home=ensureEmployeeHome();
   if(!home)return false;
   home.hidden=false;
@@ -301,9 +308,9 @@
    lastActivity=Date.now();
    message('Hello, '+employee.firstName+'! Choose Sales, Returns, Refunds, or Inventory Check.');
    transition=false;
-  }catch(_){
+  }catch(error){
    shiftBadge.value='';shiftPin.value='';
-   shiftMessage.textContent='Staff access was not verified. Check the badge and PIN.';
+   shiftMessage.textContent=String(error?.message||'Staff access was not verified. Check the badge and PIN.').slice(0,190);
    transition=false;
   }
  });

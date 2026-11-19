@@ -417,6 +417,17 @@ function reopenRegisterAfterVerifiedBadge(){
   throw Error('Register did not return to the employee home after badge verification');
  return true;
 }
+function closeEmployeeSalesViewForHome(){
+ // Cashier shift stays authorized, but the Sales viewport and scanner must
+ // close so the four-choice Employee Home is visible and not covered by CSS.
+ if(checkout||pendingCash)throw Error('Finish or cancel the open checkout before returning to Employee Home.');
+ if(cart.length)throw Error('Clear the current cart before returning to Employee Home.');
+ setRegisterOpen(false,true);
+ if(!document.body.classList.contains('pos-register-closed'))
+   throw Error('The register could not close safely');
+ delete document.body.dataset.employeeMode;
+ return true;
+}
 function activeStaffRole(){
  return window.PersenPOSSwivel?.employee?.()?.role||'';
 }
@@ -473,6 +484,7 @@ window.PersenPOSRegister=Object.freeze({
  showHandoffHome:showSecureHandoffHome,
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
+ closeEmployeeSalesViewForHome,
  openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
  refreshExternalApprovalUI:updateExternalApprovalPanel,
  notice:message=>notice(String(message||'').slice(0,240))
@@ -506,7 +518,8 @@ async function status(){
    }
    checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
    document.body.classList.toggle('checkout-active',!!checkout);
-   if(checkout)document.body.classList.remove('pos-register-closed');
+   if(checkout&&document.body.classList.contains('pos-register-closed'))
+    notice('Unfinished staging checkout detected. Owner: use Recover Unfinished Test Checkout. Employee access stays locked.');
   }
   const progressing=!!checkout;
   const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
@@ -947,6 +960,56 @@ by('owner-badge-enrollment').addEventListener('submit',async event=>{
  * Never treat pending reservations as an active cashier login. The server
  * protects this action with the already enrolled owner's badge and PIN.
  */
+const unpaidRecoveryDialog=by('recover-unpaid-dialog');
+function openUnpaidRecoveryDialog(){
+ if(!db||!user)return notice('Owner must sign in before recovering staging checkout.');
+ if(window.PersenPOSSwivel?.active?.() &&
+   window.PersenPOSSwivel.employee?.()?.role!=='owner')
+  return notice('Only the owner can recover a staging checkout.');
+ if(!unpaidRecoveryDialog.open)unpaidRecoveryDialog.showModal();
+}
+by('open-checkout-recovery').onclick=openUnpaidRecoveryDialog;
+by('open-checkout-recovery-toolbar').onclick=openUnpaidRecoveryDialog;
+by('recover-unpaid-close').onclick=()=>unpaidRecoveryDialog.close();
+by('recover-unpaid-form').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const form=event.currentTarget,button=by('recover-unpaid-submit'),
+  output=by('recover-unpaid-status'),data=new FormData(form);
+ if(!data.get('confirm_unpaid')){
+  output.textContent='Explicit confirmation is required. Nothing was cancelled.';return;
+ }
+ if(!db||!user||!register){output.textContent='Owner staging connection is unavailable.';return;}
+ if(!window.confirm('Cancel unfinished, UNPAID test checkouts and revoke customer links? This cannot be undone.'))
+  return;
+ button.disabled=true;
+ output.textContent='Checking owner approval and verifying checkout is unpaid…';
+ try{
+  const result=await check(db.rpc('pos_owner_recover_unpaid_staging_checkout',{
+   p_register:register.id,
+   p_owner_badge:String(data.get('owner_badge')||'').trim(),
+   p_owner_pin:String(data.get('owner_pin')||'')
+  }));
+  if(result?.recovered!==true){
+   output.textContent=result?.reason==='owner_auth'
+    ?'Owner badge/PIN did not match; no orders were cancelled.'
+    :result?.reason==='locked'
+     ?'Owner PIN verification is temporarily locked. No orders were cancelled.'
+     :'Recovery not authorized. No orders were cancelled.';
+   return;
+  }
+  output.textContent='Recovered '+Number(result.cancelledUnpaidCheckouts||0)+' unfinished unpaid staging checkout(s). Reloading the locked register…';
+  // A prior employee/customer frame may still hold obsolete local tokens.
+  // Force a fresh secure employee shift on this device.
+  window.location.reload();
+ }catch(_){
+  output.textContent='Recovery was not verified. No completed sale is affected. Check staging status before retrying.';
+ }finally{
+  form.querySelector('[name=owner_pin]').value='';
+  form.querySelector('[name=owner_badge]').value='';
+  button.disabled=false;
+ }
+});
+
 const badgeSetupDialog=by('staff-badge-setup-dialog');
 by('open-employee-badges').onclick=()=>window.PersenPOSRegister.openEmployeeBadgeSetup();
 by('close-staff-badge-setup').onclick=()=>badgeSetupDialog.close();
