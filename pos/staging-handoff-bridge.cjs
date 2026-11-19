@@ -141,10 +141,14 @@ function createStagingHandoffBridge({
   const proof=await adapter.verifyIdleBadge(badge);
   if(proof.verified!==true||proof.firstName!==cashier.firstName)
    throw Error('Original employee badge not verified');
+  // Badge verification and register initialization are asynchronous. A shift
+  // expiring during either operation must never unlock the next sale.
+  assertReady();
   // Reopening must complete while the opaque overlay is still visible.
   // If inventory, network or initialization fails, keep the badge gate locked.
   const reopened=await unlockRegisterForNextSale();
   if(reopened!==true)throw Error('Verified register reopening failed');
+  assertReady();
   coordinator=newCoordinator();
   locked=false;
   return Object.freeze({firstName:cashier.firstName});
