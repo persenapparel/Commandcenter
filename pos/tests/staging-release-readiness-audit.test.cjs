@@ -8,7 +8,9 @@ test('release audit is read-only and contains one SELECT result query',()=>{
  assert.match(statement,/^\s*with expected\(/i);
  assert.match(statement,/select check_name,status,detail/i);
  assert.match(statement,/order by case status/i);
- assert.equal((statement.match(/;/g)||[]).length,1);
+ // Ignore semicolons inside quoted human-readable status messages.
+ const statementsOnly=statement.replace(/'(?:''|[^'])*'/g,"''");
+ assert.equal((statementsOnly.match(/;/g)||[]).length,1);
  assert.doesNotMatch(statement,/^\s*(?:create|replace|alter|truncate|drop|insert|update|delete|revoke|grant|execute)\b/im);
 });
 test('all credential and legacy function readiness gates are included',()=>{
