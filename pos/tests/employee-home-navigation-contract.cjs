@@ -12,7 +12,8 @@ assert.match(body,/if\(checkout\|\|pendingCash\)throw/,'active checkout may not 
 assert.match(body,/if\(cart.length\)throw/,'nonempty cart may not be discarded');
 assert.match(body,/setRegisterOpen\(false,true\)/,'close the compact register shell');
 assert.match(body,/classList\.contains\('pos-register-closed'\)/,'verify close succeeded');
-assert.match(register,/\bcloseEmployeeSalesViewForHome,\s*openEmployeeBadgeSetup/,'explicit bridge registration is required');
+assert.match(register,/\bcloseEmployeeSalesViewForHome,\s*/,'safe Home bridge registration is required');
+assert.match(register,/\bopenEmployeeBadgeSetup:/,'owner badge management must remain available');
 const home=swivel.slice(swivel.indexOf('function showEmployeeHome('),swivel.indexOf('setInterval(updateEmployeeHomeClock'));
 assert.match(home,/bridge\?\.state\?\.\(\)\.locked/,'locked register must not reveal home');
 assert.ok(home.indexOf('api.closeEmployeeSalesViewForHome()')<home.indexOf('home.hidden=false'),'close sales before showing employee controls');
