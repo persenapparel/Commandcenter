@@ -311,3 +311,45 @@
   background-image:none!important;
  }
 }
+
+/* Original static string-light trim, limited to decorative borders.
+   Never intercepts pointer events or obscures controls and receipt content. */
+:root[data-pos-season="christmas"] .employee-home-brand{
+  padding-bottom:34px;
+  background-image:url("christmas-lights.svg"),url("christmas-snowflakes.svg");
+  background-repeat:repeat-x,no-repeat;
+  background-size:320px 30px,132px 44px;
+  background-position:left bottom,right 18px center;
+}
+:root[data-pos-season="christmas"] .register-launch{
+  padding-bottom:32px;
+  background-image:url("christmas-lights.svg"),linear-gradient(145deg,#fffefa 0%,#f0f8f0 78%,#fcefeb 100%);
+  background-size:320px 30px,auto;
+  background-position:left bottom,center;
+  background-repeat:repeat-x,no-repeat;
+}
+@media(max-width:720px){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  background-image:url("christmas-lights.svg");
+  background-size:320px 30px;
+  background-position:left bottom;
+ }
+}
+@media(max-height:680px){
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  padding-bottom:16px;background-image:none;
+ }
+ :root[data-pos-season="christmas"] .register-launch{
+  padding-bottom:16px;background-image:none;
+ }
+}
+@media(forced-colors:active){
+ :root[data-pos-season="christmas"] .employee-home-brand,
+ :root[data-pos-season="christmas"] .register-launch{background-image:none}
+}
+@media print{
+ :root[data-pos-season="christmas"] .employee-home-brand,
+ :root[data-pos-season="christmas"] .register-launch{
+  background-image:none!important;padding-bottom:initial;
+ }
+}
