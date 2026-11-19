@@ -485,6 +485,7 @@ window.PersenPOSRegister=Object.freeze({
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
  closeEmployeeSalesViewForHome,
+ openUnpaidRecoveryDialog:()=>openUnpaidRecoveryDialog(),
  openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
  refreshExternalApprovalUI:updateExternalApprovalPanel,
  notice:message=>notice(String(message||'').slice(0,240))
@@ -519,7 +520,7 @@ async function status(){
    checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
    document.body.classList.toggle('checkout-active',!!checkout);
    if(checkout&&document.body.classList.contains('pos-register-closed'))
-    notice('Unfinished staging checkout detected. Owner recovery is required before another sale.');
+    notice('Unfinished staging checkout detected. Owner: use Recover Unfinished Test Checkout. Employee access stays locked.');
   }
   const progressing=!!checkout;
   const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
@@ -960,6 +961,56 @@ by('owner-badge-enrollment').addEventListener('submit',async event=>{
  * Never treat pending reservations as an active cashier login. The server
  * protects this action with the already enrolled owner's badge and PIN.
  */
+const unpaidRecoveryDialog=by('recover-unpaid-dialog');
+function openUnpaidRecoveryDialog(){
+ if(!db||!user)return notice('Owner must sign in before recovering staging checkout.');
+ if(window.PersenPOSSwivel?.active?.() &&
+   window.PersenPOSSwivel.employee?.()?.role!=='owner')
+  return notice('Only the owner can recover a staging checkout.');
+ if(!unpaidRecoveryDialog.open)unpaidRecoveryDialog.showModal();
+}
+by('open-checkout-recovery').onclick=openUnpaidRecoveryDialog;
+by('open-checkout-recovery-toolbar').onclick=openUnpaidRecoveryDialog;
+by('recover-unpaid-close').onclick=()=>unpaidRecoveryDialog.close();
+by('recover-unpaid-form').addEventListener('submit',async event=>{
+ event.preventDefault();
+ const form=event.currentTarget,button=by('recover-unpaid-submit'),
+  output=by('recover-unpaid-status'),data=new FormData(form);
+ if(!data.get('confirm_unpaid')){
+  output.textContent='Explicit confirmation is required. Nothing was cancelled.';return;
+ }
+ if(!db||!user||!register){output.textContent='Owner staging connection is unavailable.';return;}
+ if(!window.confirm('Cancel unfinished, UNPAID test checkouts and revoke customer links? This cannot be undone.'))
+  return;
+ button.disabled=true;
+ output.textContent='Checking owner approval and verifying checkout is unpaid…';
+ try{
+  const result=await check(db.rpc('pos_owner_recover_unpaid_staging_checkout',{
+   p_register:register.id,
+   p_owner_badge:String(data.get('owner_badge')||'').trim(),
+   p_owner_pin:String(data.get('owner_pin')||'')
+  }));
+  if(result?.recovered!==true){
+   output.textContent=result?.reason==='owner_auth'
+    ?'Owner badge/PIN did not match; no orders were cancelled.'
+    :result?.reason==='locked'
+     ?'Owner PIN verification is temporarily locked. No orders were cancelled.'
+     :'Recovery not authorized. No orders were cancelled.';
+   return;
+  }
+  output.textContent='Recovered '+Number(result.cancelledUnpaidCheckouts||0)+' unfinished unpaid staging checkout(s). Reloading the locked register…';
+  // A prior employee/customer frame may still hold obsolete local tokens.
+  // Force a fresh secure employee shift on this device.
+  window.location.reload();
+ }catch(_){
+  output.textContent='Recovery was not verified. No completed sale is affected. Check staging status before retrying.';
+ }finally{
+  form.querySelector('[name=owner_pin]').value='';
+  form.querySelector('[name=owner_badge]').value='';
+  button.disabled=false;
+ }
+});
+
 const badgeSetupDialog=by('staff-badge-setup-dialog');
 by('open-employee-badges').onclick=()=>window.PersenPOSRegister.openEmployeeBadgeSetup();
 by('close-staff-badge-setup').onclick=()=>badgeSetupDialog.close();
@@ -1052,9 +1103,16 @@ by('staff-badge-setup-form').addEventListener('submit',async event=>{
   await refreshEmployeeSlotStatus();
  }catch(err){
   const text=String(err?.message||'');
-  output.textContent=text.includes('No active staging register')
-   ?'No active staging register was found. Open the staging register first.'
-   :'Unable to save the employee badge. No permissions were changed. Check your owner badge and PIN.';
+  // PostgREST PGRST202 signals that the reviewed register-scoped enrollment
+  // function is not installed in staging. Do not mislabel this as a duplicate
+  // badge, and never fall back to the legacy owner-wide six-argument RPC.
+  const migrationMissing=err?.code==='PGRST202'||
+    /Could not find the function\s+(?:public\.)?pos_owner_enroll_badge/i.test(text);
+  output.textContent=migrationMissing
+   ?'Employee badge enrollment needs a staging database update. No badge was activated. Owner: install the reviewed register-scoped enrollment migration first.'
+   :text.includes('No active staging register')
+    ?'No active staging register was found. Open the staging register first.'
+    :'Unable to save the employee badge. No permissions were changed. Check your owner badge and PIN.';
   await refreshEmployeeSlotStatus();
  }finally{
   for(const field of ['pin','pin_confirm','owner_badge','owner_pin'])

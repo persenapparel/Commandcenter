@@ -145,3 +145,41 @@
  :root[data-pos-season="christmas"] .employee-home::before,
  :root[data-pos-season="christmas"] .register-launch::after{display:none!important}
 }
+
+
+/* Owner-only recovery stays visibly distinct from routine Christmas checkout. */
+.employee-home-recover{
+ display:block;margin:2px auto 8px;min-height:48px;
+ padding:12px 18px;background:#fff9ef;color:#763c16;
+ border:2px solid #d8b578;border-radius:12px;
+ font-weight:800;max-width:100%;
+}
+.employee-home-recover[hidden]{display:none!important}
+.employee-home-recover:hover:not(:disabled){background:#f8efdb}
+.employee-home-recover:focus-visible{outline:3px solid #98651f;outline-offset:3px}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog{
+ background:#fffdf8;color:#204735;border:2px solid #d2b479;
+ box-shadow:0 23px 62px #11372c65;
+}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog::backdrop{
+ background:#092d2bc4;backdrop-filter:blur(3px);
+}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog .picker-head{
+ border-bottom:1px solid #dce7db;margin-bottom:14px;
+}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog .eyebrow{color:#8b2c3a}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog h2{color:#174b3c}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog p{color:#395f4d;line-height:1.55}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog input[type="text"],
+:root[data-pos-season="christmas"] #recover-unpaid-dialog input[type="password"]{
+ background:#fff;border:2px solid #abcab6;color:#173d31;min-height:52px;
+}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog #recover-unpaid-submit{
+ background:#8c2937;border-color:#8c2937;color:#fff;min-height:58px;
+}
+:root[data-pos-season="christmas"] #recover-unpaid-dialog #recover-unpaid-submit:disabled{
+ background:#a7a7a7;color:#fff;
+}
+@media (prefers-reduced-motion:reduce){
+ :root[data-pos-season="christmas"] #recover-unpaid-dialog::backdrop{backdrop-filter:none}
+}

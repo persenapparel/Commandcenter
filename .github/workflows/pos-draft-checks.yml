@@ -31,6 +31,7 @@ jobs:
         run: |
           if [ -f pos/tests/christmas-cashier-ui-test.cjs ]; then node pos/tests/christmas-cashier-ui-test.cjs; fi
           if [ -f pos/tests/employee-home-navigation-contract.cjs ]; then node pos/tests/employee-home-navigation-contract.cjs; fi
+          if [ -f pos/tests/sales_open_home_stale_checkout.test.cjs ]; then node pos/tests/sales_open_home_stale_checkout.test.cjs; fi
       - name: Test Resend receipt worker with offline mock provider
         run: node pos/receipt-worker-smoke.cjs
       - name: Run POS structural checks
@@ -38,6 +39,8 @@ jobs:
           if [ -f pos/structural-tests.cjs ]; then node pos/structural-tests.cjs; fi
       - name: Build isolated POS site
         run: node pos/build-pages.mjs
+      - name: Verify cashier and isolated guest pairing manifest
+        run: node pos/tests/deployment-guest-origin.cjs
       - name: Verify staging build cannot leak production database or draft SQL
         run: |
           test ! -e pos-dist/pos-schema-review.sql
