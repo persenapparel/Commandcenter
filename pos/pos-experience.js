@@ -45,6 +45,12 @@ function daysUntilChristmas(now=new Date()){
  if(today>christmas)christmas=Date.UTC(year+1,11,25);
  return Math.round((christmas-today)/86400000);
 }
+/* Respect active campaigns; otherwise use a local, staging-only Christmas
+   fallback during the holiday season. Simple mode always wins. */
+function automaticHoliday(now=new Date()){
+ const month=now.getMonth(),day=now.getDate();
+ return month===11||(month===10&&day>=15)?{published:true,theme:'christmas'}:null;
+}
 const MODE_KEY='persen-pos-appearance-v1';
 function mode(){try{return localStorage.getItem(MODE_KEY)||'auto'}catch(_){return 'auto'}}
 function setMode(value){if(!['auto','simple','christmas','winter','thanksgiving','halloween','valentines','newyear','stpatricks','easter','mothersday','fathersday','memorialday','july4','laborday','spring','summer','fall'].includes(value))return;try{localStorage.setItem(MODE_KEY,value)}catch(_){};if(typeof document!=='undefined')apply(document,window.__persenPosCampaign||null)}
@@ -52,13 +58,15 @@ function apply(doc,campaign){
  if(typeof window!=='undefined')window.__persenPosCampaign=campaign;
  const choice=mode();
  const simple=choice==='simple';
- const selected=choice==='auto'?campaign:choice==='simple'?null:{published:true,theme:choice};
+ const selected=choice==='auto'?(campaign?.published===true?campaign:automaticHoliday()):choice==='simple'?null:{published:true,theme:choice};
  const p=palette(selected);
  const root=doc.documentElement;
  root.style.setProperty('--pos-season',simple?'#111111':p.accent);
  root.style.setProperty('--pos-season-soft',simple?'#ffffff':p.background);
  root.dataset.season=simple?'simple':p.key;
  root.dataset.posAppearance=simple?'simple':'festive';
+ if(!simple&&p.key==='christmas')root.dataset.posSeason='christmas';
+ else delete root.dataset.posSeason;
  const badges=doc.querySelectorAll('[data-season-icon]');
  badges.forEach(node=>{node.textContent=p.icon});
  const titles=doc.querySelectorAll('[data-season-label]');
