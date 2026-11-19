@@ -123,3 +123,15 @@
  :root[data-pos-season="christmas"] body{background-image:none!important}
  :root[data-pos-season="christmas"] .customer-checkout{background:#fff!important}
 }
+
+/* Same official branded asset as cashier, copied onto credential-free origin. */
+:root[data-pos-season="christmas"] .guest-brand{display:flex;align-items:center;gap:12px;min-width:0}
+:root[data-pos-season="christmas"] .guest-brand-logo{
+ width:46px;height:46px;flex:none;object-fit:contain;
+ background:#fff8e7;padding:5px;border:1.5px solid #dcb775;
+ border-radius:12px;box-shadow:0 3px 12px #0b332a44;
+}
+@media(max-width:430px){
+ :root[data-pos-season="christmas"] .guest-brand-logo{width:39px;height:39px}
+ :root[data-pos-season="christmas"] .guest-brand{gap:8px}
+}
