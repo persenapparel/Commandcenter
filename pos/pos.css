@@ -859,3 +859,12 @@ body.fast-mode .quick-product.event-featured{border-color:#82b5ee;box-shadow:ins
 body[data-staff-role="cashier"] .employee-home-badge-setup{display:none!important}
 
 body[data-cashier-stage="handoff"] #external-approval-panel{display:none!important}
+
+/* Christmas styling tokens for cashier screens; opt-in only, no checkout behavior. */
+:root[data-pos-season="christmas"]{--pos-holiday-green:#174b3c;--pos-holiday-red:#a82d39;--pos-holiday-gold:#d4aa56}
+:root[data-pos-season="christmas"] body{background:radial-gradient(circle at 90% 5%,#f6e6e5,transparent 36%),radial-gradient(circle at 5% 12%,#e4f2e8,transparent 40%),#f7faf6}
+:root[data-pos-season="christmas"] header{background:linear-gradient(110deg,#103a30,#1e5844 75%,#78343a);border-bottom:3px solid var(--pos-holiday-gold)}
+:root[data-pos-season="christmas"] .quick-product{border-color:#c7ded0}
+:root[data-pos-season="christmas"] .quick-product:focus-visible,:root[data-pos-season="christmas"] button:focus-visible{outline:3px solid #a77929;outline-offset:3px}
+:root[data-pos-season="christmas"] .employee-home-badge-setup{background:#e9f4eb;border-color:#8bb49b;color:#174b3c}
+@media(prefers-reduced-motion:reduce){:root[data-pos-season="christmas"] *, :root[data-pos-season="christmas"] *:before,:root[data-pos-season="christmas"] *:after{animation:none!important;transition:none!important}}
