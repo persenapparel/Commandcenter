@@ -88,6 +88,13 @@ await writeFile(join(dest,'_headers'),[
  '  X-Robots-Tag: noindex, nofollow',
  '  X-Content-Type-Options: nosniff',
  '  Referrer-Policy: no-referrer',
+ // Avoid stale cashier navigation shells across independently deployed guest previews.
+ '/index.html',
+ '  Cache-Control: no-store',
+ '/register.html',
+ '  Cache-Control: no-store',
+ '/display.html',
+ '  Cache-Control: no-store',
  '/deployment.json',
  '  Cache-Control: no-store',
  '/handoff-config.js',
