@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 430" role="img" aria-label="Illustration of Santa Claus with wrapped gifts">
+<defs>
+ <radialGradient id="halo"><stop stop-color="#f9d795" stop-opacity=".68"/><stop offset="1" stop-color="#f9d795" stop-opacity="0"/></radialGradient>
+ <linearGradient id="coat" x2="1" y2="1"><stop stop-color="#c33442"/><stop offset=".58" stop-color="#901b2d"/><stop offset="1" stop-color="#5f1825"/></linearGradient>
+ <linearGradient id="beard" x2="0" y2="1"><stop stop-color="#fffef4"/><stop offset="1" stop-color="#d8ddcf"/></linearGradient>
+ <linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff5c8"/><stop offset=".5" stop-color="#e9b85b"/><stop offset="1" stop-color="#ad7437"/></linearGradient>
+ <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="8"/></filter>
+</defs>
+<ellipse cx="236" cy="224" rx="182" ry="177" fill="url(#halo)"/>
+<g fill="#fbe7ba" opacity=".72"><circle cx="36" cy="88" r="3"/><circle cx="363" cy="56" r="4"/><circle cx="388" cy="259" r="2"/><circle cx="74" cy="282" r="2"/><path d="M328 99h18m-9-9v18M51 194h14m-7-7v14" stroke="#fbe7ba" stroke-width="2"/></g>
+<ellipse cx="209" cy="407" rx="163" ry="18" opacity=".19" fill="#091b18" filter="url(#shadow)"/>
+<!-- Sack of presents -->
+<path d="M268 138q85-30 119 33 29 53-17 137l-93-8-46-80z" fill="#ad8046" stroke="#e9c47b" stroke-width="5"/>
+<path d="M272 149q31 7 66-9" fill="none" stroke="#f4d9a5" stroke-width="8" stroke-linecap="round"/>
+<g transform="translate(308 151) rotate(15)"><rect x="0" y="0" width="48" height="42" rx="6" fill="#b6303c" stroke="#f6d994" stroke-width="2"/><path d="M20 0v42M0 15h48" stroke="url(#gold)" stroke-width="8"/><path d="M20 1q-24-22-22-1 13 8 22 1m0 0q24-22 22-1-13 8-22 1" stroke="#f9df92" stroke-width="3" fill="none"/></g>
+<!-- Body -->
+<path d="M102 276Q81 209 128 176Q176 141 249 169Q312 189 322 276L336 410H67z" fill="url(#coat)" stroke="#6a1e2b" stroke-width="5"/>
+<path d="M112 264q-17 75-25 144M290 260q23 75 19 148" fill="none" stroke="#ea6770" stroke-opacity=".4" stroke-width="6"/>
+<path d="M197 185l-5 228" stroke="#f9f6df" stroke-width="30" stroke-linecap="round"/><path d="M197 185l-5 228" stroke="#f0dba9" stroke-opacity=".55" stroke-width="4" stroke-dasharray="5 11"/>
+<path d="M94 326q99 19 226 3" stroke="#493c2b" stroke-width="27" fill="none"/><rect x="161" y="312" width="67" height="45" rx="7" fill="url(#gold)" stroke="#fff0b4" stroke-width="3"/><rect x="174" y="321" width="42" height="27" rx="3" fill="#4d3625"/>
+<!-- Hat -->
+<path d="M115 153Q132 52 210 33Q270 27 309 93Q324 129 285 171Z" fill="url(#coat)" stroke="#6d2030" stroke-width="5"/>
+<path d="M213 34Q288 28 317 102Q333 132 366 114" fill="none" stroke="#d04d55" stroke-width="11" stroke-linecap="round"/>
+<circle cx="364" cy="118" r="31" fill="url(#beard)" stroke="#f6f3e5" stroke-width="5"/>
+<!-- Hair/face -->
+<ellipse cx="204" cy="165" rx="81" ry="89" fill="#f9cfb1"/>
+<path d="M132 165q-18 21-9 72 19 58 43 76l85-5q49-61 36-133-16 12-30 12-17-18-52-16-35 5-73-6z" fill="url(#beard)" stroke="#e0dfd2" stroke-width="3"/>
+<path d="M147 141q19-23 45-9m31 0q29-15 45 12" stroke="#f6f2e8" stroke-width="20" fill="none" stroke-linecap="round"/>
+<g fill="#343330"><ellipse cx="173" cy="164" rx="5" ry="6"/><ellipse cx="235" cy="164" rx="5" ry="6"/></g>
+<path d="M161 154q16-9 28-2m29 0q16-8 28 4" stroke="#d8d9d3" stroke-width="7" fill="none" stroke-linecap="round"/>
+<circle cx="151" cy="187" r="15" fill="#ea8b80" opacity=".43"/><circle cx="254" cy="186" r="15" fill="#ea8b80" opacity=".43"/>
+<ellipse cx="204" cy="188" rx="18" ry="14" fill="#efab94" stroke="#d78a7d" stroke-width="2"/>
+<path d="M171 199q28 22 66 0" stroke="#fff" stroke-width="17" stroke-linecap="round" fill="none"/>
+<path d="M186 228q17 10 35-1" fill="none" stroke="#a86e67" stroke-width="4" stroke-linecap="round"/>
+<path d="M154 209q-26 26-3 55 7 51 53 66 43-26 51-64 27-26-2-55-24 24-49 15-27 9-50-17z" fill="url(#beard)" stroke="#e3e1d3" stroke-width="3"/>
+<path d="M189 237q14 45 11 80m22-82q-8 44-15 71m-42-63q-4 31 16 51" stroke="#dce0d5" stroke-width="4" fill="none" stroke-linecap="round"/>
+<!-- hat brim -->
+<path d="M117 127q72-25 180 5l-8 42q-89-30-167 4z" fill="url(#beard)" stroke="#f9f8ef" stroke-width="6"/>
+<!-- waving mitten -->
+<path d="M114 256Q70 220 53 190q-13-23-33-7-14 12-7 31 23 43 72 86" fill="url(#coat)" stroke="#782534" stroke-width="5"/>
+<path d="M22 183q-18-29-10-43 10-13 22 7l25 26q-6-24 8-27 15-3 15 29l9 34-39 24z" fill="#602e2c" stroke="#f2d8af" stroke-width="4"/>
+<path d="M61 289q22-9 29-37" stroke="#f6f4e8" stroke-width="24" stroke-linecap="round"/>
+<!-- small gifts -->
+<g transform="translate(282 338)"><rect x="0" y="7" width="62" height="56" rx="7" fill="#124f3d" stroke="#ffe4aa" stroke-width="3"/><path d="M24 7v56M0 29h62" stroke="url(#gold)" stroke-width="9"/><path d="M25 8q-23-25-24-4 11 11 24 4m0 0q24-25 24-4-11 11-24 4" fill="none" stroke="#f3db96" stroke-width="4"/></g>
+</svg>
