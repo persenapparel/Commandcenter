@@ -40,6 +40,7 @@ function createStagingHandoffBridge({
    const auth=await call('pos_staff_start_shift',{
     p_badge:badge,p_pin:pin,p_register:registerId
    });
+   if(auth.ok===false)throw Error('Staff access was not verified. Check badge and PIN.');
    if(auth.ok!==true || !UUID.test(auth.shift_id||'') ||
       !SECRET.test(auth.shift_secret||'') ||
       typeof auth.first_name!=='string' || !auth.first_name ||
