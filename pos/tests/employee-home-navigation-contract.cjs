@@ -1,0 +1,23 @@
+'use strict';
+/* Staging-only source contract: safe cashier-to-employee-home navigation. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const register=fs.readFileSync(path.join(root,'register.js'),'utf8');
+const swivel=fs.readFileSync(path.join(root,'swivel-mode.js'),'utf8');
+const focus=fs.readFileSync(path.join(root,'cashier-focus.css'),'utf8');
+const body=register.slice(register.indexOf('function closeEmployeeSalesViewForHome(){'),register.indexOf('function activeStaffRole(){'));
+assert.ok(body.startsWith('function closeEmployeeSalesViewForHome(){'),'register must have secure exit action');
+assert.match(body,/if\(checkout\|\|pendingCash\)throw/,'active checkout may not be hidden');
+assert.match(body,/if\(cart.length\)throw/,'nonempty cart may not be discarded');
+assert.match(body,/setRegisterOpen\(false,true\)/,'close the compact register shell');
+assert.match(body,/classList\.contains\('pos-register-closed'\)/,'verify close succeeded');
+assert.match(register,/\bcloseEmployeeSalesViewForHome,\s*openEmployeeBadgeSetup/,'explicit bridge registration is required');
+const home=swivel.slice(swivel.indexOf('function showEmployeeHome('),swivel.indexOf('setInterval(updateEmployeeHomeClock'));
+assert.match(home,/bridge\?\.state\?\.\(\)\.locked/,'locked register must not reveal home');
+assert.ok(home.indexOf('api.closeEmployeeSalesViewForHome()')<home.indexOf('home.hidden=false'),'close sales before showing employee controls');
+assert.match(home,/catch\(error\)[\s\S]*return false/,'navigation must fail closed');
+assert.match(focus,/#workspace>:not\(\.quick-toolbar\):not\(\.layout\)/,'regression covers restrictive Sales layout rule');
+const status=register.slice(register.indexOf('async function status(){'),register.indexOf('function eventOption('));
+assert.doesNotMatch(status,/if\(checkout\)document\.body\.classList\.remove\('pos-register-closed'\)/,'polling must not silently reopen a locked register');
+console.log('PASS safe Employee Home transition and locked-checkout polling source contracts.');
