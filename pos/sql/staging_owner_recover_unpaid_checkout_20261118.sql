@@ -65,8 +65,7 @@ begin
    update public.pos_checkout_handoffs
       set phase='closed',capability_digest=null,
        capability_expires_at=null,closed_at=now(),updated_at=now()
-      where checkout_id=v_checkout.id and register_id=v_register.id
-        and phase<>'closed';
+      where checkout_id=v_checkout.id and register_id=v_register.id;
    update public.pos_checkouts
      set status='cancelled',updated_at=now()
      where id=v_checkout.id and owner_id=v_uid and register_id=v_register.id
