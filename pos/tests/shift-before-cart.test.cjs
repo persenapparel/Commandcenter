@@ -6,7 +6,7 @@ function harness(){
  const bridge={state:()=>({employee,locked:false,checkout:employee?{phase:'cashier',pending:false}:null}),
   startShift:()=>new Promise(resolve=>{resolveLogin=()=>{employee={firstName:'Luke',expiresAt:new Date(Date.now()+3600000).toISOString()};resolve(employee)}}),
   handToCustomer:async()=>{handoffs++},lockForIdle:()=>false};
- const window={addEventListener(){},PersenPOSRegister:{ready:()=>true,notice(){},openEmployeeMode(){assert.ok(employee);opens++;return true},reopenRegisterAfterVerifiedBadge(){assert.ok(employee);opens++;return true}},
+ const window={addEventListener(){},PersenPOSRegister:{ready:()=>true,notice(){},openEmployeeMode(){assert.ok(employee);opens++;return true},closeEmployeeSalesViewForHome(){assert.ok(employee);return true},reopenRegisterAfterVerifiedBadge(){assert.ok(employee);opens++;return true}},
   PersenPOSHandoffConfig:{guestEntryUrl:'https://a76dbeb5.commandcenter-4yg.pages.dev/pos-guest/'},
   PersenPOSSecureHandoff:{createStagingHandoffBridge:()=>bridge,createIsolatedGuestFrame:()=>({})}};
  const document={getElementById:element,createElement:()=>element('dynamic-'+elements.size),querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){},body:{dataset:{},classList:{add(){},remove(){}}}};
