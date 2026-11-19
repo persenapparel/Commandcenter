@@ -35,6 +35,14 @@ test('only owner-confirmed, unpaid staging checkouts can be recovered and guest 
  assert.doesNotMatch(sql,/delete from public\.pos_sales|payment_method\s*=\s*'cash'/);
  assert.match(sql,/revoke all on function public\.pos_owner_recover_unpaid_staging_checkout/);
 });
+test('Employee Home only exposes owner recovery after verified owner shift',()=>{
+ assert.match(swivel,/id=\\"employee-home-recover\\"/);
+ assert.match(swivel,/home\.querySelector\('#employee-home-recover'\)\.hidden=employee\.role!=='owner'/);
+ assert.match(swivel,/openUnpaidRecoveryDialog\?\.\(\)/);
+ assert.match(register,/openUnpaidRecoveryDialog:\(\)=>openUnpaidRecoveryDialog\(\)/);
+ assert.match(register,/window\.PersenPOSSwivel\.employee\?\.\(\)\.role!=='owner'/);
+});
+
 test('owner recovery needs explicit acknowledgement and refreshes browser after success',()=>{
  assert.match(markup,/id="recover-unpaid-dialog"/);
  assert.match(markup,/id="open-checkout-recovery"/);
