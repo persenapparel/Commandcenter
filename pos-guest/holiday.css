@@ -1,0 +1,14 @@
+/* Staging-only seasonal layer. Set html[data-pos-season="christmas"] to opt in. */
+:root[data-pos-season="christmas"]{--holiday-evergreen:#174b3c;--holiday-red:#a82d39;--holiday-gold:#d4aa56;--holiday-snow:#f6faf6}
+:root[data-pos-season="christmas"] body{background:radial-gradient(circle at 15% 5%,#e7f3eb 0,transparent 38%),radial-gradient(circle at 90% 20%,#f9e9e8 0,transparent 35%),#f6faf6;color:#193a32}
+:root[data-pos-season="christmas"] header{background:linear-gradient(110deg,#103c31,#1e5844 72%,#793038);border-bottom:3px solid var(--holiday-gold)}
+:root[data-pos-season="christmas"] header strong{letter-spacing:.11em}
+:root[data-pos-season="christmas"] #checkout{position:relative;isolation:isolate}
+:root[data-pos-season="christmas"] #checkout:before{content:"";display:block;width:min(100%,700px);height:138px;margin:0 auto -20px;background:url("holiday-tree.svg") no-repeat right 24px center / auto 130px,linear-gradient(120deg,#164b3b,#27644e);border-radius:20px 20px 0 0;border:1px solid #c6dacd}
+:root[data-pos-season="christmas"] #checkout:after{content:"A little holiday cheer from Persen Apparel";position:absolute;top:30px;left:max(calc((100% - 660px)/2),34px);width:min(45%,310px);font-size:clamp(13px,2vw,19px);line-height:1.4;font-weight:850;color:#fff9e9;pointer-events:none}
+:root[data-pos-season="christmas"] .customer-checkout{position:relative;border-color:#c9dfd1;box-shadow:0 20px 60px #174b3c19}
+:root[data-pos-season="christmas"] .customer-checkout h1{color:#174b3c}
+:root[data-pos-season="christmas"] .customer-checkout button:not(:disabled){border-radius:13px}
+:root[data-pos-season="christmas"] .customer-checkout button:focus-visible,:root[data-pos-season="christmas"] input:focus-visible{outline:3px solid #b27824;outline-offset:3px}
+@media(max-width:520px){:root[data-pos-season="christmas"] #checkout:before{height:106px;background-size:auto 95px;background-position:right 6px center}:root[data-pos-season="christmas"] #checkout:after{top:24px;left:32px;width:48%;font-size:13px}}
+@media(prefers-reduced-motion:reduce){:root[data-pos-season="christmas"] *, :root[data-pos-season="christmas"] *:before,:root[data-pos-season="christmas"] *:after{animation:none!important;transition:none!important}}
