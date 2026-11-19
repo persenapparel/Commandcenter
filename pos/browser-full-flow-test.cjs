@@ -125,6 +125,18 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
  });
  await step('Inventory Check from Employee Home does not add to a sale',async()=>{
    await cashier.locator('#close-register').click();
+   // If CI fails to return home, capture public UI state without credentials,
+   // customer data or secrets; do not weaken the browser assertion.
+   const nav=await cashier.evaluate(()=>({
+     homeHidden:document.getElementById('employee-home')?.hidden,
+     homeDisplay:getComputedStyle(document.getElementById('employee-home')).display,
+     registerClosed:document.body.classList.contains('pos-register-closed'),
+     employeeHome:document.body.dataset.employeeHome,
+     notice:document.getElementById('notice')?.textContent,
+     actionStatus:document.getElementById('employee-home-status')?.textContent,
+     active:window.PersenPOSSwivel?.active?.()
+   }));
+   console.log('INVENTORY_HOME_NAVIGATION',JSON.stringify(nav));
    await visible(cashier,'#employee-home');
    await cashier.locator('#employee-home-inventory').click();
    await cashier.locator('#scan-code').fill('XMAS-RED-M');await cashier.locator('#scan-code').press('Enter');
