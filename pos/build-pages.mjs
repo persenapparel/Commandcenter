@@ -26,9 +26,12 @@ for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashi
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
 await writeFile(join(dest,'config.js'),`window.PERSEN_CONFIG = ${JSON.stringify({supabaseUrl:url,supabasePublishableKey:key,storefrontUrl:'https://persenapparel.com'})};\n`);
-// Pinned customer build verified with staging-only framing CSP and CORS.
-// An explicit POS_GUEST_ENTRY_URL from Cloudflare always takes precedence.
+// Pinned customer build for CI only. Real protected deployments MUST name
+// the exact independently deployed guest preview; a stale default could point
+// at the wrong customer's release and block or misroute checkout.
 const guestFallback='https://7d86da09.commandcenter-4yg.pages.dev/pos-guest/';
+if(!ciDryRun&&!process.env.POS_GUEST_ENTRY_URL)
+ throw Error('Staging deployment blocked: set POS_GUEST_ENTRY_URL to the verified isolated guest preview');
 function secureGuestEntry(value){
  const entry=new URL(value),host=entry.hostname.toLowerCase();
  if(entry.protocol!=='https:'||entry.username||entry.password||entry.search||entry.hash||
