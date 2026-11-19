@@ -485,6 +485,7 @@ window.PersenPOSRegister=Object.freeze({
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
  closeEmployeeSalesViewForHome,
+ openUnpaidRecoveryDialog:()=>openUnpaidRecoveryDialog(),
  openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
  refreshExternalApprovalUI:updateExternalApprovalPanel,
  notice:message=>notice(String(message||'').slice(0,240))
