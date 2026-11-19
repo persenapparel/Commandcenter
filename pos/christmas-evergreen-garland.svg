@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 64" role="img" aria-label="Decorative evergreen garland with golden stars">
+<path d="M8 15 Q120 67 240 20 T472 15" fill="none" stroke="#245b43" stroke-width="4" stroke-linecap="round"/>
+<g fill="none" stroke="#337653" stroke-width="3" stroke-linecap="round">
+<path d="M42 26l-18 12m18-12l-5-17M82 37l-21 12m21-12L77 17M125 41l-17 14m17-14l-4-19M168 37l-17 14m17-14l-3-19M314 37l-17 14m17-14l-3-19M355 41l-17 14m17-14l-4-19M399 37l-21 12m21-12l-5-20M439 26l-18 12m18-12l-5-17"/>
+</g><g fill="#b52634"><circle cx="82" cy="37" r="5"/><circle cx="92" cy="33" r="4"/><circle cx="355" cy="41" r="5"/><circle cx="365" cy="38" r="4"/></g>
+<g fill="#b58a35"><path d="M240 6l4 10 11 1-8 7 3 11-10-6-10 6 3-11-8-7 11-1z"/><circle cx="125" cy="41" r="4"/><circle cx="314" cy="37" r="4"/></g></svg>
