@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="48" viewBox="0 0 320 48" role="img" aria-label="Decorative Christmas stars">
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 24H104M216 24H316" stroke="#1B5642" stroke-width="2" opacity=".55"/>
+<path d="M112 24l8-4 4-8 4 8 8 4-8 4-4 8-4-8z" fill="#C89C45" stroke="#9D702C" stroke-width="1.4"/>
+<path d="M148 24l12-6 6-12 6 12 12 6-12 6-6 12-6-12z" fill="#F4D68D" stroke="#9D702C" stroke-width="1.8"/>
+<path d="M196 24l-7-4-4-8-4 8-7 4 7 4 4 8 4-8z" fill="#B62F3C" stroke="#8B2630" stroke-width="1.4"/>
+<circle cx="92" cy="24" r="3" fill="#B62F3C"/><circle cx="228" cy="24" r="3" fill="#B62F3C"/>
+<path d="M160 2v4M160 42v4M138 8l4 4M182 8l-4 4" stroke="#C89C45" stroke-width="2"/>
+</g></svg>

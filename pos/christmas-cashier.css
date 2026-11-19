@@ -402,3 +402,14 @@
     background-image:none!important;
   }
 }
+
+/* Original static holiday star divider below employee Home branding.
+   Decorative background only; no overlays or interactive hit areas. */
+:root[data-pos-season="christmas"] .employee-home-brand::after{
+ content:"";display:block;width:min(100%,320px);height:48px;
+ margin:8px auto 0;pointer-events:none;
+ background:url("christmas-home-stars.svg") center/contain no-repeat;
+}
+@media(max-height:700px), (max-width:420px), (forced-colors:active), print{
+ :root[data-pos-season="christmas"] .employee-home-brand::after{display:none!important}
+}
