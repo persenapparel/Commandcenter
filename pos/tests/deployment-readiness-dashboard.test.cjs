@@ -25,7 +25,8 @@ assert.match(markup,/id="staging-deployment" class="staging-readiness"/);
 assert.match(markup,/src="handoff-config\.js"/);
 assert.match(markup,/src="deployment-readiness\.js"/);
 assert.match(build,/'deployment-readiness\.js'/);
-assert.doesNotMatch(source,/localStorage|sessionStorage|service_role|supabase\.auth|password|Authorization:/i);
+assert.doesNotMatch(source,/localStorage|sessionStorage|service_role|supabase\.auth|Authorization:/i);
+assert.match(source,/u\.username\|\|u\.password/,'embedded URL credentials must be rejected');
 async function fakeUI(){
  globalThis.PersenPOSHandoffConfig=client;
  const fields=new Map(['staging-readiness-status','staging-readiness-commit','staging-readiness-guest'].map(id=>[id,{textContent:''}]));
