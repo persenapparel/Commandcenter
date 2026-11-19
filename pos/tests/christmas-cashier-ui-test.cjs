@@ -11,6 +11,9 @@ const build = fs.readFileSync(path.join(root, 'build-pages.mjs'), 'utf8');
 const register = fs.readFileSync(path.join(root, 'register.html'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'christmas-cashier.css'), 'utf8');
 const art = fs.readFileSync(path.join(root, 'christmas-tree.svg'), 'utf8');
+const dashboard = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const dashboardCss = fs.readFileSync(path.join(root, 'christmas-dashboard.css'), 'utf8');
+const dashboardJs = fs.readFileSync(path.join(root, 'christmas-dashboard.js'), 'utf8');
 
 assert.match(register, /href="christmas-cashier\.css"/, 'cashier page must load its holiday stylesheet');
 assert.match(build, /'christmas-cashier\.css'/, 'build must copy the holiday stylesheet');
@@ -20,6 +23,23 @@ assert.match(css, /prefers-reduced-motion:reduce/, 'seasonal motion must be opti
 assert.match(css, /\[data-pos-season="christmas"\]/, 'styles must not leak into other seasonal themes');
 assert.match(art, /^<svg[\s\S]*<\/svg>\s*$/, 'holiday illustration should be a standalone SVG');
 assert.doesNotMatch(art, /<script|<foreignObject|(?:href|xlink:href)=["']https?:/i, 'art must not embed scripts or external content');
+assert.match(dashboard, /href="christmas-dashboard\.css"/, 'dashboard must load the seasonal stylesheet');
+assert.match(dashboard, /src="christmas-dashboard\.js"/, 'dashboard must load the seasonal mode script');
+assert.match(dashboard, /class="christmas-dashboard-scene" aria-hidden="true"/, 'dashboard artwork must be noninteractive');
+assert.match(build, /'christmas-dashboard\.css','christmas-dashboard\.js'/, 'build must ship dashboard assets');
+assert.match(dashboardCss, /:root\[data-pos-season="christmas"\]/, 'dashboard holiday styling must be scoped');
+assert.doesNotMatch(dashboardJs, /session|auth\.uid|fetch\(|supabase|password/i, 'dashboard seasonal script cannot read auth or checkout data');
+function checkDashboard(dateIso, choice, active) {
+  class MockDate extends Date {constructor(...args){super(...(args.length?args:[dateIso]));}}
+  const ctx={Date:MockDate,document:{documentElement:{dataset:{}}},localStorage:{getItem:()=>choice}};
+  vm.runInNewContext(dashboardJs,ctx,{filename:'christmas-dashboard.js'});
+  assert.equal(ctx.document.documentElement.dataset.posSeason,active?'christmas':undefined);
+}
+checkDashboard('2026-11-19T12:00:00Z','auto',true);
+checkDashboard('2027-01-02T12:00:00Z','auto',false);
+checkDashboard('2026-11-19T12:00:00Z','simple',false);
+checkDashboard('2026-11-19T12:00:00Z','winter',false);
+checkDashboard('2026-11-19T12:00:00Z','christmas',true);
 
 function checkAppearance(dateIso, appearance, campaign, expectedSeason) {
   class MockDate extends Date {
