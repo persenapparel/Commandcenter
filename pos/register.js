@@ -1027,7 +1027,8 @@ by('staff-badge-setup-form').addEventListener('submit',async event=>{
     owner_auth:'Owner badge or owner PIN not recognized. Nothing was saved.',
     locked:'Too many failed owner PIN attempts. Try after the lockout.',
     badge_taken:'That barcode is already assigned. Generate another.',
-    slot_taken:'This employee slot already has a badge. Select the other slot.'
+    slot_taken:'This employee slot already has a badge. Select the other slot.',
+    enrollment_conflict:'The employee badge could not be saved because of a database conflict. No employee was activated; contact the owner to review staging.'
    };
    output.textContent=reasons[result?.reason]||'Badge was not saved. Check your owner credentials and retry.';
    return;
