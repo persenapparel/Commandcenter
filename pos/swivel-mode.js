@@ -87,6 +87,12 @@
  }
  function showEmployeeHome(employee=bridge?.state?.().employee){
   if(!employee||bridge?.state?.().locked||state()?.phase!=='cashier')return false;
+  // Clear the compact Sales layout only after a verified shift, without
+  // clearing the cart or bypassing the authorization boundary.
+  try{api.closeEmployeeSalesViewForHome()}catch(error){
+   message(error.message||'Unable to return to Employee Home.');
+   return false;
+  }
   const home=ensureEmployeeHome();
   if(!home)return false;
   home.hidden=false;
