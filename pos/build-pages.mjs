@@ -19,8 +19,19 @@ const dest='pos-dist';
 await mkdir(dest,{recursive:true});
 await mkdir(join(dest,'assets'),{recursive:true});
 await copyFile(join('assets','persen-logo.png'),join(dest,'assets','persen-logo.png'));
-await copyFile(join('pos','christmas-tree.svg'),join(dest,'christmas-tree.svg'));
-await copyFile(join('pos','christmas-garland.svg'),join(dest,'christmas-garland.svg'));
+// Keep every seasonal artwork reference in the deployed cashier artifact.
+// The stylesheet references all of these files; copying just the tree and
+// garland leaves invisible Christmas decorations in live Pages previews.
+const christmasArtwork=[
+ 'christmas-tree.svg','christmas-garland.svg','christmas-snowflakes.svg',
+ 'christmas-lights.svg','christmas-gift-ribbon.svg','christmas-sales-trim.svg',
+ 'christmas-winter-corner.svg','christmas-home-stars.svg'
+];
+const christmasCss=await readFile(join('pos','christmas-cashier.css'),'utf8');
+const artworkReferences=[...christmasCss.matchAll(/url\(\s*['"]?(christmas-[a-z0-9-]+\.svg)['"]?\s*\)/g)].map(m=>m[1]);
+const missingArtwork=[...new Set(artworkReferences)].filter(file=>!christmasArtwork.includes(file));
+if(missingArtwork.length)throw Error('Christmas cashier CSS references artwork omitted from Pages build: '+missingArtwork.join(', '));
+for(const file of christmasArtwork)await copyFile(join('pos',file),join(dest,file));
 for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashier.css','christmas-dashboard.css','christmas-dashboard.js','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','barcode-tender-model.js','register.js','swivel-mode.js','display.js','customer-guest-client.js','epson-center.js','epson-center.css','admin.css','admin.js','inventory.js','staff-test.css','staff-test.js']){
  await copyFile(join('pos',f),join(dest,f));
 }
