@@ -519,7 +519,7 @@ async function status(){
    checkout=c&&['awaiting_customer','contact_received'].includes(c.status)?c:null;
    document.body.classList.toggle('checkout-active',!!checkout);
    if(checkout&&document.body.classList.contains('pos-register-closed'))
-    notice('Unfinished staging checkout detected. Owner recovery is required before another sale.');
+    notice('Unfinished staging checkout detected. Owner: use Recover Unfinished Test Checkout. Employee access stays locked.');
   }
   const progressing=!!checkout;
   const progress=Wizard.monitor(checkout?.customer_step||'phone',checkout?.help_requested===true);
