@@ -145,3 +145,64 @@
  :root[data-pos-season="christmas"] .employee-home::before,
  :root[data-pos-season="christmas"] .register-launch::after{display:none!important}
 }
+
+
+/* Hand-drawn CSS holly-and-gold accents, strictly behind informational content.
+   No pseudo-elements on payment, barcode, PIN, or customer form controls. */
+:root[data-pos-season="christmas"] .employee-home-brand .eyebrow{
+ display:inline-block;letter-spacing:.09em;text-transform:uppercase;font-weight:750;
+}
+:root[data-pos-season="christmas"] .employee-home-brand h2{
+ text-wrap:balance;line-height:1.16;
+}
+:root[data-pos-season="christmas"] .employee-home-intro{
+ max-width:64ch;line-height:1.55;
+}
+:root[data-pos-season="christmas"] .employee-home-actions{
+ gap:clamp(10px,1.5vw,20px);
+}
+:root[data-pos-season="christmas"] .employee-home-actions button{
+ border-radius:16px;line-height:1.3;touch-action:manipulation;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:active:not(:disabled){
+ transform:translateY(0);box-shadow:0 2px 8px #154c3714;
+}
+:root[data-pos-season="christmas"] .employee-home-actions button:disabled{
+ opacity:.65;cursor:not-allowed;
+}
+:root[data-pos-season="christmas"] .employee-home-status{
+ border-inline-start:4px solid #b58a43;padding-inline-start:12px;
+}
+:root[data-pos-season="christmas"] .register-launch{
+ background-image:
+  radial-gradient(ellipse 16px 8px at 19px 15px,#39764d 96%,transparent 100%),
+  radial-gradient(ellipse 16px 8px at 44px 15px,#39764d 96%,transparent 100%),
+  radial-gradient(circle 4px at 32px 22px,#ac2e3a 95%,transparent 100%),
+  linear-gradient(145deg,#fffefa,#f0f8f0 78%,#fcefeb);
+ background-size:64px 38px,64px 38px,64px 38px,auto;
+ background-repeat:no-repeat,no-repeat,no-repeat,no-repeat;
+ background-position:right 22px bottom 14px,right 22px bottom 14px,right 22px bottom 14px,center;
+}
+@media (hover:none){
+ :root[data-pos-season="christmas"] .employee-home-actions button:hover:not(:disabled){
+  transform:none;
+ }
+}
+@media (max-width:420px){
+ :root[data-pos-season="christmas"] .employee-home-actions button{
+  min-height:100px;padding:14px;
+ }
+ :root[data-pos-season="christmas"] .register-launch{
+  background-image:linear-gradient(145deg,#fffefa,#f0f8f0 78%,#fcefeb);
+ }
+}
+@media (prefers-reduced-motion:reduce){
+ :root[data-pos-season="christmas"] .employee-home-actions button{
+  transition:none!important;animation:none!important;
+ }
+}
+@media print{
+ :root[data-pos-season="christmas"] .register-launch{
+  background-image:none!important;box-shadow:none!important;
+ }
+}
