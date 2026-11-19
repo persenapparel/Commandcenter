@@ -6,6 +6,8 @@
 <title>Persen POS | Device Dashboard</title>
 <link rel="stylesheet" href="christmas-dashboard.css">
 <script defer src="christmas-dashboard.js"></script>
+<script defer src="handoff-config.js"></script>
+<script defer src="deployment-readiness.js"></script>
 <style>
 :root{color-scheme:light;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 *{box-sizing:border-box}
@@ -53,6 +55,11 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 #device-dashboard[hidden],#pin-gate[hidden]{display:none!important}
 @media(max-width:590px){.pin-wrap{min-height:calc(100svh - 145px)}.pin-card{padding:25px 20px}}
 
+.staging-readiness{background:#fdfdfb;border:1px solid #cbd9ce;border-radius:16px;margin:18px 0 0;padding:16px 20px;color:#224537}
+.staging-readiness summary{cursor:pointer;font-weight:850;font-size:14px;min-height:30px;line-height:1.7}
+.staging-readiness p{margin:10px 0 0;color:#4e6757;font-size:12px;overflow-wrap:anywhere;line-height:1.5}
+.staging-readiness summary:focus-visible{outline:3px solid #a77c36;outline-offset:4px;border-radius:5px}
+@media print{.staging-readiness{display:none!important}}
 </style>
 </head>
 <body>
@@ -87,6 +94,13 @@ footer{color:#7b8eab;font-size:11px;text-align:center;padding-bottom:25px}
 </article>
 </section>
 <section class="note"><h3>Before taking real orders</h3><p>Finish staged Supabase integration, secure same-iPad customer handoff and cashier reauthentication, test actual purchases without money, configure email delivery, and confirm that the Epson can print, cut and open the compatible drawer through the Windows station. The existing Persen Apparel website is separate from this POS preview.</p></section>
+<details id="staging-deployment" class="staging-readiness">
+<summary>Staging build &amp; customer checkout configuration</summary>
+<p id="staging-readiness-status" role="status" aria-live="polite">Checking deployment configuration…</p>
+<p id="staging-readiness-commit">Cashier commit: unavailable</p>
+<p id="staging-readiness-guest">Customer pairing: unverified</p>
+<p>These details show configuration only. They do not confirm that badge sign-in, checkout, or Epson hardware is functioning.</p>
+</details>
 </main>
 <footer>© Persen Apparel · Custom apparel on Long Island</footer>
 
