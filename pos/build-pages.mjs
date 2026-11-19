@@ -22,6 +22,10 @@ const commit=process.env.CF_PAGES_COMMIT_SHA;
 // this, a successful build can publish an untraceable cashier/guest pairing.
 if(process.env.CF_PAGES && !/^[a-f0-9]{40}$/i.test(commit||''))
  throw Error('Cloudflare POS staging build requires a valid CF_PAGES_COMMIT_SHA');
+// Never let a misconfigured Pages project publish the isolated cashier artifact.
+// Cloudflare provides CF_PAGES_PROJECT_NAME on its hosted build workers.
+if(process.env.CF_PAGES && process.env.CF_PAGES_PROJECT_NAME!=='persen-pos-staging')
+ throw Error('Refusing POS cashier build outside persen-pos-staging Cloudflare project');
 // Pinned customer build for CI only. Real protected deployments MUST name
 // the exact independently deployed guest preview; a stale default could point
 // at the wrong customer's release and block or misroute checkout.
