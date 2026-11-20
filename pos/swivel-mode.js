@@ -394,6 +394,8 @@
   }
  }
  start.onclick=()=>{
+  const blocker=api.employeeHomeBlocker();
+  if(blocker)return showBlockedCheckout(blocker);
   if(!bridge?.state?.().employee)return openShiftDialog();
   void handToCustomer();
  };
