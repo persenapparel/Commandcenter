@@ -9,7 +9,7 @@ DECLARE
 BEGIN
   -- Exact overload checks prevent accidentally accepting an auth-user-based API.
   FOREACH v_sig IN ARRAY ARRAY[
-    'public.pos_owner_set_badge_register_access(integer,uuid,boolean)',
+    'public.pos_owner_set_badge_register_access(uuid,uuid,boolean)',
     'public.pos_owner_enroll_badge(integer,text,text,text,text,text,uuid)',
     'public.pos_owner_activate_pending_employee_badge(integer,text,text,uuid)'
   ] LOOP
@@ -20,7 +20,7 @@ BEGIN
 
   -- Never retire legacy callers if the new RPCs remain executable by anon.
   FOREACH v_sig IN ARRAY ARRAY[
-    'public.pos_owner_set_badge_register_access(integer,uuid,boolean)',
+    'public.pos_owner_set_badge_register_access(uuid,uuid,boolean)',
     'public.pos_owner_enroll_badge(integer,text,text,text,text,text,uuid)',
     'public.pos_owner_activate_pending_employee_badge(integer,text,text,uuid)'
   ] LOOP
