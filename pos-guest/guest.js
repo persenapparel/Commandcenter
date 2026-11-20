@@ -3,7 +3,7 @@ const BASE='https://naaqcspvbntzdtwuchrr.supabase.co/functions/v1/pos-guest-chec
 const root=document.getElementById('checkout');
 const validId=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value);
 const validToken=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
-function cashierOrigin(value){try{const u=new URL(value),h=u.hostname.toLowerCase();return u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'&&(h==='persen-pos-staging.pages.dev'||h.endsWith('.persen-pos-staging.pages.dev'));}catch(_){return false}}
+function cashierOrigin(value){try{const u=new URL(value),h=u.hostname.toLowerCase();return u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'&&(u.origin==='https://pos.persenapparel.com'||h==='persen-pos-staging.pages.dev'||h.endsWith('.persen-pos-staging.pages.dev'));}catch(_){return false}}
 let token='',checkoutId='',started=false,submitted=false,busy=false,authorizedCashierOrigin='';
 const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node};
 function unavailable(){root.replaceChildren(el('main'));const panel=root.firstChild;panel.append(el('h1','Checkout is temporarily unavailable'),el('p','Please return the iPad to your cashier. No sale was completed.'))}
