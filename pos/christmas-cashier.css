@@ -538,3 +538,31 @@
   background-image:none!important;padding-bottom:0;
  }
 }
+
+
+/* 11-inch iPad landscape: keep the four Home actions above the fold.
+   Decorative-only elements yield space before any functional control does. */
+@media (orientation:landscape) and (max-height:900px){
+ :root[data-pos-season="christmas"] .employee-home-intro::after,
+ :root[data-pos-season="christmas"] .employee-home-brand::after,
+ :root[data-pos-season="christmas"] .employee-home-actions::after{
+  display:none!important;
+ }
+ :root[data-pos-season="christmas"] .employee-home-brand{
+  padding-bottom:12px;
+  background-image:none;
+ }
+ :root[data-pos-season="christmas"] .employee-home-actions::before{
+  display:none!important;
+ }
+}
+/* Avoid transitions and animated decorative surfaces when motion is reduced. */
+@media (prefers-reduced-motion:reduce){
+ :root[data-pos-season="christmas"] .employee-home,
+ :root[data-pos-season="christmas"] .employee-home-brand,
+ :root[data-pos-season="christmas"] .employee-home-intro,
+ :root[data-pos-season="christmas"] .register-launch,
+ :root[data-pos-season="christmas"] .cashier-stage-header{
+  animation:none!important;transition:none!important;
+ }
+}
