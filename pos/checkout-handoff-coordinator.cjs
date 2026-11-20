@@ -56,10 +56,18 @@ function createHandoffCoordinator({
   }
   async function customerCompleted() {
     requirePhase('guest');
-    const status=await getCheckoutStatus(checkoutId);
-    if (status!=='contact_received') throw Error('Customer response not verified');
-    phase='customer_complete';
-    return {message:'Your information is all set! Please turn the iPad back to your cashier to finish checking out.'};
+    // A delayed or repeated customer callback must not race a second status
+    // verification or change the phase while the first request is in flight.
+    pending=true;
+    const originalCheckoutId=checkoutId;
+    try {
+      const status=await getCheckoutStatus(originalCheckoutId);
+      if (phase!=='guest' || checkoutId!==originalCheckoutId)
+        throw Error('Checkout changed during customer verification');
+      if (status!=='contact_received') throw Error('Customer response not verified');
+      phase='customer_complete';
+      return {message:'Your information is all set! Please turn the iPad back to your cashier to finish checking out.'};
+    } finally {pending=false;}
   }
   function showCashierLock() {
     requirePhase('customer_complete');
