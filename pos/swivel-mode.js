@@ -334,9 +334,33 @@
   return !!current?.employee&&!current.locked&&current.checkout?.phase==='cashier'&&
    !current.checkout.pending&&Date.parse(current.employee.expiresAt)>Date.now();
  }
+ // An old checkout is not a badge failure. Require the existing owner-only
+ // recovery action instead of starting a new shift above unpaid customer data.
+ function showBlockedCheckout(blocker){
+  if(shiftDialog.open)shiftDialog.close();
+  shiftBadge.value='';shiftPin.value='';
+  const employee=bridge?.state?.().employee;
+  if(blocker==='unpaid_checkout'&&(!employee||employee.role==='owner')){
+   message('SHIFT-RECOVERY: An unfinished unpaid staging checkout needs owner review before another sale.');
+   api.openUnpaidRecoveryDialog();
+  }else{
+   message(blocker==='paid_checkout'||blocker==='pending_payment'
+    ?'SHIFT-PAYMENT: An earlier payment or Finish Order needs owner review before opening a new shift.'
+    :'SHIFT-RECOVERY: Only the owner may recover an unfinished staging checkout.');
+  }
+ }
  function openShiftDialog(){
   if(!api.ready())return message('Sign in as the staging owner before starting your employee shift.');
-  if(bridge?.state?.().employee)return message('Register is locked. Use the original badge at the lock screen.');
+  const blocker=api.employeeHomeBlocker();
+  if(blocker)return showBlockedCheckout(blocker);
+  const employee=bridge?.state?.().employee;
+  if(employee){
+   if(showEmployeeHome(employee)){
+    if(shiftDialog.open)shiftDialog.close();
+    return message('Hello, '+employee.firstName+'! Continue your verified shift.');
+   }
+   return message('SHIFT-HOME: A verified employee shift exists, but Employee Home is unavailable.');
+  }
   shiftMessage.textContent='';
   shiftBadge.value='';shiftPin.value='';
   if(typeof shiftDialog.showModal!=='function')return message(blocked);
@@ -370,12 +394,25 @@
   }
  }
  start.onclick=()=>{
+  const blocker=api.employeeHomeBlocker();
+  if(blocker)return showBlockedCheckout(blocker);
   if(!bridge?.state?.().employee)return openShiftDialog();
   void handToCustomer();
  };
  shiftForm.addEventListener('submit',async event=>{
   event.preventDefault();
   if(transition)return;
+  const blocker=api.employeeHomeBlocker();
+  if(blocker)return showBlockedCheckout(blocker);
+  const existing=bridge?.state?.().employee;
+  if(existing){
+   if(showEmployeeHome(existing)){
+    if(shiftDialog.open)shiftDialog.close();
+    return message('Hello, '+existing.firstName+'! Continue your verified shift.');
+   }
+   shiftMessage.textContent='SHIFT-HOME: A verified shift exists, but Employee Home could not open. Do not re-enroll your badge.';
+   return;
+  }
   const badge=shiftBadge.value.trim(),pin=shiftPin.value;
   if(!badge||!pin){shiftMessage.textContent='Scan a badge and enter the staff PIN.';return}
   transition=true;shiftMessage.textContent='Verifying staff access…';
@@ -387,6 +424,14 @@
    step='home';
    shiftBadge.value='';shiftPin.value='';
    shiftMessage.textContent='';
+   // In case a checkout appeared during the async badge verification, the
+   // signed-in owner can recover it without ever opening cashier controls.
+   const pending=api.employeeHomeBlocker();
+   if(pending){
+    showBlockedCheckout(pending);
+    transition=false;
+    return;
+   }
    if(!showEmployeeHome(employee))throw Error('Employee home is unavailable');
    shiftDialog.close();
    lastActivity=Date.now();
