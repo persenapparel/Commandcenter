@@ -452,3 +452,14 @@
  :root[data-pos-season="christmas"] .guest-step-progress::after,
  :root[data-pos-season="christmas"] .customer-step-progress::after{display:none!important}
 }
+
+/* Original festive tree in normal Home branding flow; never overlaps checkout
+   controls, employee PIN inputs or the isolated guest wizard. */
+:root[data-pos-season="christmas"] .employee-home-brand::before{
+ content:"";display:block;width:112px;height:100px;margin:0 auto 8px;
+ background:url("christmas-tree-gifts.svg") center/contain no-repeat;
+ pointer-events:none;user-select:none;
+}
+@media(max-width:540px),(max-height:850px),(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .employee-home-brand::before{display:none!important}
+}
