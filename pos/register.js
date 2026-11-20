@@ -419,6 +419,14 @@ function reopenRegisterAfterVerifiedBadge(){
   throw Error('Register did not return to the employee home after badge verification');
  return true;
 }
+// Return only a coarse checkout state. Never disclose payment/contact data
+// or allow a fresh employee shift to bypass an unfinished transaction.
+function employeeHomeBlocker(){
+ if(checkout?.status==='completed')return 'paid_checkout';
+ if(checkout)return 'unpaid_checkout';
+ if(pendingCash)return 'pending_payment';
+ return null;
+}
 function closeEmployeeSalesViewForHome({preserveUnfinishedCart=false}={}){
  // Preserve the verified employee shift while closing the Sales-only viewport.
  // Never discard an active cart or sensitive checkout to reveal employee controls.
@@ -505,6 +513,7 @@ window.PersenPOSRegister=Object.freeze({
  openEmployeeMode,
  closeEmployeeSalesViewForHome,
  prepareEmployeeHomeAfterShift:()=>closeEmployeeSalesViewForHome({preserveUnfinishedCart:true}),
+ employeeHomeBlocker,
  openUnpaidRecoveryDialog:()=>openUnpaidRecoveryDialog(),
  openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
  refreshExternalApprovalUI:updateExternalApprovalPanel,
