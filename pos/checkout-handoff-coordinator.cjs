@@ -49,7 +49,11 @@ function createHandoffCoordinator({
       return {phase};
     } catch(e) {
       // Once the cashier has locked, never silently restore cashier controls.
-      if (guestRevoker) await guestRevoker().catch(()=>{});
+      // Opening the guest view can fail after receiving a capability.
+      // Revoke it and clear any partially installed guest context before
+      // leaving the cashier locked. Cleanup failures must not unlock it.
+      try { if (guestRevoker) await guestRevoker(); } catch (_) {}
+      try { await clearGuestContext(); } catch (_) {}
       phase='locked';
       throw e;
     } finally {pending=false;}
