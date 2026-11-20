@@ -435,3 +435,20 @@
 @media (forced-colors:active), print{
  :root[data-pos-season="christmas"] .cashier-stage-header{background-image:none!important}
 }
+
+/* Decorative Christmas progress accent for the isolated guest wizard.
+   Scoped to existing guest progress surfaces; never captures taps or covers form fields. */
+:root[data-pos-season="christmas"] .guest-step-progress::after,
+:root[data-pos-season="christmas"] .customer-step-progress::after{
+ content:"";display:block;width:min(100%,480px);height:40px;margin:8px auto 0;
+ background:url("christmas-guest-winter-progress.svg") center/contain no-repeat;
+ pointer-events:none;
+}
+@media(max-height:680px), (max-width:480px){
+ :root[data-pos-season="christmas"] .guest-step-progress::after,
+ :root[data-pos-season="christmas"] .customer-step-progress::after{display:none}
+}
+@media(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .guest-step-progress::after,
+ :root[data-pos-season="christmas"] .customer-step-progress::after{display:none!important}
+}
