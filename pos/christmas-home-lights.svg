@@ -8,4 +8,6 @@
 <g fill="#e8c36b"><path d="M102 37q6 16 12 0zM342 36q6 17 12 0z"/></g>
 <g fill="#f7f2e6"><path d="M222 30q6 17 12 0z"/></g>
 <g fill="none" stroke="#e6c56e" stroke-width="1.5" opacity=".8"><path d="M25 40v8m-4-4h8M455 35v8m-4-4h8"/></g>
+<g fill="none" stroke="#d5a75c" stroke-width="1.4" opacity=".9"><path d="M78 5v7m-3 0h6M378 5v7m-3 0h6"/><circle cx="78" cy="16" r="4"/><circle cx="378" cy="16" r="4"/></g>
+<g fill="#e8f1e6" opacity=".9"><circle cx="22" cy="17" r="2"/><circle cx="144" cy="8" r="2"/><circle cx="326" cy="8" r="2"/><circle cx="456" cy="20" r="2"/></g>
 </svg>
