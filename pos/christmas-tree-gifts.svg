@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 210" role="img" aria-label="Decorative Christmas tree and presents">
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M120 8l5 12 13 1-10 9 3 13-11-7-11 7 3-13-10-9 13-1z" fill="#d9aa56" stroke="#9a7130" stroke-width="2"/>
+<path d="M120 33L75 92h20l-38 49h28l-20 31h110l-20-31h28l-38-49h20z" fill="#18543f" stroke="#0b382b" stroke-width="4"/>
+<path d="M120 43L94 89m26-29l-36 72m38-46l-42 74" stroke="#3c8564" stroke-width="5"/>
+<path d="M92 98q27 18 55 0M78 141q42 20 84 0" stroke="#d9aa56" stroke-width="4"/>
+<g fill="#bc303d" stroke="#fff6e9" stroke-width="2"><circle cx="109" cy="76" r="6"/><circle cx="136" cy="111" r="6"/><circle cx="96" cy="150" r="6"/></g>
+<g fill="#f4dfab"><circle cx="124" cy="123" r="5"/><circle cx="114" cy="156" r="5"/><circle cx="145" cy="155" r="5"/></g>
+<path d="M113 172h14v19h-14z" fill="#9a7130"/>
+<rect x="38" y="171" width="52" height="31" rx="3" fill="#b82e3a" stroke="#7f202d" stroke-width="2"/>
+<path d="M64 171v31m-26-16h52" stroke="#e8bb6b" stroke-width="5"/>
+<rect x="151" y="178" width="52" height="24" rx="3" fill="#2b7355" stroke="#124b38" stroke-width="2"/>
+<path d="M177 178v24m-26-12h52" stroke="#e8bb6b" stroke-width="5"/>
+<path d="M53 171q-5-17 11 0 16-17 11 0M166 178q-5-14 11 0 16-14 11 0" stroke="#e8bb6b" stroke-width="4"/>
+</g></svg>
