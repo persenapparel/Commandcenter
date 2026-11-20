@@ -104,9 +104,14 @@ function createHandoffCoordinator({
     requirePhase('payment');
     pending=true;
     try {
-      const result=await finishVerifiedSale({checkoutId,payment});
-      if (!result || result.completed!==true || result.checkoutId!==checkoutId)
-        throw Error('Sale completion not verified');
+      // Once finalization has been submitted, a timeout, rejected request or
+      // malformed response may still mean the server completed the sale.
+      // Fail closed rather than allowing a second submission for this checkout.
+      const finishingCheckoutId=checkoutId;
+      phase='finalizing';
+      const result=await finishVerifiedSale({checkoutId:finishingCheckoutId,payment});
+      if (!result || result.completed!==true || result.checkoutId!==finishingCheckoutId)
+        throw Error('Sale completion unconfirmed; reconcile server status before another sale');
       // Server completion is irreversible. Never submit payment twice if
       // guest revocation, cleanup, or home navigation subsequently fails.
       phase='finalizing';
