@@ -160,6 +160,11 @@ function createStagingHandoffBridge({
   const reopened=await unlockRegisterForNextSale();
   if(reopened!==true)throw Error('Verified register reopening failed');
   assertReady();
+  // Reopening is asynchronous: do not replace a coordinator that has moved
+  // away from the completed-sale Home gate while the callback was running.
+  if(!locked || idleLocked || coordinator.state().phase!=='home' ||
+     coordinator.state().pending)
+   throw Error('Completed-sale lock changed during register reopening');
   coordinator=newCoordinator();
   locked=false;
   return Object.freeze({firstName:cashier.firstName});
