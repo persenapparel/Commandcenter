@@ -376,9 +376,12 @@
   const badge=shiftBadge.value.trim(),pin=shiftPin.value;
   if(!badge||!pin){shiftMessage.textContent='Scan a badge and enter the staff PIN.';return}
   transition=true;shiftMessage.textContent='Verifying staff access…';
+  let step='setup';
   try{
    const active=ensureBridge();
+   step='verification';
    const employee=await active.startShift({badge,pin});
+   step='home';
    shiftBadge.value='';shiftPin.value='';
    shiftMessage.textContent='';
    if(!showEmployeeHome(employee))throw Error('Employee home is unavailable');
@@ -388,14 +391,20 @@
    transition=false;
   }catch(error){
    shiftBadge.value='';shiftPin.value='';
-   // Keep badge/PIN details private while distinguishing authentication failure
-   // from a staging setup or customer-display initialization problem.
+   // Never display or log badge/PIN values or raw server errors.
+   // Distinct codes let the owner report a failure without revealing secrets.
    const reason=String(error?.message||'');
-   shiftMessage.textContent=reason.includes('Staff access was not verified')||reason==='Invalid employee credentials'
-    ?'Staff access was not verified. Check the badge and PIN.'
-    :reason.includes('Register is not ready')
-     ?'The staging register is not ready. Please check the owner register setup.'
-     :'The register could not complete sign-in due to a POS connection or setup error. Your badge and PIN were not changed.';
+   shiftMessage.textContent=step==='setup'
+    ?'SHIFT-SETUP: Secure POS sign-in could not initialize. Your badge was not checked.'
+    :step==='home'
+     ?'SHIFT-HOME: Badge sign-in succeeded, but the employee home did not open. Refresh the register.'
+     :reason.includes('Register is not ready')
+      ?'SHIFT-REGISTER: The staging register is not ready for employee sign-in.'
+      :reason==='Invalid employee credentials'
+       ?'SHIFT-FORMAT: Scanned badge or PIN format was not accepted. Do not re-enroll your badge.'
+       :reason.includes('Staff access was not verified')
+        ?'SHIFT-DENIED: The sign-in server rejected the badge/PIN. Do not re-enroll your badge.'
+        :'SHIFT-CONNECTION: The staff sign-in service could not finish the request. Your credentials were not changed.';
    transition=false;
   }
  });
