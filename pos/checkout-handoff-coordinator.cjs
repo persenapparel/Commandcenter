@@ -83,12 +83,19 @@ function createHandoffCoordinator({
     pending=true;
     try {
       // Badge must be checked by the server against the still-valid shift.
-      const proof=await verifyShiftBadge({badge,checkoutId});
-      if (!proof || proof.verified!==true || proof.checkoutId!==checkoutId)
+      const resumeCheckoutId=checkoutId;
+      const proof=await verifyShiftBadge({badge,checkoutId:resumeCheckoutId});
+      if (phase!=='locked' || checkoutId!==resumeCheckoutId)
+        throw Error('Checkout changed during badge verification');
+      if (!proof || proof.verified!==true || proof.checkoutId!==resumeCheckoutId)
         throw Error('Badge not authorized for pending checkout');
-      const status=await getCheckoutStatus(checkoutId);
+      const status=await getCheckoutStatus(resumeCheckoutId);
+      if (phase!=='locked' || checkoutId!==resumeCheckoutId)
+        throw Error('Checkout changed during status verification');
       if (status!=='contact_received') throw Error('Customer step not completed');
-      await resumeCashier({checkoutId,proof});
+      await resumeCashier({checkoutId:resumeCheckoutId,proof});
+      if (phase!=='locked' || checkoutId!==resumeCheckoutId)
+        throw Error('Checkout changed during cashier resume');
       phase='payment';
       return {phase};
     } finally {pending=false;}
