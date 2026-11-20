@@ -294,17 +294,21 @@
  }
  function ensureBridge(){
   if(bridge)return bridge;
-  ensureFreshGuestFrame();
+  // Employee authentication must not depend on guest iframe availability.
+  // Guest origin validation still runs before any customer handoff.
+  cashier=cashierOrigin();
   bridge=secure.createStagingHandoffBridge({
    client:api.secureHandoffClient,
    getRegisterId:()=>api.getRegisterId(),
    getStaffCheckoutRequest:()=>api.getStaffCheckoutRequest(),
    lockAndVerifyCashier:async checkoutId=>{
+    ensureFreshGuestFrame(); // Validate customer isolation before locking the cashier.
     api.lockHandoffCheckout(checkoutId);
     renderCustomerLock();
     return guestFrame&&entry.origin!==cashier;
    },
    openGuest:async payload=>{
+    ensureFreshGuestFrame();
     if(!guestFrame)throw Error('Customer frame is unavailable');
     await guestFrame.open(payload);
    },
@@ -382,9 +386,16 @@
    lastActivity=Date.now();
    message('Hello, '+employee.firstName+'! Choose Sales, Returns / Refunds, Exchange, or Inventory Check.');
    transition=false;
-  }catch(_){
+  }catch(error){
    shiftBadge.value='';shiftPin.value='';
-   shiftMessage.textContent='Staff access was not verified. Check the badge and PIN.';
+   // Keep badge/PIN details private while distinguishing authentication failure
+   // from a staging setup or customer-display initialization problem.
+   const reason=String(error?.message||'');
+   shiftMessage.textContent=reason.includes('Staff access was not verified')||reason==='Invalid employee credentials'
+    ?'Staff access was not verified. Check the badge and PIN.'
+    :reason.includes('Register is not ready')
+     ?'The staging register is not ready. Please check the owner register setup.'
+     :'The register could not complete sign-in due to a POS connection or setup error. Your badge and PIN were not changed.';
    transition=false;
   }
  });
