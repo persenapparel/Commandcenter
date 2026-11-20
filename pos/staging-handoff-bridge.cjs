@@ -148,6 +148,10 @@ function createStagingHandoffBridge({
   // Only one reopening may be in flight for a given completed sale.
   if(nextSaleUnlocking)throw Error('Next-sale badge verification already pending');
   nextSaleUnlocking=true;
+  // Capture the exact completed checkout being reopened. A replacement
+  // coordinator must never inherit an older asynchronous badge result.
+  const completedCoordinator=coordinator;
+  const completedCheckoutId=coordinator.state().checkoutId;
   try{
   const proof=await adapter.verifyIdleBadge(badge);
   if(proof.verified!==true||proof.firstName!==cashier.firstName)
@@ -162,7 +166,9 @@ function createStagingHandoffBridge({
   assertReady();
   // Reopening is asynchronous: do not replace a coordinator that has moved
   // away from the completed-sale Home gate while the callback was running.
-  if(!locked || idleLocked || coordinator.state().phase!=='home' ||
+  if(coordinator!==completedCoordinator ||
+     coordinator.state().checkoutId!==completedCheckoutId ||
+     !locked || idleLocked || coordinator.state().phase!=='home' ||
      coordinator.state().pending)
    throw Error('Completed-sale lock changed during register reopening');
   coordinator=newCoordinator();
