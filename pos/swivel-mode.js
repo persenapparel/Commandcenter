@@ -163,7 +163,8 @@
   if(!employee||bridge?.state?.().locked||state()?.phase!=='cashier')return false;
   // Clear the compact Sales layout only after a verified shift, without
   // clearing the cart or bypassing the authorization boundary.
-  try{api.closeEmployeeSalesViewForHome()}catch(error){
+  let prepared;
+  try{prepared=api.prepareEmployeeHomeAfterShift()}catch(error){
    message(error.message||'Unable to return to Employee Home.');
    return false;
   }
@@ -176,7 +177,9 @@
   home.querySelector('#employee-home-role').textContent=employee.role==='owner'
    ? 'Owner access · select an action to continue'
    : 'Cashier access · sales and read-only inventory are ready';
-  home.querySelector('#employee-home-status').textContent='Ready for your next action.';
+  home.querySelector('#employee-home-status').textContent=prepared?.unfinishedCart
+   ?'An unfinished cart is preserved. Open Sales and review or clear it before starting a new order.'
+   :'Ready for your next action.';
   document.body.dataset.employeeHome='true';
   document.body.dataset.staffRole=employee.role||'cashier';
   updateEmployeeHomeClock();lastActivity=Date.now();
