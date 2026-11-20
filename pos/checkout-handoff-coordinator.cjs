@@ -40,10 +40,13 @@ function createHandoffCoordinator({
       const locked=await lockCashier(checkoutId);
       if (locked!==true) throw Error('Cashier credentials not cleared');
       const grant=await issueCheckoutCapability(checkoutId);
+      // Even a malformed grant can carry a minted capability. Retain its
+      // revoker before rejecting the response so the failure path can revoke
+      // it. Never accept or open a grant with the wrong checkout identity.
+      if (grant && typeof grant.revoke==='function') guestRevoker=grant.revoke;
       if (!grant || grant.checkoutId!==checkoutId ||
           typeof grant.capability!=='string' || !grant.capability ||
           typeof grant.revoke!=='function') throw Error('Invalid scoped guest grant');
-      guestRevoker=grant.revoke;
       phase='guest';
       await openIsolatedGuest({checkoutId,capability:grant.capability});
       return {phase};
