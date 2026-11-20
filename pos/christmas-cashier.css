@@ -526,3 +526,15 @@
 :root[data-pos-season="christmas"] .cashier-stage-header{
  background-image:url("christmas-sales-stars.svg"),url("christmas-header-snowfall.svg"),linear-gradient(110deg,#103c30,#266047 70%,#963442);
 }
+
+/* Static seasonal ribbon beneath Home status; small screens omit both motifs. */
+:root[data-pos-season="christmas"] .employee-home-status{
+ background-image:url("christmas-winter-sparkle-trim.svg");
+ background-position:center bottom;background-repeat:no-repeat;
+ background-size:min(100%,320px) 32px;padding-bottom:32px;
+}
+@media(max-width:600px),(max-height:850px),(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .employee-home-status{
+  background-image:none!important;padding-bottom:0;
+ }
+}
