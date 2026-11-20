@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 54" role="img" aria-label="Decorative Christmas string lights">
+<path d="M8 9 Q120 44 240 16 T472 9" fill="none" stroke="#245643" stroke-width="2.5" stroke-linecap="round"/>
+<g stroke="#7b5b25" stroke-width="2">
+<path d="M48 20v7M108 30v7M168 29v7M228 19v7M288 19v7M348 29v7M408 24v7"/>
+</g>
+<g fill="#f0c76e"><path d="M41 27h14v4H41zM221 26h14v4h-14zM401 31h14v4h-14z"/></g>
+<g fill="#b83d43"><path d="M42 31q6 22 12 0zM162 36q6 18 12 0zM282 26q6 20 12 0zM402 35q6 17 12 0z"/></g>
+<g fill="#e8c36b"><path d="M102 37q6 16 12 0zM342 36q6 17 12 0z"/></g>
+<g fill="#f7f2e6"><path d="M222 30q6 17 12 0z"/></g>
+<g fill="none" stroke="#e6c56e" stroke-width="1.5" opacity=".8"><path d="M25 40v8m-4-4h8M455 35v8m-4-4h8"/></g>
+</svg>
