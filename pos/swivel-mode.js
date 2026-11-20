@@ -25,7 +25,7 @@
   const url=new URL(location.origin),host=url.hostname.toLowerCase();
   if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||
      url.pathname!=='/'||
-     !(host==='persen-pos-staging.pages.dev'||host.endsWith('.persen-pos-staging.pages.dev')))
+     !(host==='pos.persenapparel.com'||host==='persen-pos-staging.pages.dev'||host.endsWith('.persen-pos-staging.pages.dev')))
    throw Error('Cashier must run on the protected staging Pages origin');
   return url.origin;
  }
