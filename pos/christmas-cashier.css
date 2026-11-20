@@ -475,3 +475,14 @@
   padding-bottom:0;background-image:none!important;
  }
 }
+
+/* Original winter accent on the locked welcome card only.
+   Kept in normal flow; never overlays badge or PIN entry. */
+:root[data-pos-season="christmas"] .register-launch h2::after{
+ content:"";display:block;width:min(100%,420px);height:54px;
+ margin:8px auto 0;pointer-events:none;
+ background:url("christmas-lock-snowflake.svg") center/contain no-repeat;
+}
+@media(max-width:540px),(max-height:740px),(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .register-launch h2::after{display:none!important}
+}
