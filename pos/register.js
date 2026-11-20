@@ -419,16 +419,19 @@ function reopenRegisterAfterVerifiedBadge(){
   throw Error('Register did not return to the employee home after badge verification');
  return true;
 }
-function closeEmployeeSalesViewForHome(){
+function closeEmployeeSalesViewForHome({preserveUnfinishedCart=false}={}){
  // Preserve the verified employee shift while closing the Sales-only viewport.
  // Never discard an active cart or sensitive checkout to reveal employee controls.
- if(checkout||pendingCash)throw Error('Finish or cancel the open checkout before returning to Employee Home.');
- if(cart.length)throw Error('Clear the current cart before returning to Employee Home.');
+ if(checkout||pendingCash)throw Error('Finish or recover the open checkout before returning to Employee Home.');
+ if(cart.length&&!preserveUnfinishedCart)throw Error('Clear the current cart before returning to Employee Home.');
+ // After a verified shift, preserve an unfinished cart without mixing sales or
+ // discarding products. A checkout or pending payment always blocks home.
+ const unfinishedCart=cart.length>0;
  setRegisterOpen(false,true);
  if(!document.body.classList.contains('pos-register-closed'))
   throw Error('The register could not close safely');
  delete document.body.dataset.employeeMode;
- return true;
+ return Object.freeze({unfinishedCart});
 }
 function activeStaffRole(){
  return window.PersenPOSSwivel?.employee?.()?.role||'';
@@ -501,6 +504,7 @@ window.PersenPOSRegister=Object.freeze({
  reopenRegisterAfterVerifiedBadge,
  openEmployeeMode,
  closeEmployeeSalesViewForHome,
+ prepareEmployeeHomeAfterShift:()=>closeEmployeeSalesViewForHome({preserveUnfinishedCart:true}),
  openUnpaidRecoveryDialog:()=>openUnpaidRecoveryDialog(),
  openEmployeeBadgeSetup:ownerOpenEmployeeBadgeSetup,
  refreshExternalApprovalUI:updateExternalApprovalPanel,
