@@ -294,17 +294,21 @@
  }
  function ensureBridge(){
   if(bridge)return bridge;
-  ensureFreshGuestFrame();
+  // Employee authentication must not depend on guest iframe availability.
+  // Guest origin validation still runs before any customer handoff.
+  cashier=cashierOrigin();
   bridge=secure.createStagingHandoffBridge({
    client:api.secureHandoffClient,
    getRegisterId:()=>api.getRegisterId(),
    getStaffCheckoutRequest:()=>api.getStaffCheckoutRequest(),
    lockAndVerifyCashier:async checkoutId=>{
+    ensureFreshGuestFrame(); // Validate customer isolation before locking the cashier.
     api.lockHandoffCheckout(checkoutId);
     renderCustomerLock();
     return guestFrame&&entry.origin!==cashier;
    },
    openGuest:async payload=>{
+    ensureFreshGuestFrame();
     if(!guestFrame)throw Error('Customer frame is unavailable');
     await guestFrame.open(payload);
    },
