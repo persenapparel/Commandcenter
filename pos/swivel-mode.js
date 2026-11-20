@@ -57,16 +57,89 @@
   const home=document.createElement('section');
   home.id='employee-home';home.className='employee-home panel';home.hidden=true;
   home.setAttribute('aria-label','Employee home');
-  home.innerHTML='<div class="employee-home-brand"><img src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div><span class="eyebrow">PERSEN APPAREL · EMPLOYEE HOME</span><h2 id="employee-home-greeting">Welcome to Persen Apparel</h2><p id="employee-home-role" class="employee-home-role"></p></div></div><div class="employee-home-idle"><span aria-hidden="true">❄</span><time id="employee-home-clock"></time><span aria-hidden="true">✦</span></div><p class="employee-home-intro">Choose what you need to do. The register stays locked until you select Sales or Inventory Check.</p><div class="employee-home-actions"><button id="employee-home-sales" type="button"><span aria-hidden="true">🛍️</span><strong>Sales</strong><small>Start a customer order</small></button><button id="employee-home-returns" type="button"><span aria-hidden="true">↩</span><strong>Returns</strong><small>Look up an original sale</small></button><button id="employee-home-refunds" type="button"><span aria-hidden="true">↺</span><strong>Refunds</strong><small>Owner approval required</small></button><button id="employee-home-inventory" type="button"><span aria-hidden="true">⌁</span><strong>Inventory Check</strong><small>Scan without adding to a sale</small></button></div><button id="employee-home-badge-setup" class="employee-home-badge-setup" type="button">Manage two employee badge slots (owner only)</button><button id="employee-home-recover" class="employee-home-recover" type="button" hidden>Recover unfinished staging test checkout (owner only)</button><p id="employee-home-status" class="employee-home-status" role="status" aria-live="polite"></p>';
+  home.innerHTML='<div class="employee-home-brand"><img src="assets/persen-logo.png" alt="Persen Apparel logo" onerror="this.hidden=true"><div><span class="eyebrow">PERSEN APPAREL · EMPLOYEE HOME</span><h2 id="employee-home-greeting">Welcome to Persen Apparel</h2><p id="employee-home-role" class="employee-home-role"></p></div></div><div class="employee-home-idle"><span aria-hidden="true">❄</span><time id="employee-home-clock"></time><span aria-hidden="true">✦</span></div><p class="employee-home-intro">Choose what you need to do. The register stays locked until you select Sales or Inventory Check.</p><div class="employee-home-actions"><button id="employee-home-sales" type="button"><span aria-hidden="true">🛍️</span><strong>Sales</strong><small>Start a customer order</small></button><button id="employee-home-returns" type="button"><span aria-hidden="true">↩</span><strong>Returns / Refunds</strong><small>Look up an original sale</small></button><button id="employee-home-exchange" type="button"><span aria-hidden="true">↺</span><strong>Exchange</strong><small>Swap an equal-value item</small></button><button id="employee-home-inventory" type="button"><span aria-hidden="true">⌁</span><strong>Inventory Check</strong><small>Scan without adding to a sale</small></button></div><button id="employee-home-badge-setup" class="employee-home-badge-setup" type="button">Manage two employee badge slots (owner only)</button><button id="employee-home-recover" class="employee-home-recover" type="button" hidden>Recover unfinished staging test checkout (owner only)</button><p id="employee-home-status" class="employee-home-status" role="status" aria-live="polite"></p>';
   if(typeof launch.insertAdjacentElement==='function')launch.insertAdjacentElement('afterend',home);
   else workspace.append(home);
   const status=home.querySelector('#employee-home-status');
-  const unavailable=action=>{
-   const role=bridge?.state?.().employee?.role||'cashier';
-   status.textContent=role==='owner'
-    ? action+' is not enabled in the supervised cash-sale test. No sale, payment, or stock was changed.'
-    : action+' needs an owner or authorized-manager approval. No sale, payment, or stock was changed.';
-  };
+  async function openExchange(){
+   if(bridge?.state().employee?.role!=='owner'){status.textContent='Owner approval is required.';return}
+   home.querySelector('.manual-adjustment')?.remove();
+   const form=document.createElement('form');form.className='manual-adjustment panel';
+   form.innerHTML='<h3>Exchange one item</h3><label>Original sale <select name="sale" required></select></label><label>Item received <select name="original" required></select></label><label>Replacement <select name="replacement" required></select></label><label><input name="confirmed" type="checkbox" required> I received the original item in sellable condition and handed over the replacement.</label><button type="submit" disabled>Record exchange</button><button type="button">Cancel</button><p role="status"></p>';
+   home.append(form);
+   const fields=form.elements, submit=form.querySelector('[type=submit]'), feedback=form.querySelector('[role=status]');
+   form.querySelector('[type=button]').onclick=()=>form.remove();
+   const request=crypto.randomUUID();let revision=0;
+   async function selectSale(){
+    const version=++revision;submit.disabled=true;fields.confirmed.checked=false;
+    fields.original.replaceChildren();fields.replacement.replaceChildren();
+    try{
+     const {originals,choices}=await bridge.manualAdjustment({p_action:'exchange_options',p_sale:fields.sale.value});
+     if(version!==revision)return;
+     for(const o of originals)fields.original.add(new Option([o.name,o.color,o.size,(o.unit_cents/100).toFixed(2)].join(' · '),o.stock_id));
+     const selectOriginal=()=>{
+      fields.replacement.replaceChildren();fields.confirmed.checked=false;
+      const o=originals.find(i=>i.stock_id===fields.original.value);
+      for(const v of choices.filter(v=>o&&v.id!==o.stock_id&&v.price===o.unit_cents&&v.taxable===o.taxable))fields.replacement.add(new Option([v.name,v.color,v.size,(v.price/100).toFixed(2)].join(' · '),v.id));
+      submit.disabled=!fields.replacement.length;feedback.textContent=submit.disabled?'No eligible equal-value replacement.':'';
+     };
+     fields.original.onchange=selectOriginal;selectOriginal();
+    }catch{if(version===revision)feedback.textContent='This sale needs manual review.'}
+   }
+   try{
+    const {sales}=await bridge.manualAdjustment({p_action:'list'});
+    for(const s of sales.filter(s=>!s.returned&&s.available===s.total_cents))fields.sale.add(new Option(new Date(s.created_at).toLocaleString()+' · '+(s.total_cents/100).toFixed(2)+' · '+s.id.slice(-8),s.id));
+    fields.sale.onchange=selectSale;fields.replacement.onchange=()=>{fields.confirmed.checked=false};
+    if(fields.sale.length)await selectSale();else feedback.textContent='No eligible recent sales.';
+   }catch{feedback.textContent='Unable to load sales.'}
+   form.onsubmit=async event=>{
+    event.preventDefault();if(submit.disabled||!fields.confirmed.checked)return;submit.disabled=true;
+    try{
+     const result=await bridge.manualAdjustment({p_action:'exchange',p_sale:fields.sale.value,p_original:fields.original.value,p_replacement:fields.replacement.value,p_request:request,p_confirmed:true});
+     if(!result.ok)throw Error();
+     form.remove();status.textContent='Exchange recorded. Both stock quantities were updated.';
+    }catch{feedback.textContent='Exchange could not be confirmed. Check stock and retry the same swap.';submit.disabled=false}
+   };
+  }
+  async function openAdjustment(action){
+   if(bridge?.state().employee?.role!=='owner'){status.textContent='An owner shift is required.';return}
+   const refund=action==='refund';
+   home.querySelector('.manual-adjustment')?.remove();
+   const form=document.createElement('form');
+   form.className='manual-adjustment panel';
+   form.innerHTML='<h3></h3><label>Original sale <select name="sale" required></select></label><div class="refund-fields"><label>Refund amount ($) <input name="amount" type="number" step="0.01" min="0.01"></label><label>How was the customer repaid? <select name="method"><option value="cash">Cash</option><option value="venmo">Venmo</option><option value="apple_pay">Apple Pay</option></select></label></div><label>Reason <input name="reason" required maxlength="250"></label><label><input name="confirmed" type="checkbox" required> <span></span></label><button type="submit">Record</button> <button type="button">Cancel</button><p role="status"></p>';
+   home.append(form);
+   const toggle=document.createElement('button');toggle.type='button';toggle.textContent=refund?'Switch to merchandise return':'Switch to manual refund';toggle.onclick=()=>openAdjustment(refund?'return':'refund');form.prepend(toggle);
+   const fields=form.elements, feedback=form.querySelector('[role=status]');
+   const money=cents=>(cents/100).toFixed(2);
+   form.querySelector('h3').textContent=refund?'Record a manual refund':'Record a full-order merchandise return';
+   form.querySelector('.refund-fields').hidden=!refund;
+   fields.amount.required=refund;
+   const confirmLabel=()=>{fields.confirmed.checked=false;form.querySelector('span').textContent=!refund?'I received all merchandise from this sale.':fields.method.value==='cash'?'I took this amount from the cash drawer and handed it to the customer.':'I already sent this amount back via '+fields.method.selectedOptions[0].textContent+'.'};
+   confirmLabel();fields.method.onchange=confirmLabel;fields.amount.oninput=confirmLabel;
+   form.querySelector('[type=button]').onclick=()=>form.remove();
+   const submit=form.querySelector('[type=submit]');submit.disabled=true;
+   try{
+    const {sales}=await bridge.manualAdjustment({p_action:'list'});
+    for(const sale of sales.filter(s=>refund?s.available>0:!s.returned)){
+     const label=new Date(sale.created_at).toLocaleString()+' · $'+money(sale.total_cents)+' · '+sale.payment_method+' · '+sale.id.slice(-8);
+     const option=new Option(label,sale.id);option.dataset.available=sale.available;fields.sale.add(option);
+    }
+    if(!fields.sale.length){feedback.textContent='No eligible recent sales.';return}
+    const selectSale=()=>{const amount=money(Number(fields.sale.selectedOptions[0].dataset.available));fields.amount.value=amount;fields.amount.max=amount;confirmLabel();};
+    selectSale();fields.sale.onchange=selectSale;submit.disabled=false;
+   }catch{feedback.textContent='Unable to load sales for this register.';return}
+   let request=crypto.randomUUID();
+   form.onsubmit=async event=>{
+    event.preventDefault();if(submit.disabled||!fields.confirmed.checked)return;
+    submit.disabled=true;
+    try{
+     const result=await bridge.manualAdjustment({p_action:action,p_sale:fields.sale.value,p_request:request,p_amount:refund?Math.round(Number(fields.amount.value)*100):null,p_method:refund?fields.method.value:null,p_reason:fields.reason.value.trim(),p_confirmed:true});
+     if(!result.ok)throw Error();
+     form.remove();status.textContent=refund?'Manual refund recorded.':'Full-order return recorded. Review stock before restocking.';
+    }catch{feedback.textContent='Could not confirm the record. Retry with the same details before issuing any money.';submit.disabled=false}
+   };
+  }
   home.querySelector('#employee-home-sales').addEventListener('click',()=>{
    try{api.openEmployeeMode('sales');hideEmployeeHome();message('Sales register ready. Scan products to start a sale.')}catch(error){status.textContent=error.message}
   });
@@ -77,7 +150,7 @@
    try{api.openEmployeeMode('inventory');hideEmployeeHome();message('Inventory Check is ready. Scan a product barcode; nothing will be added to a sale.')}catch(error){status.textContent=error.message}
   });
   home.querySelector('#employee-home-returns').addEventListener('click',()=>unavailable('Returns'));
-  home.querySelector('#employee-home-refunds').addEventListener('click',()=>unavailable('Refunds'));
+  home.querySelector('#employee-home-exchange').addEventListener('click',()=>unavailable('Refunds'));
   employeeHome=home;employeeHomeClock=home.querySelector('#employee-home-clock');
   updateEmployeeHomeClock();
   return home;
@@ -307,7 +380,7 @@
    if(!showEmployeeHome(employee))throw Error('Employee home is unavailable');
    shiftDialog.close();
    lastActivity=Date.now();
-   message('Hello, '+employee.firstName+'! Choose Sales, Returns, Refunds, or Inventory Check.');
+   message('Hello, '+employee.firstName+'! Choose Sales, Returns / Refunds, Exchange, or Inventory Check.');
    transition=false;
   }catch(_){
    shiftBadge.value='';shiftPin.value='';

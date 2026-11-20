@@ -21,6 +21,7 @@ function createStagingHandoffBridge({
   throw Error('Missing staging handoff dependency: '+name);
  let cashier=null,adapter=null,coordinator=null,starting=false,locked=false,newCoordinator=null;
  let idleLocked=false,unlocking=false,paymentPending=false,nextSaleUnlocking=false;
+ let adjustmentCall=null;
  let preparing=false,preparedRequest=null;
  const call=async(name,args)=>{
   const result=await client.rpc(name,args);
@@ -51,6 +52,7 @@ function createStagingHandoffBridge({
    adapter=createHandoffRpcAdapter({
     client,shiftId:auth.shift_id,shiftSecret:auth.shift_secret,registerId
    });
+   adjustmentCall=(args)=>call('pos_manual_adjustment',{...args,p_shift:auth.shift_id,p_secret:auth.shift_secret,p_register:registerId});
    cashier=Object.freeze({firstName:auth.first_name.slice(0,80),
      role:auth.role,expiresAt:auth.expires_at});
    newCoordinator=()=>createHandoffCoordinator({
@@ -206,7 +208,12 @@ function createStagingHandoffBridge({
  }
  function state(){return Object.freeze({employee:cashier,locked,idleLocked,
   checkout:coordinator?coordinator.state():null})}
- return Object.freeze({startShift,handToCustomer,confirmCustomerCompleted,
+ async function manualAdjustment(args){
+  assertReady();
+  if(locked || cashier.role!=='owner' || coordinator.state().phase!=='cashier' || coordinator.state().pending)throw Error('Unlock an owner shift first.');
+  return adjustmentCall(args);
+ }
+ return Object.freeze({manualAdjustment,startShift,handToCustomer,confirmCustomerCompleted,
   requireBadge,resumeWithBadge,recordCash,finishSale,unlockNextSale,lockForIdle,unlockIdle,state});
 }
 module.exports={createStagingHandoffBridge};
