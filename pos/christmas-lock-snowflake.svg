@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="54" viewBox="0 0 420 54" role="img" aria-label="Decorative winter snowflakes">
+<g fill="none" stroke-linecap="round">
+<path d="M12 27H408" stroke="#d3a858" stroke-width="1" opacity=".5"/>
+<g stroke="#245a48" stroke-width="2"><path d="M48 9v36M30 27h36M35 14l26 26M61 14L35 40"/><path d="M372 9v36M354 27h36M359 14l26 26M385 14l-26 26"/></g>
+<g stroke="#a82d39" stroke-width="1.8"><path d="M108 18v18M99 27h18M102 21l12 12M114 21l-12 12"/><path d="M312 18v18M303 27h18M306 21l12 12M318 21l-12 12"/></g>
+<g fill="#d3a858"><circle cx="150" cy="27" r="3"/><circle cx="270" cy="27" r="3"/><path d="m210 13 4 10 11 4-11 4-4 10-4-10-11-4 11-4z"/></g>
+</g></svg>
