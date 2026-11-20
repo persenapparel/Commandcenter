@@ -497,3 +497,15 @@
 @media(max-width:540px),(max-height:780px),(forced-colors:active),print{
   :root[data-pos-season="christmas"] .employee-home-intro::after{display:none!important}
 }
+
+/* Compact original winter-star detail on the existing cashier header.
+   Pure background paint: no extra layout, hit targets or checkout changes. */
+:root[data-pos-season="christmas"] .cashier-stage-header{
+ background-image:url("christmas-sales-stars.svg"),url("christmas-header-snowfall.svg"),linear-gradient(110deg,#103c30,#266047 70%,#963442);
+ background-repeat:repeat-x,repeat-x,no-repeat;
+ background-size:420px 20px,420px 64px,auto;
+ background-position:center bottom,center top,center;
+}
+@media (forced-colors:active),print{
+ :root[data-pos-season="christmas"] .cashier-stage-header{background-image:none!important}
+}
