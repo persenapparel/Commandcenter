@@ -32,7 +32,8 @@ function createHandoffCoordinator({
       // Server MUST atomically start checkout and issue a short-lived,
       // one-checkout capability only to the authenticated cashier.
       const started=await beginCheckout();
-      if (!started || !started.checkoutId) throw Error('Checkout not started');
+      if (!started || typeof started.checkoutId!=='string' || !started.checkoutId.trim())
+        throw Error('Checkout not started with a valid identity');
       checkoutId=started.checkoutId;
       // Claim/lock before minting any guest token. This is intentionally
       // ordered: an unsuccessful cashier lock must never create a credential
@@ -45,7 +46,7 @@ function createHandoffCoordinator({
       // it. Never accept or open a grant with the wrong checkout identity.
       if (grant && typeof grant.revoke==='function') guestRevoker=grant.revoke;
       if (!grant || grant.checkoutId!==checkoutId ||
-          typeof grant.capability!=='string' || !grant.capability ||
+          typeof grant.capability!=='string' || !grant.capability.trim() ||
           typeof grant.revoke!=='function') throw Error('Invalid scoped guest grant');
       phase='guest';
       await openIsolatedGuest({checkoutId,capability:grant.capability});
