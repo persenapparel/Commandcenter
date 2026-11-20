@@ -1,5 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 210" role="img" aria-label="Decorative Christmas tree and presents">
 <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<!-- Original winter ground and snowfall; static, no external assets. -->
+<path d="M15 202q22-9 43-3t43 0q21-6 42 0t42 0q22-7 40 3" stroke="#b9d8cd" stroke-width="3"/>
+<g stroke="#d5e9e3" stroke-width="2"><path d="M30 48v12m-6-6h12M202 42v12m-6-6h12M28 120v10m-5-5h10M212 116v10m-5-5h10"/></g>
+<g fill="#d5e9e3"><circle cx="47" cy="84" r="2"/><circle cx="197" cy="86" r="2"/><circle cx="33" cy="154" r="2"/><circle cx="212" cy="159" r="2"/></g>
 <path d="M120 8l5 12 13 1-10 9 3 13-11-7-11 7 3-13-10-9 13-1z" fill="#d9aa56" stroke="#9a7130" stroke-width="2"/>
 <path d="M120 33L75 92h20l-38 49h28l-20 31h110l-20-31h28l-38-49h20z" fill="#18543f" stroke="#0b382b" stroke-width="4"/>
 <path d="M120 43L94 89m26-29l-36 72m38-46l-42 74" stroke="#3c8564" stroke-width="5"/>
