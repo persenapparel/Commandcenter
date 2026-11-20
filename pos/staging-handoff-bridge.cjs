@@ -127,10 +127,18 @@ function createStagingHandoffBridge({
   assertReady();
   if(locked)throw Error('Register is badge locked');
   if(paymentPending)throw Error('Cash payment already pending');
-  const completed=await coordinator.finishSale(payment);
-  if(completed?.phase!=='home')throw Error('Verified home lock unavailable');
-  locked=true; // Keep shift in memory; require badge-only re-entry.
-  return completed;
+  try {
+   const completed=await coordinator.finishSale(payment);
+   if(completed?.phase!=='home')throw Error('Verified home lock unavailable');
+   locked=true; // Keep shift in memory; require badge-only re-entry.
+   return completed;
+  }catch(error){
+   // The server may have completed the sale before guest revocation or Home
+   // navigation failed. Never leave cashier controls apparently unlocked
+   // when the coordinator has entered its non-retryable finalizing state.
+   if(coordinator.state().phase==='finalizing')locked=true;
+   throw error;
+  }
  }
  async function unlockNextSale(badge) {
   assertReady();
