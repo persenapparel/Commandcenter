@@ -82,9 +82,16 @@ const secureHandoffBundle=[
  ''
 ].join('\n');
 await writeFile(join(dest,'secure-handoff-browser.js'),secureHandoffBundle);
+// A unique URL per deployment ensures iPad Safari does not use an old auth bundle.
+const assetVersion=/^[a-f0-9]{40}$/i.test(commit||'')?commit.slice(0,12):'local';
 for(const f of ['register.html','display.html','index.html','admin.html','inventory.html','staff-test.html']){
  let s=await readFile(join('pos',f),'utf8');
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
+ if(f==='register.html'){
+  for(const script of ['register.js','secure-handoff-browser.js','swivel-mode.js']){
+   s=s.replace('src="'+script+'"','src="'+script+'?v='+assetVersion+'"');
+  }
+ }
  await writeFile(join(dest,f),s);
 }
 await writeFile(join(dest,'_headers'),[
@@ -112,6 +119,12 @@ await writeFile(join(dest,'_headers'),[
  '/handoff-config.js',
  '  Cache-Control: no-store',
  '/config.js',
+ '  Cache-Control: no-store',
+ '/register.js',
+ '  Cache-Control: no-store',
+ '/secure-handoff-browser.js',
+ '  Cache-Control: no-store',
+ '/swivel-mode.js',
  '  Cache-Control: no-store',
  ''].join('\n'));
 await writeFile(join(dest,'deployment.json'),JSON.stringify({environment:'staging',commit:/^[a-f0-9]{40}$/i.test(commit||'')?commit:null,guestEntryUrl:guestEntry,guestOrigin:new URL(guestEntry).origin})+'\n');
