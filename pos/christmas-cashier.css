@@ -509,3 +509,32 @@
 @media (forced-colors:active),print{
  :root[data-pos-season="christmas"] .cashier-stage-header{background-image:none!important}
 }
+
+
+/* Reusable winter garland from the preceding design PR, reserved in normal
+   Home status flow. The ornament is never an overlay or an interactive node. */
+:root[data-pos-season="christmas"] .employee-home-status::after{
+ content:"";display:block;width:min(100%,480px);height:96px;
+ margin:8px auto 0;pointer-events:none;user-select:none;
+ background:url("christmas-winter-garland.svg") center/contain no-repeat;
+}
+@media(max-width:600px),(max-height:850px),(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .employee-home-status::after{display:none!important}
+}
+/* Winter-white festive detail stays within the Sales header background;
+   never covers a scanner, total, or cash-tender target. */
+:root[data-pos-season="christmas"] .cashier-stage-header{
+ background-image:url("christmas-sales-stars.svg"),url("christmas-header-snowfall.svg"),linear-gradient(110deg,#103c30,#266047 70%,#963442);
+}
+
+/* Static seasonal ribbon beneath Home status; small screens omit both motifs. */
+:root[data-pos-season="christmas"] .employee-home-status{
+ background-image:url("christmas-winter-sparkle-trim.svg");
+ background-position:center bottom;background-repeat:no-repeat;
+ background-size:min(100%,320px) 32px;padding-bottom:32px;
+}
+@media(max-width:600px),(max-height:850px),(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .employee-home-status{
+  background-image:none!important;padding-bottom:0;
+ }
+}
