@@ -189,6 +189,12 @@ function createStagingHandoffBridge({
      throw Error('Checkout is no longer available');
    }
    assertReady();
+   // The coordinator may advance while asynchronous badge/status checks run.
+   // Never clear the idle overlay for a different checkout or phase.
+   const latest=coordinator.state();
+   if(latest.pending || latest.phase!==current.phase ||
+      latest.checkoutId!==current.checkoutId || !locked || !idleLocked)
+    throw Error('Checkout changed during badge verification');
    idleLocked=false;locked=false;
    return Object.freeze({firstName:cashier.firstName});
   }finally{unlocking=false}
