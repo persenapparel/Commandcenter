@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 20" aria-hidden="true">
+<g fill="none" stroke="#f6e9c8" stroke-width="1.2" stroke-linecap="round" opacity=".78">
+<path d="M20 4v10m-5-5h10M112 3v8m-4-4h8M207 5v10m-5-5h10M305 3v8m-4-4h8M400 4v10m-5-5h10"/>
+</g>
+<g fill="#e5b96b" opacity=".85"><circle cx="65" cy="10" r="1.8"/><circle cx="160" cy="5" r="1.5"/><circle cx="257" cy="12" r="1.7"/><circle cx="353" cy="7" r="1.6"/></g>
+<g fill="#f8f5e9" opacity=".7"><circle cx="89" cy="15" r="1"/><circle cx="183" cy="14" r="1"/><circle cx="281" cy="4" r="1"/><circle cx="375" cy="15" r="1"/></g>
+</svg>
