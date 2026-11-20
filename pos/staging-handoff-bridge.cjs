@@ -178,7 +178,7 @@ function createStagingHandoffBridge({
  }
  function lockForIdle(){
   const current=coordinator?.state();
-  if(!cashier||locked||paymentPending||current?.pending||
+  if(!cashier||locked||preparing||paymentPending||current?.pending||
      !['cashier','payment'].includes(current?.phase))return false;
   // Keep the cart, payment state and original shift in memory.
   locked=true;idleLocked=true;
@@ -189,7 +189,8 @@ function createStagingHandoffBridge({
   if(!idleLocked||!locked||unlocking)throw Error('No idle register to resume');
   unlocking=true;
   try{
-   const current=coordinator.state();
+   const originalCoordinator=coordinator;
+   const current=originalCoordinator.state();
    const proof=current.phase==='cashier'
     ?await adapter.verifyIdleBadge(badge):await adapter.verifyShiftBadge(badge);
    if(proof.verified!==true||proof.firstName!==cashier.firstName)
@@ -203,7 +204,8 @@ function createStagingHandoffBridge({
    // The coordinator may advance while asynchronous badge/status checks run.
    // Never clear the idle overlay for a different checkout or phase.
    const latest=coordinator.state();
-   if(latest.pending || latest.phase!==current.phase ||
+   if(coordinator!==originalCoordinator || latest.pending ||
+      latest.phase!==current.phase ||
       latest.checkoutId!==current.checkoutId || !locked || !idleLocked)
     throw Error('Checkout changed during badge verification');
    idleLocked=false;locked=false;
