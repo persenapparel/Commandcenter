@@ -463,3 +463,15 @@
 @media(max-width:540px),(max-height:850px),(forced-colors:active),print{
  :root[data-pos-season="christmas"] .employee-home-brand::before{display:none!important}
 }
+
+/* Original static holly divider, reserved below employee Home intro text.
+   Background paint only: never obscures controls or intercepts input. */
+:root[data-pos-season="christmas"] .employee-home-intro{
+ padding-bottom:38px;
+ background:url("christmas-intro-holly.svg") center bottom/ min(100%,420px) 38px no-repeat;
+}
+@media(max-width:540px),(max-height:740px),(forced-colors:active),print{
+ :root[data-pos-season="christmas"] .employee-home-intro{
+  padding-bottom:0;background-image:none!important;
+ }
+}
