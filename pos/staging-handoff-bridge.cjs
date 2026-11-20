@@ -102,6 +102,9 @@ function createStagingHandoffBridge({
   preparing=true;
   try{
    preparedRequest=await getStaffCheckoutRequest();
+   // Cart preparation can await inventory or pricing. Do not issue a guest
+   // capability if the original employee shift expires during that wait.
+   assertReady();
    if(locked)throw Error('Scan staff badge to unlock register');
    return await coordinator.handToCustomer();
   }finally{preparing=false;preparedRequest=null}
