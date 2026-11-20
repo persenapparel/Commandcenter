@@ -486,3 +486,14 @@
 @media(max-width:540px),(max-height:740px),(forced-colors:active),print{
  :root[data-pos-season="christmas"] .register-launch h2::after{display:none!important}
 }
+
+/* Original static Christmas string lights in employee Home intro's own flow.
+   Hidden where vertical space or contrast is constrained; no input overlays. */
+:root[data-pos-season="christmas"] .employee-home-intro::after{
+  content:"";display:block;width:min(100%,480px);height:54px;
+  margin:6px auto 0;pointer-events:none;user-select:none;
+  background:url("christmas-home-lights.svg") center/contain no-repeat;
+}
+@media(max-width:540px),(max-height:780px),(forced-colors:active),print{
+  :root[data-pos-season="christmas"] .employee-home-intro::after{display:none!important}
+}
