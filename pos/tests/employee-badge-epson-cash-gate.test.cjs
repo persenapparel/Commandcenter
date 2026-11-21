@@ -31,7 +31,7 @@ test('receipt spool, browser reprint and Venmo/Apple Cash never transmit drawer 
  assert.match(agent,/const processor=createProcessor/);
  assert.match(agent,/PERSEN_DRAWER_ARMED/);
  assert.match(agent,/PERSEN_RECEIPTS_ARMED/);
- assert.match(printMonitor,/read-only Epson queue monitor/i);
+ assert.doesNotMatch(printMonitor,/pos_claim_drawer_open_job|pos_request_drawer_open/);
  assert.doesNotMatch(printMonitor,/drawerKick\(|sendRawWindows\(/);
  assert.match(drawerSQL,/kind in \('cash-sale','owner-manual'\)/);
 });

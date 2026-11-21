@@ -11,7 +11,7 @@ const section=(a,b)=>{
 };
 const script=[
  section('function setRegisterOpen(open,verifiedBadge=false){',"by('open-register').onclick"),
- section('function reopenRegisterAfterVerifiedBadge(){','function closeEmployeeSalesViewForHome(){'),
+ section('function reopenRegisterAfterVerifiedBadge(){','function employeeHomeBlocker(){'),
  section('function openEmployeeMode(mode){','async function showSecureHandoffHome(){')
 ].join('\n');
 function harness({hasSaleable=false,authorized=true}={}){

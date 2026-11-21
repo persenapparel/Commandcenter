@@ -7,12 +7,12 @@ const register=file('register.js'),swivel=file('swivel-mode.js'),
  sql=file('sql/staging_owner_recover_unpaid_checkout_20261118.sql');
 
 test('Employee Home closes Sales layout before showing menu without clearing active shift',()=>{
- assert.match(register,/function closeEmployeeSalesViewForHome\(\)/);
+ assert.match(register,/function closeEmployeeSalesViewForHome\(/);
  assert.match(register,/if\(checkout\|\|pendingCash\)throw Error/);
- assert.match(register,/if\(cart\.length\)throw Error/);
+ assert.match(register,/if\(cart\.length&&!preserveUnfinishedCart\)throw Error/);
  assert.match(register,/setRegisterOpen\(false,true\)/);
  assert.match(register,/closeEmployeeSalesViewForHome,/);
- assert.match(swivel,/api\.closeEmployeeSalesViewForHome\(\)/);
+ assert.match(swivel,/api\.prepareEmployeeHomeAfterShift\(\)/);
  assert.match(swivel,/api\.openEmployeeMode\('sales'\);hideEmployeeHome\(\)/);
  assert.match(css,/#workspace>:not\(\.quick-toolbar\):not\(\.layout\)\{display:none!important\}/);
 });

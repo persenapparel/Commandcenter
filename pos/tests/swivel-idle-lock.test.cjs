@@ -24,7 +24,7 @@ function harness(){
   async unlockIdle(badge){if(badge!=='correct')throw Error('denied');locked=false;idleLocked=false;return {firstName:'Alex'}}
  };
  const window={addEventListener(type,fn){events[type]=fn},
-  PersenPOSRegister:{ready:()=>true,notice(){},openEmployeeMode(){return true}},
+  PersenPOSRegister:{employeeHomeBlocker:()=>null,prepareEmployeeHomeAfterShift:()=>({unfinishedCart:false}),ready:()=>true,notice(){},openEmployeeMode(){return true}},
   PersenPOSHandoffConfig:{guestEntryUrl:'https://commandcenter-4yg.pages.dev/pos-guest/'},
   PersenPOSSecureHandoff:{createStagingHandoffBridge:()=>bridge,createIsolatedGuestFrame:()=>({})}};
  vm.runInNewContext(fs.readFileSync('pos/swivel-mode.js','utf8'),{
