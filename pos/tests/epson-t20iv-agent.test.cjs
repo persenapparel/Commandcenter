@@ -69,3 +69,45 @@ test('Never print without authenticated claim',async()=>{
  const processor=createProcessor({rpc:async()=>null,raw:async()=>{throw Error('must not run');},fetchJobs:async()=>[queued()]});
  assert.equal(await processor.receipt(),null);
 });
+
+
+test('Receipt validation failures are distinguished from Windows printer failures',async()=>{
+ const logs=[],calls=[];let rawCalls=0;
+ const invalidSale={...sample,items:[{name:'Hoodie',qty:'1',unit_cents:4000}]};
+ const processor=createProcessor({
+  rpc:async(name,args)=>{
+   calls.push({name,args});
+   return name==='pos_claim_print_job'?invalidSale:true;
+  },
+  raw:async()=>{rawCalls++;},
+  fetchJobs:async()=>[queued(UUID2)],
+  logger:message=>logs.push(message)
+ });
+ const result=await processor.receipt();
+ await processor.receipt();
+ assert.equal(result.spooled,false);
+ assert.equal(rawCalls,0);
+ assert.equal(calls.filter(c=>c.name==='pos_claim_print_job').length,1);
+ assert.equal(calls.find(c=>c.name==='pos_finish_print_job').args.p_error,'Receipt payload rejected');
+ assert.match(logs[0],/payload rejected/i);
+});
+test('Windows RAW errors are visible only on local console, not in queue or retried',async()=>{
+ const calls=[],logs=[];let rawCalls=0;
+ const processor=createProcessor({
+  rpc:async(name,args)=>{
+   calls.push({name,args});
+   return name==='pos_claim_print_job'?sample:true;
+  },
+  raw:async()=>{rawCalls++;throw Error('Windows spooler failed (5): printer queue unavailable');},
+  fetchJobs:async()=>[queued(UUID2)],
+  logger:message=>logs.push(message)
+ });
+ const result=await processor.receipt();
+ await processor.receipt();
+ assert.equal(result.spooled,false);
+ assert.equal(rawCalls,1);
+ assert.equal(calls.filter(c=>c.name==='pos_claim_print_job').length,1);
+ assert.equal(calls.find(c=>c.name==='pos_finish_print_job').args.p_error,'RAW receipt spooler failed');
+ assert.match(logs[0],/printer queue unavailable/);
+ assert.ok(!JSON.stringify(calls).includes('printer queue unavailable'));
+});
