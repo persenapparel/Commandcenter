@@ -110,8 +110,22 @@ function createProcessor({rpc,raw,fetchJobs,logger=()=>{},now=()=>Date.now()}){
    const sale=await rpc('pos_claim_print_job',{p_job:job.id});
    if(!sale)continue;
    attempted.add(job.id);
-   let error=null;
-   try{await raw(escposReceipt(sale));}catch(err){error='RAW receipt spooler failed';logger(error);}
+   let error=null,receiptBytes=null;
+   // Keep bad server-claimed data separate from Windows RAW transport failures.
+   // Diagnostics stay on the local agent console: never write exception details,
+   // customer data or printer paths to the shared staging job queue.
+   try{receiptBytes=escposReceipt(sale);}
+   catch(err){
+    error='Receipt payload rejected';
+    logger('Receipt job '+job.id+' payload rejected: '+String(err?.message||'Unknown validation error').slice(0,180));
+   }
+   if(!error){
+    try{await raw(receiptBytes);}
+    catch(err){
+     error='RAW receipt spooler failed';
+     logger('Receipt job '+job.id+' Windows RAW spool failed: '+String(err?.message||'Unknown Windows error').slice(0,240));
+    }
+   }
    await rpc('pos_finish_print_job',{p_job:job.id,p_error:error});
    return {kind:'receipt',id:job.id,spooled:!error};
   }
