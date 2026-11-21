@@ -95,8 +95,8 @@ test('customer wizard shows total, phone, email, payment and confirmation on sep
   press(root);
   assert.equal(screen(root),'One last thing.');
   assert.equal(calls.length,0,'customer payment choice never charges or submits');
-  const name=root.querySelectorAll('input').find(x=>x.type==='text');
-  name.value='Customer Name'; name.trigger('input');
+  assert.equal(root.querySelectorAll('input').some(x=>x.type==='text'), false,
+    'customer signature was intentionally removed');
   press(root);
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(screen(root),'Thank you!');
@@ -104,7 +104,6 @@ test('customer wizard shows total, phone, email, payment and confirmation on sep
   assert.deepEqual(calls[0],{
     checkoutId:'00000000-0000-4000-8000-000000000001',
     phone:'',email:'',marketingConsent:false,
-    signature:'Customer Name',signatureException:false,
     paymentPreference:'apple_cash_info'
   });
   assert.equal(calls[0].paymentPreference,'apple_cash_info',
@@ -137,8 +136,6 @@ test('skipping invalid partial contact does not send stale answers', async () =>
   const cash=root.querySelectorAll('input').find(x=>x.type==='radio'&&x.value==='cash');
   cash.checked=true; cash.trigger('change');
   press(root);
-  const name=root.querySelectorAll('input').find(x=>x.type==='text');
-  name.value='Taylor Example'; name.trigger('input');
   press(root);
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(calls.length,1);
@@ -154,8 +151,7 @@ test('guest submission failure fails closed without a paid confirmation', async 
   press(root);press(root,'guest-skip');press(root,'guest-skip');
   const cash=root.querySelectorAll('input').find(x=>x.type==='radio'&&x.value==='cash');
   cash.checked=true; cash.trigger('change'); press(root);
-  const name=root.querySelectorAll('input').find(x=>x.type==='text');
-  name.value='Jordan Example'; name.trigger('input'); press(root);
+  press(root);
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(screen(root),'Checkout unavailable');
   assert.match(root.querySelector('p').textContent,/return the iPad/i);
