@@ -93,7 +93,7 @@ test('customer wizard shows total, phone, email, payment and confirmation on sep
   selected.checked=true;
   selected.trigger('change');
   press(root);
-  assert.equal(screen(root),'One last thing.');
+  assert.equal(screen(root),'Review and finish.');
   assert.equal(calls.length,0,'customer payment choice never charges or submits');
   assert.equal(root.querySelectorAll('input').some(x=>x.type==='text'), false,
     'customer signature was intentionally removed');
