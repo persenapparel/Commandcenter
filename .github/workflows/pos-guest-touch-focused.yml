@@ -1,0 +1,31 @@
+name: POS customer checkout Next regression
+on:
+  pull_request:
+    paths:
+      - 'pos/customer-checkout-screen.cjs'
+      - 'pos/guest-next-touch.test.cjs'
+      - 'pos/tests/customer-wizard-flow.test.cjs'
+      - 'pos/tests/isolated-guest-wizard-published.test.cjs'
+      - 'pos-guest/guest.js'
+      - '.github/workflows/pos-guest-touch-focused.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  customer-next-and-published-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch code
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse both guest controllers
+        run: |
+          node --check pos/customer-checkout-screen.cjs
+          node --check pos-guest/guest.js
+      - name: Confirm iPad touch, wizard progression and published bundle
+        run: |
+          node --test pos/guest-next-touch.test.cjs pos/tests/customer-wizard-flow.test.cjs pos/tests/isolated-guest-wizard-published.test.cjs
