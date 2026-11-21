@@ -26,6 +26,7 @@ function padAmount(label,amount){
  const a=ascii(label).slice(0,printColumns-12),b=ascii(amount).slice(0,11);
  return a.padEnd(Math.max(a.length,printColumns-b.length),' ')+b;
 }
+const logoRaster=require('node:zlib').inflateSync(Buffer.from('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','base64'));
 function escposReceipt(sale){
  if(!sale||!UUID.test(String(sale.sale_id||''))||!Array.isArray(sale.items)||sale.items.length>80)throw Error('Invalid verified receipt payload');
  const items=[];
@@ -36,22 +37,38 @@ function escposReceipt(sale){
   const variation=[item.color,item.size].filter(Boolean).map(ascii).join(' / ');
   if(variation)items.push('  '+variation.slice(0,printColumns-2));
  }
- const hr='-'.repeat(printColumns);
- const lines=[
-  'PERSEN APPAREL','persenapparel.com','',
-  'SALE '+String(sale.sale_id).slice(0,8).toUpperCase(),
-  hr,...items,hr,
-  padAmount('Subtotal',money(sale.subtotal_cents)),
-  padAmount('Discount','-'+money(sale.discount_cents)),
-  padAmount('Tax',money(sale.tax_cents)),
-  padAmount('TOTAL',money(sale.total_cents)),
-  padAmount('Cash received',money(sale.tendered_cents)),
-  padAmount('Change',money(sale.change_cents)),
-  hr,'Thank you for shopping small!',''
- ];
- const body=Buffer.from(lines.map(x=>ascii(x).slice(0,printColumns)).join('\n')+'\n','ascii');
- // Printer reset, no automatic drawer pulse, feed, cut.
- return Buffer.concat([Buffer.from([ESC,0x40]),body,Buffer.from([0x0a,0x0a,GS,0x56,0x00])]);
+ const parts=[];
+ const cmd=(...bytes)=>parts.push(Buffer.from(bytes));
+ const line=value=>parts.push(Buffer.from(ascii(value)+'\n','ascii'));
+ const center=on=>cmd(ESC,0x61,on?1:0);
+ const bold=on=>cmd(ESC,0x45,on?1:0);
+ const size=value=>cmd(GS,0x21,value);
+ cmd(ESC,0x40);center(true);
+ // Monochrome raster from assets/persen-logo.png, packed MSB first for the Epson.
+ cmd(GS,0x76,0x30,0,34,0,15,1);
+ parts.push(logoRaster);
+ size(0x11);bold(true);line('PERSEN APPAREL');size(0);bold(false);
+ line('Rocky Point, Long Island');line('');
+ center(false);
+ line('Receipt #'+sale.sale_id.slice(0,8).toUpperCase());
+ const date=new Date(sale.created_at);
+ if(sale.created_at&&Number.isFinite(date.getTime()))line(date.toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'medium',timeStyle:'short'})+' ET');
+ if(sale.cashier_first_name)line('Cashier: '+ascii(sale.cashier_first_name).slice(0,32));
+ line('-'.repeat(printColumns));
+ size(1);for(const item of items)line(item);size(0);
+ line('-'.repeat(printColumns));
+ line(padAmount('Subtotal',money(sale.subtotal_cents)));
+ if(sale.discount_cents)line(padAmount('Discount','-'+money(sale.discount_cents)));
+ line(padAmount('Tax',money(sale.tax_cents)));
+ bold(true);size(0x11);line('TOTAL'.padEnd(21-money(sale.total_cents).length)+money(sale.total_cents));size(0);bold(false);
+ if(!sale.payment_method||sale.payment_method==='cash'){
+  line(padAmount('Cash received',money(sale.tendered_cents)));
+  line(padAmount('Change',money(sale.change_cents)));
+ }else line('Paid with '+ascii(sale.payment_method).replace(/_/g,' '));
+ center(true);line('');bold(true);line('THANKS FOR SHOPPING SMALL!');bold(false);
+ line('Tag us in your new gear: @persenapparel');line('');
+ line('Custom shirts for your team or event?');bold(true);line('persenapparel.com');bold(false);
+ cmd(0x0a,0x0a,GS,0x56,0);return Buffer.concat(parts);
 }
 function drawerKick(opts={}){
  const pin=opts.pin??0, on=opts.on??50, off=opts.off??250;
@@ -185,7 +202,7 @@ async function hiddenPrompt(question){
 }
 function testReceiptSale(){
  const saleId='00000000-0000-4000-8000-000000000001';
- return {sale_id:saleId,items:[{name:'Epson RAW test (no sale)',qty:1,unit_cents:0,size:'TEST'}],subtotal_cents:0,discount_cents:0,tax_cents:0,total_cents:0,tendered_cents:0,change_cents:0};
+ return {sale_id:saleId,cashier_first_name:'Sample cashier',created_at:new Date().toISOString(),items:[{name:'Epson RAW test (no sale)',qty:1,unit_cents:0,size:'TEST'}],subtotal_cents:0,discount_cents:0,tax_cents:0,total_cents:0,tendered_cents:0,change_cents:0};
 }
 // Explicit, isolated Windows hardware diagnostic. This never touches Supabase,
 // claims a queued sale, or sends ESC/POS drawer-pulse bytes.
