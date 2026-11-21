@@ -94,7 +94,7 @@
       e.preventDefault();e.stopPropagation();
       const save=form.querySelector('[type="submit"]');
       save.disabled=true;
-      try{await saveDraft(form,inv.id);wrapper.remove();await refresh();msg('Draft updated. Review its PDF before sending.');}
+      try{const saved=await saveDraft(form,inv.id);if(saved===false)return;wrapper.remove();await refresh();msg('Draft updated. Review its PDF before sending.');}
       catch(err){msg('Could not save draft: '+err.message);}
       finally{save.disabled=false;}
     });
@@ -129,7 +129,7 @@
       latest.document_type==='Estimate'?PA.checked(PA.db.from('business_invoices').select('id').eq('source_estimate_id',id).limit(1)):Promise.resolve([])
     ]);
     if(agreements.length||payments.length||converted.length)throw Error('This document has an agreement, payment, or converted invoice.');
-    if(!confirm('Save the changes to draft '+fromList.invoice_number+'? Nothing will be sent to the customer.'))return;
+    if(!confirm('Save the changes to draft '+fromList.invoice_number+'? Nothing will be sent to the customer.'))return false;
     const changes={contact_id:f.get('contact_id')||null,customer_name:customer,
       customer_email:String(f.get('customer_email')||'').trim().slice(0,250),
       customer_organization:String(f.get('customer_organization')||'').trim().slice(0,160),
