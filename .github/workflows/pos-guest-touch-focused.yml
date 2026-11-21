@@ -7,6 +7,9 @@ on:
       - 'pos/tests/customer-wizard-flow.test.cjs'
       - 'pos/tests/isolated-guest-wizard-published.test.cjs'
       - 'pos-guest/guest.js'
+      - 'pos-guest/_headers'
+      - '_headers'
+      - 'pos/tests/guest-pages-frame-headers.test.cjs'
       - '.github/workflows/pos-guest-touch-focused.yml'
   workflow_dispatch:
 permissions:
@@ -28,4 +31,4 @@ jobs:
           node --check pos-guest/guest.js
       - name: Confirm iPad touch, wizard progression and published bundle
         run: |
-          node --test pos/guest-next-touch.test.cjs pos/tests/customer-wizard-flow.test.cjs pos/tests/isolated-guest-wizard-published.test.cjs
+          node --test pos/guest-next-touch.test.cjs pos/tests/customer-wizard-flow.test.cjs pos/tests/isolated-guest-wizard-published.test.cjs pos/tests/guest-pages-frame-headers.test.cjs
