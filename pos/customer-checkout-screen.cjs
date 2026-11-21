@@ -244,15 +244,15 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
       }, false);
     } else if (name === 'confirm') {
       line(panel, 'div', '05 · CONFIRM', 'guest-section-tag');
-      line(panel, 'h1', 'One last thing.');
-      line(panel, 'p', 'Please acknowledge your order before handing the iPad back.', 'guest-muted');
+      line(panel, 'h1', 'Review and finish.');
+      line(panel, 'p', 'Confirm your payment choice, then return the iPad to your cashier.', 'guest-muted');
       const recap = line(panel, 'div', undefined, 'guest-confirm-recap');
       line(recap, 'span', 'Payment choice: ' + paymentNames[answers.payment]);
       line(recap, 'strong', snapshot.total);
       // No typed-signature substitute: the current staging backend does not
       // support storing authentic finger-drawn strokes. Remove signature
       // collection until real private drawing storage is implemented.
-      line(panel, 'p', 'No signature is required. Your cashier will verify payment and finish the sale.', 'guest-notice');
+      line(panel, 'p', 'No signature is needed for this test. Your cashier will verify payment and finish the sale.', 'guest-notice');
       const marketingLabel = line(panel, 'label', undefined, 'guest-check-row');
       const marketing = el('input');
       marketing.type = 'checkbox';
