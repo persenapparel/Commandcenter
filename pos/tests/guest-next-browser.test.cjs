@@ -84,6 +84,8 @@ window.addEventListener('message',event=>{
   });
 
   const page=await context.newPage();
+  page.on('pageerror',error=>console.log('BROWSER PAGE ERROR: '+error.message));
+  page.on('console',msg=>{if(msg.type()==='error')console.log('BROWSER CONSOLE ERROR: '+msg.text())});
   await page.goto(CASHIER+'/test-checkout',{waitUntil:'domcontentloaded'});
   const guest=page.frameLocator('#customer');
   const waitStep=async step=>{
@@ -95,6 +97,7 @@ window.addEventListener('message',event=>{
   await guest.getByRole('heading',{name:"What's your phone number?"}).waitFor({timeout:10000});
   await waitStep(2);
   await guest.locator('.guest-skip').tap();
+  console.log('DEBUG AFTER PHONE SKIP:',(await guest.locator('body').innerText()).slice(0,900));
   await guest.getByRole('heading',{name:"What's your email address?"}).waitFor({timeout:10000});
   await waitStep(3);
   await guest.locator('.guest-skip').tap();
