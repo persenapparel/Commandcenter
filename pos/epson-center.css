@@ -15,3 +15,11 @@
 .printer-center .epson-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .printer-center .epson-actions a{font-size:13px;font-weight:700}
 @media(max-width:760px){.epson-queues{grid-template-columns:1fr}}
+
+/* Receipt-only manual retry: intentionally separate from read-only Refresh. */
+.epson-retry{border:1px solid #275385;border-radius:9px;background:#e8f1fd;color:#153f71;
+ padding:9px 11px;font-size:12px;font-weight:750;cursor:pointer;white-space:normal;max-width:135px}
+.epson-retry:focus-visible{outline:3px solid #e0aa39;outline-offset:2px}
+.epson-retry:disabled{cursor:wait;opacity:.55}
+#epson-action-result{border-top:1px solid #dce5f0;padding-top:9px;margin-top:7px}
+@media(max-width:510px){.epson-job{flex-wrap:wrap}.epson-retry{max-width:none;width:100%}}

@@ -1,0 +1,26 @@
+name: POS Epson receipt queue manual retry
+on:
+  pull_request:
+    paths:
+      - 'pos/epson-center.js'
+      - 'pos/admin.html'
+      - 'pos/epson-center.css'
+      - 'pos/epson-queue-owner-retry.test.cjs'
+      - 'pos/sql/staging_epson_manual_receipt_retry_20261121.sql'
+      - '.github/workflows/pos-epson-owner-retry.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  selected-receipt-retry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and explicit retry tests
+        run: |
+          node --check pos/epson-center.js
+          node --test pos/epson-queue-owner-retry.test.cjs

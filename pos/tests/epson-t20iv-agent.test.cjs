@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {escposReceipt,drawerKick,createProcessor}=require('../epson-station/agent.cjs');
+const {escposReceipt,drawerKick,createProcessor,testPrinterRaw}=require('../epson-station/agent.cjs');
 const UUID1='00000000-0000-4000-8000-000000000001';
 const UUID2='00000000-0000-4000-8000-000000000002';
 const sample={sale_id:UUID1,items:[{name:'Hoodie',qty:1,unit_cents:4000,color:'Red',size:'M'}],subtotal_cents:4000,discount_cents:0,tax_cents:0,total_cents:4000,tendered_cents:5000,change_cents:1000};
@@ -68,4 +68,69 @@ test('Receipt claim produces a raw print and does not open drawer',async()=>{
 test('Never print without authenticated claim',async()=>{
  const processor=createProcessor({rpc:async()=>null,raw:async()=>{throw Error('must not run');},fetchJobs:async()=>[queued()]});
  assert.equal(await processor.receipt(),null);
+});
+
+
+test('Receipt validation failures are distinguished from Windows printer failures',async()=>{
+ const logs=[],calls=[];let rawCalls=0;
+ const invalidSale={...sample,items:[{name:'Hoodie',qty:'1',unit_cents:4000}]};
+ const processor=createProcessor({
+  rpc:async(name,args)=>{
+   calls.push({name,args});
+   return name==='pos_claim_print_job'?invalidSale:true;
+  },
+  raw:async()=>{rawCalls++;},
+  fetchJobs:async()=>[queued(UUID2)],
+  logger:message=>logs.push(message)
+ });
+ const result=await processor.receipt();
+ await processor.receipt();
+ assert.equal(result.spooled,false);
+ assert.equal(rawCalls,0);
+ assert.equal(calls.filter(c=>c.name==='pos_claim_print_job').length,1);
+ assert.equal(calls.find(c=>c.name==='pos_finish_print_job').args.p_error,'Receipt payload rejected');
+ assert.match(logs[0],/payload rejected/i);
+});
+test('Windows RAW errors are visible only on local console, not in queue or retried',async()=>{
+ const calls=[],logs=[];let rawCalls=0;
+ const processor=createProcessor({
+  rpc:async(name,args)=>{
+   calls.push({name,args});
+   return name==='pos_claim_print_job'?sample:true;
+  },
+  raw:async()=>{rawCalls++;throw Error('Windows spooler failed (5): printer queue unavailable');},
+  fetchJobs:async()=>[queued(UUID2)],
+  logger:message=>logs.push(message)
+ });
+ const result=await processor.receipt();
+ await processor.receipt();
+ assert.equal(result.spooled,false);
+ assert.equal(rawCalls,1);
+ assert.equal(calls.filter(c=>c.name==='pos_claim_print_job').length,1);
+ assert.equal(calls.find(c=>c.name==='pos_finish_print_job').args.p_error,'RAW receipt spooler failed');
+ assert.match(logs[0],/printer queue unavailable/);
+ assert.ok(!JSON.stringify(calls).includes('printer queue unavailable'));
+});
+
+
+test('Direct Epson RAW receipt diagnostic bypasses the sale queue and never pulses the drawer',async()=>{
+ let sent=0,actualPrinter='',payload=null;
+ const length=await testPrinterRaw({
+  printer:'Epson staging simulated queue',
+  send:async(bytes,options)=>{sent++;payload=bytes;actualPrinter=options.printer;}
+ });
+ assert.equal(sent,1);
+ assert.equal(actualPrinter,'Epson staging simulated queue');
+ assert.equal(length,payload.length);
+ assert.match(payload.toString('latin1'),/RAW test \(no sale\)/);
+ assert.equal(payload.includes(drawerKick()),false);
+ assert.ok(payload.subarray(-3).equals(Buffer.from([0x1d,0x56,0])));
+});
+test('A failed direct RAW diagnostic never claims or retries any server receipt job',async()=>{
+ let calls=0;
+ await assert.rejects(()=>testPrinterRaw({
+  printer:'Missing queue',
+  send:async()=>{calls++;throw Error('Windows printer unavailable');}
+ }),/Windows printer unavailable/);
+ assert.equal(calls,1);
 });

@@ -77,3 +77,29 @@ A Cloudflare success or `command-sent` merely proves deployment or Windows spool
 ### Separate printer and drawer arming
 
 The Windows agent is **independently armed for receipts and the drawer**. For the first paper-feed/cut test, set receipt printing ARMED and the drawer DISARMED; the Windows agent must not even claim drawer jobs in this state. Confirm the Epson driver itself is **not configured to kick the drawer on print**. Only after manufacturer cable compatibility, printer driver and RAW receipt test are verified should the owner explicitly enable the drawer for a supervised simulated cash sale. Both switches remain DISARMED by default, and neither switch means that the hardware actually worked.
+
+
+## Diagnose: Windows/Epson utility prints, but automatic POS receipts fail
+
+A Windows/Epson utility test page uses a different print path from the POS's **RAW ESC/POS** job. Passing that test does **not** prove the RAW driver/spooler path works. The staging job table previously showed seven `RAW receipt spooler failed` records alongside working drawer commands, so do not touch the working drawer configuration or replay those failed jobs.
+
+**Direct diagnostic (new in PR #278; requires this branch on the Windows print-station computer):**
+
+1. Check the Epson printer has paper, is online, and that the driver is **not** configured to open the cash drawer automatically on each print.
+2. Open PowerShell **on the Windows computer connected to the Epson**. Find the exact printer queue:
+   ```powershell
+   Get-Printer | Where-Object Name -Like "*Epson*" | Format-Table Name,DriverName,PortName -AutoSize
+   ```
+3. From the checkout repository folder, set the exact `Name` shown (not merely the model name) and run a single local RAW sample:
+   ```powershell
+   $env:PERSEN_WINDOWS_PRINTER="EXACT WINDOWS EPSON PRINTER NAME"
+   node pos/epson-station/agent.cjs --printer-test
+   ```
+   The `--printer-test` mode requires **no Supabase credentials or agent arming flags**, does not open or claim sale/drawer jobs, and sends **one zero-dollar sample test receipt** directly to the Windows RAW Epson queue. The sample's content has no drawer kick command. An Epson driver configured to auto-kick the drawer on print could still open it; disable that printer setting first.
+4. Interpret the result:
+   - **Paper prints/cuts:** Windows RAW receipt transport works. Next inspect the active agent version, `PERSEN_RECEIPTS_ARMED=YES`, Windows printer name and one *new* supervised staging sale. The agent's console now separates `Receipt payload rejected` from a Windows RAW transport failure.
+   - **Windows utility prints but this direct RAW test fails:** The issue is in the Windows RAW spooler helper, selected queue, permission, or driver's RAW/ESC-POS compatibility — **not** Cloudflare or the iPad. Capture the **exact local PowerShell error**; do not reinstall or reset the whole POS.
+   - **Command succeeds but no paper:** Windows accepted the spool job without guaranteeing physical output. Check the selected queue and driver compatibility, not the sales database.
+5. Keep old `failed` and `unconfirmed` jobs unchanged. Do **not** automatically retry old receipt jobs or drawer commands. A single fresh test sale after the direct RAW test avoids duplicate paperwork and extra drawer pulses.
+
+This diagnostic change remains an **unmerged staging draft** until reviewed and tested on the actual Windows/Epson hardware. It does not alter production Cloudflare or Supabase.

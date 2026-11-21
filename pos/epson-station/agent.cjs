@@ -110,8 +110,22 @@ function createProcessor({rpc,raw,fetchJobs,logger=()=>{},now=()=>Date.now()}){
    const sale=await rpc('pos_claim_print_job',{p_job:job.id});
    if(!sale)continue;
    attempted.add(job.id);
-   let error=null;
-   try{await raw(escposReceipt(sale));}catch(err){error='RAW receipt spooler failed';logger(error);}
+   let error=null,receiptBytes=null;
+   // Keep bad server-claimed data separate from Windows RAW transport failures.
+   // Diagnostics stay on the local agent console: never write exception details,
+   // customer data or printer paths to the shared staging job queue.
+   try{receiptBytes=escposReceipt(sale);}
+   catch(err){
+    error='Receipt payload rejected';
+    logger('Receipt job '+job.id+' payload rejected: '+String(err?.message||'Unknown validation error').slice(0,180));
+   }
+   if(!error){
+    try{await raw(receiptBytes);}
+    catch(err){
+     error='RAW receipt spooler failed';
+     logger('Receipt job '+job.id+' Windows RAW spool failed: '+String(err?.message||'Unknown Windows error').slice(0,240));
+    }
+   }
    await rpc('pos_finish_print_job',{p_job:job.id,p_error:error});
    return {kind:'receipt',id:job.id,spooled:!error};
   }
@@ -167,12 +181,34 @@ async function hiddenPrompt(question){
   process.stdin.setRawMode(true);process.stdin.resume();process.stdin.on('data',onData);
  });
 }
+function testReceiptSale(){
+ const saleId='00000000-0000-4000-8000-000000000001';
+ return {sale_id:saleId,items:[{name:'Epson RAW test (no sale)',qty:1,unit_cents:0,size:'TEST'}],subtotal_cents:0,discount_cents:0,tax_cents:0,total_cents:0,tendered_cents:0,change_cents:0};
+}
+// Explicit, isolated Windows hardware diagnostic. This never touches Supabase,
+// claims a queued sale, or sends ESC/POS drawer-pulse bytes.
+async function testPrinterRaw({printer,send=sendRawWindows}={}){
+ const payload=escposReceipt(testReceiptSale());
+ if(payload.includes(drawerKick()))throw Error('Unsafe test receipt contains drawer command');
+ await send(payload,{printer});
+ return payload.length;
+}
 async function main(){
  const isDry=process.argv.includes('--self-test');
+ const isPrinterTest=process.argv.includes('--printer-test');
+ if(isDry&&isPrinterTest)throw Error('Choose one test mode');
  if(isDry){
   const sample='00000000-0000-4000-8000-000000000001';
   const s={sale_id:sample,items:[{name:'Christmas Hoodie',qty:1,unit_cents:4000,size:'M'}],subtotal_cents:4000,discount_cents:0,tax_cents:0,total_cents:4000,tendered_cents:5000,change_cents:1000};
   console.log('Epson receipt bytes:',escposReceipt(s).length,'Drawer pulse:',drawerKick().toString('hex'),'No hardware command issued');
+  return;
+ }
+ if(isPrinterTest){
+  if(process.platform!=='win32')throw Error('Epson direct printer test runs on Windows only');
+  const printer=process.env.PERSEN_WINDOWS_PRINTER;
+  if(!printer)throw Error('Set PERSEN_WINDOWS_PRINTER to the exact installed Windows printer queue name');
+  const bytes=await testPrinterRaw({printer});
+  console.log('Epson RAW sample submitted to Windows queue:',printer,'('+bytes+' bytes). Verify paper and cut physically.');
   return;
  }
  if(process.platform!=='win32')throw Error('Hardware station only runs on Windows');
@@ -217,4 +253,4 @@ async function main(){
  }
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
-module.exports={escposReceipt,drawerKick,createProcessor,makeClient,sendRawWindows,ascii};
+module.exports={escposReceipt,drawerKick,createProcessor,makeClient,sendRawWindows,testPrinterRaw,ascii};
