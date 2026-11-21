@@ -14,6 +14,7 @@ test('existing guest runtime can be framed only on preview hosts by staging cash
  const csp=scoped[0].split('\n').find(line=>line.includes('Content-Security-Policy:'));
  assert.ok(csp);
  assert.match(csp,/default-src 'none'; script-src 'self'; style-src 'self';/);
+ assert.match(csp,/img-src 'self';/,'guest decorative SVG must load only from its own origin');
  assert.match(csp,/connect-src https:\/\/naaqcspvbntzdtwuchrr\.supabase\.co;/);
  assert.match(csp,/frame-ancestors https:\/\/pos\.persenapparel\.com https:\/\/persen-pos-staging\.pages\.dev https:\/\/\*\.persen-pos-staging\.pages\.dev;/);
  assert.match(csp,/base-uri 'none'; form-action 'none'; object-src 'none'/);
@@ -27,5 +28,6 @@ test('isolated guest directory CSP permits only approved cashier hosts and keeps
  assert.match(source,/frame-ancestors https:\/\/pos\.persenapparel\.com https:\/\/persen-pos-staging\.pages\.dev https:\/\/\*\.persen-pos-staging\.pages\.dev;/);
  assert.match(source,/connect-src https:\/\/naaqcspvbntzdtwuchrr\.supabase\.co;/);
  assert.match(source,/default-src 'none'; script-src 'self'; style-src 'self'/);
+ assert.match(source,/img-src 'self';/);
  assert.doesNotMatch(source,/unsafe-inline|unsafe-eval|icxeuhkqxxhdkfdappio|localhost/);
 });
