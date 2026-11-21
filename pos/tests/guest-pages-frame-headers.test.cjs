@@ -15,8 +15,17 @@ test('existing guest runtime can be framed only on preview hosts by staging cash
  assert.ok(csp);
  assert.match(csp,/default-src 'none'; script-src 'self'; style-src 'self';/);
  assert.match(csp,/connect-src https:\/\/naaqcspvbntzdtwuchrr\.supabase\.co;/);
- assert.match(csp,/frame-ancestors https:\/\/persen-pos-staging\.pages\.dev https:\/\/\*\.persen-pos-staging\.pages\.dev;/);
+ assert.match(csp,/frame-ancestors https:\/\/pos\.persenapparel\.com https:\/\/persen-pos-staging\.pages\.dev https:\/\/\*\.persen-pos-staging\.pages\.dev;/);
  assert.match(csp,/base-uri 'none'; form-action 'none'; object-src 'none'/);
  assert.match(scoped[0],/Cache-Control: no-store, no-cache, must-revalidate/);
  assert.doesNotMatch(scoped[0],/unsafe-inline|unsafe-eval|icxeuhkqxxhdkfdappio/);
+});
+
+test('isolated guest directory CSP permits only approved cashier hosts and keeps staging-only API',()=>{
+ const source=fs.readFileSync('pos-guest/_headers','utf8');
+ assert.match(source,/^\/pos-guest\/\*/);
+ assert.match(source,/frame-ancestors https:\/\/pos\.persenapparel\.com https:\/\/persen-pos-staging\.pages\.dev https:\/\/\*\.persen-pos-staging\.pages\.dev;/);
+ assert.match(source,/connect-src https:\/\/naaqcspvbntzdtwuchrr\.supabase\.co;/);
+ assert.match(source,/default-src 'none'; script-src 'self'; style-src 'self'/);
+ assert.doesNotMatch(source,/unsafe-inline|unsafe-eval|icxeuhkqxxhdkfdappio|localhost/);
 });
