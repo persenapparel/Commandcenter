@@ -35,6 +35,11 @@ class Element {
  querySelector(selector){return this.all(selector)[0]||null}
  querySelectorAll(selector){return this.all(selector)}
 }
+function fingerTap(button){
+ button.emit('pointerdown',{pointerType:'touch',clientX:60,clientY:70});
+ button.emit('pointerup',{pointerType:'touch',clientX:61,clientY:69});
+ button.click(); // compatibility click must not activate the newly rendered screen
+}
 test('iPad tap advances total once, skipped contact steps and no-signature final submit',async()=>{
  const doc={createElement:tag=>new Element(tag,doc)};
  const root=new Element('div',doc);
@@ -58,17 +63,17 @@ test('iPad tap advances total once, skipped contact steps and no-signature final
  first.emit('pointerup',{pointerType:'touch',clientX:61,clientY:69});
  first.click(); // synthetic click must not advance a second time
  assert.match(root.textContent,/Step 2 of 5/);
- root.querySelector('.guest-skip').click();
+ fingerTap(root.querySelector('.guest-skip'));
  assert.match(root.textContent,/Step 3 of 5/);
- root.querySelector('.guest-skip').click();
+ fingerTap(root.querySelector('.guest-skip'));
  assert.match(root.textContent,/Step 4 of 5/);
  const cash=root.all('input').find(input=>input.value==='cash');
  assert.ok(cash);cash.checked=true;cash.emit('change');
- root.querySelector('.guest-next').click();
+ fingerTap(root.querySelector('.guest-next'));
  assert.match(root.textContent,/Step 5 of 5/);
  assert.equal(root.all('input').some(input=>input.type==='text'),false,
   'No typed signature should remain');
- root.querySelector('.guest-next').click();
+ fingerTap(root.querySelector('.guest-next'));
  for(let i=0;i<8;i++)await Promise.resolve();
  assert.ok(submitted);
  assert.equal(submitted.paymentPreference,'cash');
