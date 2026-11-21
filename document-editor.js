@@ -21,17 +21,114 @@
     el.type='button';el.className='btn '+(klass||'ghost')+' sm';el.textContent=label;
     el.addEventListener('click',handler);return el;
   }
+  // Compose-only outreach. Browser account/apps handle actual sending.
+  function shareable(inv){
+    if(!inv||inv.status==='Void')return false;
+    if(inv.document_type==='Estimate')return inv.status==='Draft'||inv.status==='Sent';
+    return !!PersenAgreements?.signed(data.agreements.find(a=>a.invoice_id===inv.id));
+  }
+  function recipientContact(inv){
+    const byId=inv.contact_id?data.contacts.find(c=>c.id===inv.contact_id):null;
+    if(byId)return byId;
+    const email=String(inv.customer_email||'').trim().toLowerCase();
+    if(!email)return null;
+    const matches=data.contacts.filter(c=>String(c.email||'').trim().toLowerCase()===email);
+    return matches.length===1?matches[0]:null;
+  }
+  function outreachMessage(inv,method){
+    const kind=inv.document_type==='Estimate'?'estimate':'invoice';
+    const name=String(inv.customer_name||'').trim().split(/\s+/)[0]||'there';
+    const amount=usd(inv.total);
+    if(method==='sms')return 'Hi '+name+', this is Persen Apparel. Your '+kind+' '+inv.invoice_number+' totaling '+amount+' is ready to review. We can email you the PDF if needed. Please let us know if you have any questions. Thank you!';
+    const dates=inv.due_date?'\n'+(kind==='estimate'?'Valid until: ':'Due date: ')+inv.due_date+'.\n':'';
+    return 'Hello '+String(inv.customer_name||'there')+',\n\nPlease find your Persen Apparel '+kind+' '+inv.invoice_number+' for '+amount+'.\n'+dates+'\nPlease review the attached PDF for the complete itemized details, and let us know if you would like to discuss anything.\n\nThank you,\nPersen Apparel';
+  }
+  function cleanPhone(raw){
+    const num=String(raw||'').trim().replace(/[\s().-]/g,'');
+    if(!/^\+?\d{7,15}$/.test(num))throw Error('Enter a valid phone number, including area code.');
+    return num;
+  }
+  function openOutreach(id,method){
+    const inv=data.invoices.find(x=>x.id===id);
+    if(!shareable(inv)){msg('Only estimates or fully signed, active invoices can be shared.');return;}
+    rootEl.querySelectorAll('[data-document-outreach]').forEach(el=>el.remove());
+    const statusForm=Array.from(rootEl.querySelectorAll('form[data-form="invoice-status"]')).find(x=>x.dataset.id===id);
+    if(!statusForm)return;
+    const contact=recipientContact(inv);
+    const panel=document.createElement('section');
+    panel.className='owner-section';
+    panel.dataset.documentOutreach=id;
+    panel.style.cssText='border:2px solid #779bc9;border-radius:12px;margin:14px 0';
+    const channel=method==='sms'?'Text Customer':'Email via Gmail';
+    const destinationLabel=method==='sms'?'CUSTOMER MOBILE NUMBER':'CUSTOMER EMAIL';
+    const recipient=method==='sms'?(contact?.phone||''):(inv.customer_email||contact?.email||'');
+    panel.innerHTML=[
+      '<h3>'+safe(channel)+' · '+safe(inv.invoice_number)+'</h3>',
+      '<p class="owner-mini">Review the recipient and message before opening your '+(method==='sms'?'messaging app':'Gmail compose window')+'. Nothing is sent automatically by Command Center.</p>',
+      inv.status==='Draft'?'<p class="owner-mini"><strong>Draft document:</strong> Confirm the document is accurate and ready for the customer before sending anything.</p>':'',
+      '<div class="owner-input-grid">',
+      '<div class="wide"><label class="form-label">'+destinationLabel+'</label><input class="field" data-outreach-to '+(method==='gmail'?'type="email"':'type="tel"')+' maxlength="250" value="'+safe(recipient)+'" placeholder="'+(method==='sms'?'Enter mobile number':'customer@example.com')+'"></div>',
+      method==='gmail'?'<div class="wide"><label class="form-label">SUBJECT</label><input class="field" data-outreach-subject maxlength="200" value="'+safe('Persen Apparel '+(inv.document_type==='Estimate'?'Estimate':'Invoice')+' '+inv.invoice_number)+'"></div>':'',
+      '<div class="wide"><label class="form-label">MESSAGE (EDIT BEFORE SENDING)</label><textarea class="textarea" data-outreach-body maxlength="5000" rows="7">'+safe(outreachMessage(inv,method))+'</textarea></div>',
+      '<div class="wide" data-outreach-controls></div>',
+      '</div>',
+      '<p class="owner-mini">'+(method==='gmail'?'Important: Gmail cannot attach the PDF automatically. Use Print / PDF on the document first, then attach the saved PDF yourself before sending.':'Texts open in your device’s messaging application. If your browser does not support SMS links, copy the message and send it manually.')+'</p>'
+    ].join('');
+    statusForm.before(panel);
+    const to=panel.querySelector('[data-outreach-to]'),body=panel.querySelector('[data-outreach-body]');
+    const controls=panel.querySelector('[data-outreach-controls]');
+    controls.appendChild(button(method==='sms'?'Open Messages':'Open Gmail',()=>{
+      const message=body.value.trim();
+      if(!message){msg('Enter a message before continuing.');return;}
+      if(method==='gmail'){
+        const email=to.value.trim();
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg('Enter a valid customer email address.');return;}
+        const subject=panel.querySelector('[data-outreach-subject]').value.trim();
+        if(!subject){msg('Enter a subject before continuing.');return;}
+        const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(email)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(message);
+        const tab=window.open(url,'_blank');
+        if(tab)tab.opener=null;
+        msg('Gmail compose opened. Attach the document PDF, review, then send it yourself.');
+      }else{
+        let number;
+        try{number=cleanPhone(to.value)}catch(err){msg(err.message);return;}
+        const separator=/iPad|iPhone|iPod/.test(navigator.userAgent)?'&':'?';
+        window.location.href='sms:'+number+separator+'body='+encodeURIComponent(message);
+      }
+    },'primary'));
+    controls.appendChild(button('Copy Message',async()=>{
+      const message=body.value;
+      try{
+        if(!navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(message);
+        msg('Message copied. Paste it into your email or messaging app to send.');
+      }catch{
+        body.focus();body.select();
+        msg('Select and copy the highlighted message, then paste it into your app.');
+      }
+    }));
+    controls.appendChild(button('Cancel',()=>panel.remove()));
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+  }
   function decorate(){
     if(!owner)return;
     for(const statusForm of rootEl.querySelectorAll('form[data-form="invoice-status"]')){
       const id=statusForm.dataset.id,inv=data.invoices.find(x=>x.id===id);
-      if(!inv||statusForm.querySelector('[data-document-action]'))continue;
-      if(eligible(inv)){
-        const edit=button('Edit Document',()=>openEditor(id),'soft');
-        edit.dataset.documentAction='edit';statusForm.appendChild(edit);
-      }else if(inv.document_type==='Estimate'&&inv.status==='Sent'){
-        const revise=button('Create Draft Revision',()=>reviseEstimate(id),'soft');
-        revise.dataset.documentAction='revise';statusForm.appendChild(revise);
+      if(!inv)continue;
+      if(!statusForm.querySelector('[data-document-action]')){
+        if(eligible(inv)){
+          const edit=button('Edit Document',()=>openEditor(id),'soft');
+          edit.dataset.documentAction='edit';statusForm.appendChild(edit);
+        }else if(inv.document_type==='Estimate'&&inv.status==='Sent'){
+          const revise=button('Create Draft Revision',()=>reviseEstimate(id),'soft');
+          revise.dataset.documentAction='revise';statusForm.appendChild(revise);
+        }
+      }
+      if(shareable(inv)&&!statusForm.querySelector('[data-document-share]')){
+        const sms=button('Text Customer',()=>openOutreach(id,'sms'));
+        sms.dataset.documentShare='sms';statusForm.appendChild(sms);
+        const gmail=button('Email via Gmail',()=>openOutreach(id,'gmail'));
+        gmail.dataset.documentShare='gmail';statusForm.appendChild(gmail);
       }
     }
   }
