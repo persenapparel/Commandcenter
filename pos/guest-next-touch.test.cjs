@@ -116,3 +116,25 @@ test('iPad scrolling touch gesture never activates Next',async()=>{
  next.emit('touchend',{changedTouches:[{identifier:5,clientX:50,clientY:100}]});
  assert.match(root.textContent,/Step 1 of 5/);
 });
+
+test('iPad compatibility click retargeted onto next screen never skips its question',async()=>{
+ const doc={createElement:tag=>new Element(tag,doc)};
+ const root=new Element('div',doc);
+ await createCustomerCheckout({
+  root,origin:'https://commandcenter-4yg.pages.dev',
+  cashierOrigin:'https://pos.persenapparel.com',
+  guestApi:{view:async()=>({checkoutId:'00000000-0000-4000-8000-000000000001',total:'$10.00',items:[{name:'Tee',quantity:1,lineTotal:'$10.00'}]}),submit:async()=>({accepted:true})}
+ }).start();
+ const next=root.querySelector('.guest-next');
+ next.emit('pointerdown',{pointerType:'touch',clientX:50,clientY:50});
+ next.emit('pointerup',{pointerType:'touch',clientX:51,clientY:50});
+ // Safari may retarget the compatibility click to the new Skip button
+ // because the touched Next button was removed by the navigation redraw.
+ root.querySelector('.guest-skip').click();
+ assert.match(root.textContent,/Step 2 of 5/,'one finger tap must advance only to phone');
+ // A second, genuinely independent finger tap must be accepted immediately.
+ const skip=root.querySelector('.guest-skip');
+ skip.emit('pointerdown',{pointerType:'touch',clientX:49,clientY:50});
+ skip.emit('pointerup',{pointerType:'touch',clientX:49,clientY:50});
+ assert.match(root.textContent,/Step 3 of 5/,'the next finger tap still works quickly');
+});
