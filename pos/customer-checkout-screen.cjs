@@ -19,6 +19,9 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
   const paymentNames = Object.freeze({cash:'Cash', venmo:'Venmo', applecash:'Apple Cash'});
   const answers = {phone:'', email:'', payment:'', marketing:false};
   let phase = 'loading', snapshot = null, stepIndex = 0, busy = false;
+  // Shared across rerenders: a synthetic click from an iPad tap must never
+  // activate the next screen's newly positioned button.
+  let latestTouchActivation = 0;
   const doc = root.ownerDocument;
   const el = (tag, value, className) => {
     const node = doc.createElement(tag);
@@ -38,17 +41,19 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
     // isolated iframe. Pointer and Touch Events are independent fallbacks.
     // A single finger tap must never advance or submit twice.
     control.style.touchAction = 'manipulation';
-    let pointerStart = null, touchStart = null, lastTouchAction = 0;
+    let pointerStart = null, touchStart = null, touchClaimed = false;
     const activate = (event, fromTouch) => {
       if (control.disabled || control.isConnected === false) return;
       if (fromTouch) {
-        if (Date.now() - lastTouchAction < 650) return;
-        lastTouchAction = Date.now();
+        if (touchClaimed) return;
+        touchClaimed = true;
+        latestTouchActivation = Date.now();
         if (event.cancelable) event.preventDefault();
       }
       callback(event);
     };
     control.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'touch') touchClaimed = false;
       pointerStart = event.pointerType === 'touch' ?
         {x:event.clientX, y:event.clientY} : null;
     });
@@ -61,6 +66,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
     });
     control.addEventListener('touchstart', event => {
       const touch = event.touches?.length === 1 ? event.touches[0] : null;
+      if (touch) touchClaimed = false;
       touchStart = touch ?
         {identifier:touch.identifier, x:touch.clientX, y:touch.clientY} : null;
     }, {passive:true});
@@ -76,7 +82,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
       if (moved <= 15) activate(event, true);
     }, {passive:false});
     control.addEventListener('click', event => {
-      if (Date.now() - lastTouchAction < 650) return;
+      if (Date.now() - latestTouchActivation < 650) return;
       activate(event, false);
     });
     return control;
