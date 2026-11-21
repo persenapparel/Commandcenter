@@ -34,28 +34,50 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
   function action(text, className, callback) {
     const control = el('button', text, className);
     control.type = 'button';
-    // iPadOS can suppress the synthesized click inside a cross-origin,
-    // sandboxed customer iframe. Support a short finger tap directly, and
-    // suppress its subsequent click so one tap never advances twice.
+    // Some iPad Safari versions do not deliver a synthesized click from an
+    // isolated iframe. Pointer and Touch Events are independent fallbacks.
+    // A single finger tap must never advance or submit twice.
     control.style.touchAction = 'manipulation';
-    let start = null, lastTouchAction = 0;
-    control.addEventListener('pointerdown', event => {
-      if (event.pointerType === 'touch')
-        start = {x:event.clientX, y:event.clientY};
-    });
-    control.addEventListener('pointercancel', () => { start = null; });
-    control.addEventListener('pointerup', event => {
-      if (event.pointerType !== 'touch' || !start) return;
-      const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
-      start = null;
-      if (moved > 15) return; // a scrolling gesture must never submit/advance
-      lastTouchAction = Date.now();
-      if (event.cancelable) event.preventDefault();
+    let pointerStart = null, touchStart = null, lastTouchAction = 0;
+    const activate = (event, fromTouch) => {
+      if (control.disabled || control.isConnected === false) return;
+      if (fromTouch) {
+        if (Date.now() - lastTouchAction < 650) return;
+        lastTouchAction = Date.now();
+        if (event.cancelable) event.preventDefault();
+      }
       callback(event);
+    };
+    control.addEventListener('pointerdown', event => {
+      pointerStart = event.pointerType === 'touch' ?
+        {x:event.clientX, y:event.clientY} : null;
     });
+    control.addEventListener('pointercancel', () => { pointerStart = null; });
+    control.addEventListener('pointerup', event => {
+      if (event.pointerType !== 'touch' || !pointerStart) return;
+      const moved = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
+      pointerStart = null;
+      if (moved <= 15) activate(event, true);
+    });
+    control.addEventListener('touchstart', event => {
+      const touch = event.touches?.length === 1 ? event.touches[0] : null;
+      touchStart = touch ?
+        {identifier:touch.identifier, x:touch.clientX, y:touch.clientY} : null;
+    }, {passive:true});
+    control.addEventListener('touchcancel', () => { touchStart = null; });
+    control.addEventListener('touchend', event => {
+      if (!touchStart) return;
+      const touch = Array.from(event.changedTouches || [])
+        .find(item => item.identifier === touchStart.identifier);
+      const start = touchStart;
+      touchStart = null;
+      if (!touch) return;
+      const moved = Math.hypot(touch.clientX - start.x, touch.clientY - start.y);
+      if (moved <= 15) activate(event, true);
+    }, {passive:false});
     control.addEventListener('click', event => {
       if (Date.now() - lastTouchAction < 650) return;
-      callback(event);
+      activate(event, false);
     });
     return control;
   }
