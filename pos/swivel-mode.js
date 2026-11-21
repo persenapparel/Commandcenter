@@ -412,8 +412,13 @@
    else{
     overlay.hidden=false;
     document.body.classList.add('swivel-customer-active');
+    coverCashier(true);
+    lock.hidden=true;keepCustomer.hidden=true;
     returnForm.hidden=false;
-    returnMessage.textContent='Secure handoff stopped before it could open. Keep this iPad with the cashier and do not start another order.';
+    returnForm.querySelector('h2').textContent='Customer checkout could not start';
+    returnForm.querySelector('p').textContent='Return the iPad to the owner. Reload the register and select Open Register to review any unfinished checkout.';
+    returnBadge.disabled=true;$('swivel-return-submit').disabled=true;
+    returnMessage.textContent='Payment has not been authorized. This screen cannot resume the order with a badge.';
    }
    message(phase==='cashier'
     ?'Check your cart and use 0% discount, then retry Hand to Customer.'
