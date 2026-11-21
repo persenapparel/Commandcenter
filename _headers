@@ -9,5 +9,5 @@
 # Keep the blanket DENY on production/custom domains and all other routes.
 https://:preview.commandcenter-4yg.pages.dev/pos-guest/*
   ! X-Frame-Options
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://naaqcspvbntzdtwuchrr.supabase.co; frame-ancestors https://pos.persenapparel.com https://persen-pos-staging.pages.dev https://*.persen-pos-staging.pages.dev; base-uri 'none'; form-action 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://naaqcspvbntzdtwuchrr.supabase.co; frame-ancestors https://pos.persenapparel.com https://persen-pos-staging.pages.dev https://*.persen-pos-staging.pages.dev; base-uri 'none'; form-action 'none'; object-src 'none'
   Cache-Control: no-store, no-cache, must-revalidate
