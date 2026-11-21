@@ -6,10 +6,17 @@ const vm=require('node:vm');
 const path=require('node:path');
 const guest=fs.readFileSync(path.join(__dirname,'..','..','pos-guest','guest.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'..','..','pos-guest','guest.css'),'utf8');
+const screen=fs.readFileSync(path.join(__dirname,'..','customer-checkout-screen.cjs'),'utf8');
 
 test('deployed isolated guest page is the same tested five-step customer wizard',()=>{
  assert.doesNotThrow(()=>new vm.Script(guest,{filename:'pos-guest/guest.js'}));
  assert.match(guest,/function createCustomerCheckout/);
+ assert.ok(guest.includes(screen.trim()),
+   'the published customer checkout must embed the exact tested controller, not an outdated click-only snapshot');
+ assert.match(guest,/control\.addEventListener\('touchend'/,
+   'published guest Next buttons need the iPad touch fallback');
+ assert.doesNotMatch(guest,/signatureException|signature:answers\./,
+   'published guest flow must not restore an obsolete signature requirement');
  assert.match(guest,/Here is your total\./);
  assert.match(guest,/What's your phone number\?/);
  assert.match(guest,/What's your email address\?/);
