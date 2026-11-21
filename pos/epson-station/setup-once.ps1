@@ -58,11 +58,25 @@ $env:PERSEN_WINDOWS_PRINTER = '__PRINTER__'
 $env:PERSEN_POS_PUBLISHABLE_KEY = '__PUBLIC_KEY__'
 $env:PERSEN_DRAWER_ARMED = 'YES'
 $env:PERSEN_RECEIPTS_ARMED = 'YES'
-Write-Host 'Persen Apparel Epson station - STAGING ONLY' -ForegroundColor Cyan
-Write-Host 'Leave this window open during sales. Sign in locally using your staging owner email and password.'
-Write-Host 'Both receipts and the previously working cash drawer will be armed after successful sign-in.'
-& node.exe (Join-Path $PSScriptRoot 'agent.cjs')
-if ($LASTEXITCODE -ne 0) { Write-Warning 'Epson station stopped. See error above; do not restart repeatedly or retry uncertain jobs.' }
+# Prevent two Windows logon/desktop launches from processing the same queues.
+$mutex = [System.Threading.Mutex]::new($false, 'Local\PersenPOSStagingEpsonStation')
+$ownsMutex = $false
+try {
+  try { $ownsMutex = $mutex.WaitOne(0) }
+  catch [System.Threading.AbandonedMutexException] { $ownsMutex = $true }
+  if (-not $ownsMutex) {
+    Write-Host 'Persen Epson station is already running on this Windows session. Do not start a second copy.' -ForegroundColor Yellow
+  } else {
+    Write-Host 'Persen Apparel Epson station - STAGING ONLY' -ForegroundColor Cyan
+    Write-Host 'Leave this window open during sales. Sign in locally using your staging owner email and password.'
+    Write-Host 'Both receipts and the previously working cash drawer will be armed after successful sign-in.'
+    & node.exe (Join-Path $PSScriptRoot 'agent.cjs')
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'Epson station stopped. See error above; do not restart repeatedly or retry uncertain jobs.' }
+  }
+} finally {
+  if ($ownsMutex) { [void]$mutex.ReleaseMutex() }
+  $mutex.Dispose()
+}
 '@
 $Launcher = $Launcher.Replace('__PRINTER__', $chosen.Name.Replace("'","''")).Replace('__PUBLIC_KEY__',$PublishableKey)
 # Quoting: use single quotes in launcher because Windows printer names may include double quotes.
@@ -76,10 +90,18 @@ $Shortcut.Arguments = ('-NoProfile -NoExit -ExecutionPolicy Bypass -File "' + $S
 $Shortcut.WorkingDirectory = $Root
 $Shortcut.Description = 'Persen POS staging Epson automatic receipt and cash drawer agent'
 $Shortcut.Save()
+# Start an interactive sign-in window at each Windows login, with no stored password.
+# Copying the same shortcut means the desktop and startup launch the same saved agent.
+$StartupDir = [Environment]::GetFolderPath('Startup')
+$StartupShortcut = Join-Path $StartupDir 'Start Persen Epson.lnk'
+New-Item -Path $StartupDir -ItemType Directory -Force | Out-Null
+Copy-Item -LiteralPath $ShortcutPath -Destination $StartupShortcut -Force
 Write-Host ''
 Write-Host 'SETUP SAVED. Your desktop now has: Start Persen Epson' -ForegroundColor Green
-Write-Host 'Use that shortcut whenever you start the register. Your Windows printer and public key settings are saved locally.'
-Write-Host 'Your staging owner password is NOT saved; you will enter it locally to start the agent.'
+Write-Host 'The Epson station window will also open automatically when you sign into Windows.' -ForegroundColor Green
+Write-Host 'Sign in with your staging owner email and password when that window appears, then leave it open during sales.'
+Write-Host 'Your printer and public key settings are saved locally. Your owner password is NOT stored.'
+Write-Host 'If Windows already opened the agent, do not manually open a second copy.'
 Write-Host ''
 Write-Host 'Before the first raw print test, verify the Epson driver is NOT configured to open the drawer on every print.' -ForegroundColor Yellow
 $ok = Read-Host 'Type TEST to send one zero-dollar sample directly to the Epson, or press Enter to finish setup without printing'
@@ -91,4 +113,4 @@ if ($ok -ceq 'TEST') {
    Write-Warning 'RAW test failed. Send the displayed error (without any login/password) for diagnosis.'
   }
 }
-Write-Host 'When ready for staging checkout, open the desktop shortcut. Do not open it twice.'
+Write-Host 'You can use the desktop shortcut if the automatic Windows-startup window was closed. Never run two agents together.'
