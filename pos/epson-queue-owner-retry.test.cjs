@@ -43,7 +43,7 @@ function harness(){
  };
  const window={confirm(){return confirmed.value}};
  const context={document,window,setInterval:()=>1,clearInterval:()=>{},Date,Promise};
- const script=fs.readFileSync(path.join(__dirname,'..','epson-center.js'),'utf8');
+ const script=fs.readFileSync(path.join(__dirname,'epson-center.js'),'utf8');
  vm.runInNewContext(script,context,{filename:'epson-center.js'});
  window.PersenEpsonCenter.attach({db,owner:{id:'99999999-9999-4999-8999-999999999999'}});
  async function settle(){for(let i=0;i<15;i++)await Promise.resolve()}
