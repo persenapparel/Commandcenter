@@ -107,7 +107,8 @@
    home.querySelector('.manual-adjustment')?.remove();
    const form=document.createElement('form');
    form.className='manual-adjustment panel';
-   form.innerHTML='<h3></h3><label>Original sale <select name="sale" required></select></label><div class="refund-fields"><label>Refund amount ($) <input name="amount" type="number" step="0.01" min="0.01"></label><label>How was the customer repaid? <select name="method"><option value="cash">Cash</option><option value="venmo">Venmo</option><option value="apple_pay">Apple Pay</option></select></label></div><label>Reason <input name="reason" required maxlength="250"></label><label><input name="confirmed" type="checkbox" required> <span></span></label><button type="submit">Record</button> <button type="button">Cancel</button><p role="status"></p>';
+   form.innerHTML='<h3></h3><label>Scan receipt barcode <input name="receiptCode" autocomplete="off" inputmode="none"></label><button type="button" name="findReceipt">Find receipt</button><label>Original sale <select name="sale" required></select></label><div class="refund-fields"><label>Refund amount ($) <input name="amount" type="number" step="0.01" min="0.01"></label><label>How was the customer repaid? <select name="method"><option value="cash">Cash</option><option value="venmo">Venmo</option><option value="apple_pay">Apple Pay</option></select></label></div><label>Reason <input name="reason" required maxlength="250"></label><label><input name="confirmed" type="checkbox" required> <span></span></label><button type="submit">Record</button> <button type="button">Cancel</button><p role="status"></p>';
+   form.onsubmit=event=>event.preventDefault();
    home.append(form);
    const toggle=document.createElement('button');toggle.type='button';toggle.textContent=refund?'Switch to merchandise return':'Switch to manual refund';toggle.onclick=()=>openAdjustment(refund?'return':'refund');form.prepend(toggle);
    const fields=form.elements, feedback=form.querySelector('[role=status]');
@@ -117,18 +118,46 @@
    fields.amount.required=refund;
    const confirmLabel=()=>{fields.confirmed.checked=false;form.querySelector('span').textContent=!refund?'I received all merchandise from this sale.':fields.method.value==='cash'?'I took this amount from the cash drawer and handed it to the customer.':'I already sent this amount back via '+fields.method.selectedOptions[0].textContent+'.'};
    confirmLabel();fields.method.onchange=confirmLabel;fields.amount.oninput=confirmLabel;
-   form.querySelector('[type=button]').onclick=()=>form.remove();
+   form.querySelector('button[type=button]:last-of-type').onclick=()=>form.remove();
    const submit=form.querySelector('[type=submit]');submit.disabled=true;
+   const eligible=s=>refund?s.available>0:!s.returned;
+   function addSale(sale){
+    const label=new Date(sale.created_at).toLocaleString()+' · $'+money(sale.total_cents)+' · '+sale.payment_method+' · '+sale.id.slice(-8);
+    const option=new Option(label,sale.id);option.dataset.available=sale.available;fields.sale.add(option);
+   }
+   function selectSale(){
+    const selected=fields.sale.selectedOptions[0];
+    submit.disabled=!selected;fields.amount.value=selected?money(Number(selected.dataset.available)):'';
+    fields.amount.max=fields.amount.value;confirmLabel();
+   }
+   fields.sale.onchange=selectSale;
+   let searching=false;
+   async function findReceipt(){
+    if(searching)return;
+    const digits=fields.receiptCode.value.trim();
+    fields.sale.selectedIndex=-1;selectSale();
+    if(!/^\d{40}$/.test(digits)){feedback.textContent='Scan the barcode marked Scan for returns.';return}
+    const hex=BigInt(digits).toString(16).padStart(32,'0');
+    if(hex.length!==32){feedback.textContent='Invalid receipt barcode.';return}
+    const id=[hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
+    searching=true;fields.sale.disabled=true;fields.receiptCode.readOnly=true;
+    try{
+     const {sales}=await bridge.manualAdjustment({p_action:'list',p_sale:id});
+     const sale=sales.find(s=>s.id===id&&eligible(s));
+     if(!sale){feedback.textContent='No eligible sale found for this receipt.';return}
+     if(!Array.from(fields.sale.options).some(o=>o.value===id))addSale(sale);
+     fields.sale.value=id;selectSale();feedback.textContent='Receipt found. Review the original sale.';
+    }catch{feedback.textContent='Receipt lookup failed. Scan again.'}
+    finally{searching=false;fields.sale.disabled=false;fields.receiptCode.readOnly=false;fields.receiptCode.select()}
+   }
    try{
     const {sales}=await bridge.manualAdjustment({p_action:'list'});
-    for(const sale of sales.filter(s=>refund?s.available>0:!s.returned)){
-     const label=new Date(sale.created_at).toLocaleString()+' · $'+money(sale.total_cents)+' · '+sale.payment_method+' · '+sale.id.slice(-8);
-     const option=new Option(label,sale.id);option.dataset.available=sale.available;fields.sale.add(option);
-    }
-    if(!fields.sale.length){feedback.textContent='No eligible recent sales.';return}
-    const selectSale=()=>{const amount=money(Number(fields.sale.selectedOptions[0].dataset.available));fields.amount.value=amount;fields.amount.max=amount;confirmLabel();};
-    selectSale();fields.sale.onchange=selectSale;submit.disabled=false;
-   }catch{feedback.textContent='Unable to load sales for this register.';return}
+    for(const sale of sales.filter(eligible))addSale(sale);
+   }catch{feedback.textContent='Unable to load recent sales.'}
+   selectSale();
+   fields.receiptCode.oninput=()=>{fields.sale.selectedIndex=-1;selectSale()};
+   fields.receiptCode.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();void findReceipt()}};
+   fields.findReceipt.onclick=findReceipt;fields.receiptCode.focus();
    let request=crypto.randomUUID();
    form.onsubmit=async event=>{
     event.preventDefault();if(submit.disabled||!fields.confirmed.checked)return;
