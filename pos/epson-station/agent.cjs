@@ -106,10 +106,11 @@ function createProcessor({rpc,raw,fetchJobs,logger=()=>{},now=()=>Date.now()}){
   const jobs=await fetchJobs('receipt');
   const cutoff=now()-24*60*60*1000;
   for(const job of (jobs||[]).slice(0,5)){
-   if(!UUID.test(job.id)||job.state!=='queued'||new Date(job.created_at).getTime()<cutoff||attempted.has(job.id))continue;
+   const dispatchKey='receipt:'+job.id+':'+(job.attempts??0);
+   if(!UUID.test(job.id)||job.state!=='queued'||new Date(job.created_at).getTime()<cutoff||attempted.has(dispatchKey))continue;
    const sale=await rpc('pos_claim_print_job',{p_job:job.id});
    if(!sale)continue;
-   attempted.add(job.id);
+   attempted.add(dispatchKey);
    let error=null,receiptBytes=null;
    // Keep bad server-claimed data separate from Windows RAW transport failures.
    // Diagnostics stay on the local agent console: never write exception details,
@@ -161,7 +162,8 @@ function makeClient({key,email,password,fetchImpl=fetch}){
   rpc:async(name,data)=>authorized('rpc/'+name,'POST',data),
   fetchJobs:async kind=>{
    const table=kind==='drawer'?'pos_drawer_open_jobs':'pos_print_jobs';
-   return authorized(table+'?select=id,state,created_at&state=eq.queued&created_at=gte.'+encodeURIComponent(new Date(Date.now()-86400000).toISOString())+'&order=created_at.asc&limit=5');
+   const fields=kind==='receipt'?'id,state,created_at,attempts':'id,state,created_at';
+   return authorized(table+'?select='+fields+'&state=eq.queued&created_at=gte.'+encodeURIComponent(new Date(Date.now()-86400000).toISOString())+'&order=created_at.asc&limit=5');
   }
  };
 }

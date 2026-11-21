@@ -134,3 +134,16 @@ test('A failed direct RAW diagnostic never claims or retries any server receipt 
  }),/Windows printer unavailable/);
  assert.equal(calls,1);
 });
+
+test('owner-released receipt may be claimed once at the next attempt on the same station',async()=>{
+ const job={...queued(UUID2),attempts:0};
+ let writes=0;
+ const processor=createProcessor({fetchJobs:async()=>[job],rpc:async name=>name==='pos_claim_print_job'?sample:true,
+  raw:async()=>{writes++;if(writes===1)throw Error('offline')}});
+ assert.equal((await processor.receipt()).spooled,false);
+ assert.equal(await processor.receipt(),null);
+ job.attempts=1;
+ assert.equal((await processor.receipt()).spooled,true);
+ assert.equal(await processor.receipt(),null);
+ assert.equal(writes,2);
+});
