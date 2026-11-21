@@ -17,7 +17,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
 
   const steps = ['review', 'phone', 'email', 'payment', 'confirm'];
   const paymentNames = Object.freeze({cash:'Cash', venmo:'Venmo', applecash:'Apple Cash'});
-  const answers = {phone:'', email:'', payment:'', marketing:false, signature:'', exception:false};
+  const answers = {phone:'', email:'', payment:'', marketing:false};
   let phase = 'loading', snapshot = null, stepIndex = 0, busy = false;
   const doc = root.ownerDocument;
   const el = (tag, value, className) => {
@@ -34,7 +34,29 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
   function action(text, className, callback) {
     const control = el('button', text, className);
     control.type = 'button';
-    control.addEventListener('click', callback);
+    // iPadOS can suppress the synthesized click inside a cross-origin,
+    // sandboxed customer iframe. Support a short finger tap directly, and
+    // suppress its subsequent click so one tap never advances twice.
+    control.style.touchAction = 'manipulation';
+    let start = null, lastTouchAction = 0;
+    control.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'touch')
+        start = {x:event.clientX, y:event.clientY};
+    });
+    control.addEventListener('pointercancel', () => { start = null; });
+    control.addEventListener('pointerup', event => {
+      if (event.pointerType !== 'touch' || !start) return;
+      const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+      start = null;
+      if (moved > 15) return; // a scrolling gesture must never submit/advance
+      lastTouchAction = Date.now();
+      if (event.cancelable) event.preventDefault();
+      callback(event);
+    });
+    control.addEventListener('click', event => {
+      if (Date.now() - lastTouchAction < 650) return;
+      callback(event);
+    });
     return control;
   }
   function field(parent, labelText, type, value, help) {
@@ -227,15 +249,10 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
       const recap = line(panel, 'div', undefined, 'guest-confirm-recap');
       line(recap, 'span', 'Payment choice: ' + paymentNames[answers.payment]);
       line(recap, 'strong', snapshot.total);
-      const signature = field(panel, 'Type your name to acknowledge the order', 'text', answers.signature, null);
-      signature.addEventListener('input', () => { answers.signature = signature.value; });
-      const exceptionLabel = line(panel, 'label', undefined, 'guest-check-row');
-      const exception = el('input');
-      exception.type = 'checkbox';
-      exception.checked = answers.exception;
-      exception.addEventListener('change', () => { answers.exception = exception.checked; });
-      exceptionLabel.append(exception);
-      line(exceptionLabel, 'span', 'I cannot enter a name (accessibility option)');
+      // No typed-signature substitute: the current staging backend does not
+      // support storing authentic finger-drawn strokes. Remove signature
+      // collection until real private drawing storage is implemented.
+      line(panel, 'p', 'No signature is required. Your cashier will verify payment and finish the sale.', 'guest-notice');
       const marketingLabel = line(panel, 'label', undefined, 'guest-check-row');
       const marketing = el('input');
       marketing.type = 'checkbox';
@@ -245,11 +262,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
       line(marketingLabel, 'span', 'Optional: I agree to receive Persen Apparel promotional messages.');
       const errors = navigation(panel, 'Submit & return to cashier →', () => {
         if (busy) return '';
-        answers.signature = signature.value.trim();
-        answers.exception = exception.checked;
         answers.marketing = marketing.checked;
-        if (!answers.signature && !answers.exception)
-          return 'Please enter your name or select the accessibility option.';
         busy = true;
         const submitButton = panel.querySelector ? panel.querySelector('.guest-next') : null;
         if (submitButton) submitButton.disabled = true;
@@ -258,8 +271,7 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
           phone: answers.phone.trim(),
           email: answers.email.trim(),
           marketingConsent: answers.marketing === true,
-          signature: answers.exception ? null : answers.signature,
-          signatureException: answers.exception,
+          // No signature is collected. Staging RPC accepts this omission.
           // A payment preference, NOT authorization to treat it as paid.
           paymentPreference: answers.payment==='venmo'?'venmo_info':
             answers.payment==='applecash'?'apple_cash_info':'cash'
@@ -267,13 +279,13 @@ function createCustomerCheckout({ root, guestApi, origin, cashierOrigin }) {
         // Never send a client-selected tender as if it were an authorized payment.
         Promise.resolve().then(() => guestApi.submit(payload)).then(result => {
           if (!result || result.accepted !== true) throw Error('Guest submit rejected');
-          answers.phone = ''; answers.email = ''; answers.signature = '';
+          answers.phone = ''; answers.email = '';
           phase = 'complete';
           draw();
         }).catch(() => {
           // Submission consumes a single-use bearer even if the network fails.
           // Fail closed; a cashier must safely recover the checkout.
-          answers.phone = ''; answers.email = ''; answers.signature = '';
+          answers.phone = ''; answers.email = '';
           phase = 'error';
           draw();
         }).finally(() => { busy = false; });
