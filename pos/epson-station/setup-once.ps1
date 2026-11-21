@@ -3,7 +3,7 @@
 # No database mutation, no old-job replay, no receipt claims during setup.
 $ErrorActionPreference = 'Stop'
 $Root = Join-Path $env:LOCALAPPDATA 'PersenApparel\EpsonStation'
-$SourceCommit = '2f414fd78f77bf02f0b32f3680cb00e26a6897ae'
+$SourceCommit = 'd0aaa24736f9daad906f87672aa846c805ad1a05'
 $RepoUrl = "https://raw.githubusercontent.com/persenapparel/Commandcenter/$SourceCommit/pos/epson-station"
 $PublishableKey = 'sb_publishable_2dmFx3Vnsz7eU8dxAxCXPQ_8wNuCiLO'
 Write-Host '=== Persen Apparel Epson printer setup (staging) ===' -ForegroundColor Cyan
@@ -104,7 +104,7 @@ Write-Host 'Your printer and public key settings are saved locally. Your owner p
 Write-Host 'If Windows already opened the agent, do not manually open a second copy.'
 Write-Host ''
 Write-Host 'Before the first raw print test, verify the Epson driver is NOT configured to open the drawer on every print.' -ForegroundColor Yellow
-$ok = Read-Host 'Type TEST to send one zero-dollar sample directly to the Epson, or press Enter to finish setup without printing'
+$ok = Read-Host 'Type TEST to send one zero-dollar customer receipt and merchant slip directly to the Epson, or press Enter to finish setup without printing'
 if ($ok -ceq 'TEST') {
   & node.exe (Join-Path $Root 'agent.cjs') --printer-test
   if ($LASTEXITCODE -eq 0) {
