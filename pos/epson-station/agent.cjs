@@ -81,6 +81,8 @@ function returnBarcode(id){
  }
  return Buffer.concat([Buffer.from([GS,0x76,0x30,0,row.length,0,48,0]),...Array(48).fill(row)]);
 }
+// One-bit Long Island lighthouse patch, 368 by 120 printer dots.
+const winterPatch=require('node:zlib').inflateSync(Buffer.from('eJzV2L9u2zgYAPCPoVFmKESPHQgpfYNOVw06K0BfJFu3wjfFwyFm0QLZnEe4Rzm5Gbylr6CiQ7ZC3VzUNY//ZNOyI33cegTi2NYPNvmZIvl9AJGNKlSrnC5xemMxwWGlpNF8g+tw2ZjHrEIOb20eb7DRsHCN7LjMzBfUKe6jZ0x3mVVXOP2M1jokROI0kToo6TMcBriaARTnWD0udOdfYfVzHY7mEqvPOEAtXaeGNWFAloDV8EHST3j9pqIf8fplxUZ4fVFzH+4pQo+bZGyfEMwtcT71mm5RWlzYJ8zddf1tlHudtQvAgL60T0rVDOuzPHdaqTVCi1ya//rWRAyTeG0WN/tGDjc8oY2OEVkLmLDbcP1oNW/XuRwUT9haa7Zxugn11OpM69pqou4W3Ghu9SoLxkOSv+Cg3zm5v1ukL/RMSJ4L+IOtRBF0fOG1BHcz5/T+80KA0SMB11qLXv3+80NuNAejH0XSrx+8rox+i9Sswelv+d9aUx2Tr7fXg/qd1WD1a6xOBSiEvsmF0YkgalUO6PuHiYnx9NzqrD/e5H4xSY1OUkGWWvf9luV3tUj1LqfnyTb7sVzxcJ7sdDtPykYlKbN6k/1cPvJwDp7QN0lq5zdrsp9S6+pYwxxzp+10DaIf/rY66YehJtX/VjO8pjJS8yg9j9EEs/HsNI/QTG88RqdQqM2E3almvi3NjGeSN/sTY6uJOtZbq8sNzOuOZoEuvVZOb0F1del2kpOaHGm/7ySQ6+u3soAZFFwa/SqjzdWh5qc0sxo4bQcZ6F/mPS6Qujad45OZ1qtDzeSxhp3+M9DmPfbPkV539HxjR6lbxv7t/DrmwLHTxaPVpdvL9RbbjWCmwOnXgfbnhOJYr905jF0H2h+1ZmzZdHTV6qnW13aU7Wc37H1Hm2Sgq4uJvURqJjs6P9BzpzN7iZ7W5o99bbQuQ80kTrv7mkvar7P9HNQBANqNSaDVxur51v/ypaLdeE+9pl9CXTlNdifLQJvlXn+pMhPkQMPTut5rWntdwmk90LxuYrS5iTFHU6dFmFQP6sZ+9mxYm5OpXo9NG1zBSWJOvT55JfWQtmfksX9V9FHYn6hdY/Ipt9OXwcuB3OFMiFCPn3JemwyG2SyADAfc5jtmgXW1iwE+ynXmNXIU9jvGE63N04hLSS6HNEcn6CZj1NkoepQXtc500aN8WeksGj3KN5XL0HGj/CDb7B/RdPYfWVmIq1rEVUTiqi1xlZy4KlFcBSquuhVZOYurysVV/OKqiXGVysgqaET7DwjEcOg=','base64'));
 function escposReceipt(sale){
  if(!sale||!UUID.test(String(sale.sale_id||''))||!Array.isArray(sale.items)||sale.items.length>80)throw Error('Invalid verified receipt payload');
  const items=[];
@@ -116,12 +118,26 @@ function escposReceipt(sale){
   line(padAmount('Cash received',money(sale.tendered_cents)));
   line(padAmount('Change',money(sale.change_cents)));
  }else line('Paid with '+ascii(sale.payment_method).replace(/_/g,' '));
- center(true);line('');line('Scan for returns');parts.push(returnBarcode(sale.sale_id));line('');bold(true);line('THANKS FOR SHOPPING SMALL!');bold(false);
+ center(true);line('');line('Scan for returns');parts.push(returnBarcode(sale.sale_id));line('');
+ cmd(GS,0x76,0x30,0,46,0,120,0);parts.push(winterPatch);line('');bold(true);line('THANKS FOR SHOPPING SMALL!');bold(false);
  line('Tag us in your new gear: @persenapparel');line('');
  bold(true);line("Got a shirt idea? Let's make it.");bold(false);
  cmd(GS,0x76,0x30,0,37,0,40,1);
  parts.push(websiteQr);
  line('persenapparel.com');
+ cmd(0x0a,0x0a,GS,0x56,0);
+ // Keep both copies in one Windows job. Each cut ends one physical slip.
+ cmd(ESC,0x40);cmd(ESC,0x4d,1);cmd(ESC,0x33,24);
+ bold(true);line('PERSEN APPAREL  |  MERCHANT COPY');bold(false);
+ line('Receipt #'+sale.sale_id.slice(0,8).toUpperCase()+
+  (sale.created_at&&Number.isFinite(date.getTime())?'  '+date.toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'short',timeStyle:'short'})+' ET':''));
+ if(sale.cashier_first_name)line('Cashier: '+ascii(sale.cashier_first_name).slice(0,32));
+ for(const item of sale.items){
+  const variant=[item.color,item.size].filter(Boolean).map(ascii).join(' / ');
+  line((item.qty+' x '+ascii(item.name||'Item')).slice(0,30)+(variant?'  '+variant.slice(0,24):''));
+ }
+ const method=ascii(sale.payment_method||'cash').replace(/_/g,' ').toUpperCase();
+ bold(true);line(padAmount(method+' TOTAL',money(sale.total_cents)));bold(false);
  cmd(0x0a,0x0a,GS,0x56,0);return Buffer.concat(parts);
 }
 function drawerKick(opts={}){

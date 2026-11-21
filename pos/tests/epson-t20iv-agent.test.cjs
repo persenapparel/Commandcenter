@@ -147,3 +147,14 @@ test('owner-released receipt may be claimed once at the next attempt on the same
  assert.equal(await processor.receipt(),null);
  assert.equal(writes,2);
 });
+
+test('one print job cuts a customer receipt and a matching compact merchant slip',()=>{
+ const sale={...sample,payment_method:'venmo',cashier_first_name:'Luke'};
+ const bytes=escposReceipt(sale),cut=Buffer.from([0x1d,0x56,0]);
+ const split=bytes.indexOf(cut),merchant=bytes.subarray(split+cut.length);
+ assert.ok(split>0);
+ assert.equal(merchant.indexOf(cut),merchant.length-cut.length);
+ for(const label of ['MERCHANT COPY','Receipt #00000000','Cashier: Luke','1 x Hoodie','Red / M','VENMO TOTAL','$40.00'])assert.ok(merchant.includes(label),label);
+ assert.ok(merchant.length<500);
+ assert.equal(bytes.includes(drawerKick()),false);
+});
