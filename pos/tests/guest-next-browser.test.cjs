@@ -53,7 +53,7 @@ window.addEventListener('message',event=>{
     if(url.origin===GUEST && guestFiles.has(url.pathname)){
       const asset=guestFiles.get(url.pathname);
       return route.fulfill({status:200,contentType:asset.type,headers:{
-        'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src "+API+"; frame-ancestors "+CASHIER+"; base-uri 'none'; form-action 'none'; object-src 'none'",
+        'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src "+API+"; frame-ancestors "+CASHIER+"; base-uri 'none'; form-action 'none'; object-src 'none'",
         'Cache-Control':'no-store'
       },body:asset.body});
     }
@@ -97,7 +97,7 @@ window.addEventListener('message',event=>{
   await guest.getByRole('heading',{name:"What's your phone number?"}).waitFor({timeout:10000});
   await waitStep(2);
   await guest.locator('.guest-skip').tap();
-  console.log('DEBUG AFTER PHONE SKIP:',(await guest.locator('body').innerText()).slice(0,900));
+
   await guest.getByRole('heading',{name:"What's your email address?"}).waitFor({timeout:10000});
   await waitStep(3);
   await guest.locator('.guest-skip').tap();
