@@ -154,7 +154,9 @@ test('one print job cuts a customer receipt and a matching compact merchant slip
  const split=bytes.indexOf(cut),merchant=bytes.subarray(split+cut.length);
  assert.ok(split>0);
  assert.equal(merchant.indexOf(cut),merchant.length-cut.length);
- for(const label of ['MERCHANT COPY','Receipt #00000000','Cashier: Luke','1 x Hoodie','Red / M','VENMO TOTAL','$40.00'])assert.ok(merchant.includes(label),label);
- assert.ok(merchant.length<500);
+ assert.ok(merchant.includes(Buffer.from([0x1d,0x21,0x11])));
+ assert.ok(merchant.includes(Buffer.from([0x1d,0x21,1])));
+ for(const label of ['MERCHANT COPY','Receipt #00000000','Cashier: Luke','1 x Hoodie','Red / M','VENMO PAYMENT','$40.00'])assert.ok(merchant.includes(label),label);
+ assert.ok(merchant.length<4500);
  assert.equal(bytes.includes(drawerKick()),false);
 });

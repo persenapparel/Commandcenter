@@ -127,17 +127,34 @@ function escposReceipt(sale){
  line('persenapparel.com');
  cmd(0x0a,0x0a,GS,0x56,0);
  // Keep both copies in one Windows job. Each cut ends one physical slip.
- cmd(ESC,0x40);cmd(ESC,0x4d,1);cmd(ESC,0x33,24);
- bold(true);line('PERSEN APPAREL  |  MERCHANT COPY');bold(false);
- line('Receipt #'+sale.sale_id.slice(0,8).toUpperCase()+
-  (sale.created_at&&Number.isFinite(date.getTime())?'  '+date.toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'short',timeStyle:'short'})+' ET':''));
+ cmd(ESC,0x40);center(true);
+ size(0x11);bold(true);line('PERSEN APPAREL');size(0);
+ line('MERCHANT COPY');bold(false);line('Long Island');
+ center(false);line('-'.repeat(printColumns));
+ line('Receipt #'+sale.sale_id.slice(0,8).toUpperCase());
+ if(sale.created_at&&Number.isFinite(date.getTime()))
+  line(date.toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'medium',timeStyle:'short'})+' ET');
  if(sale.cashier_first_name)line('Cashier: '+ascii(sale.cashier_first_name).slice(0,32));
+ line('-'.repeat(printColumns));
+ const wrapped=value=>{for(const part of ascii(value).match(/.{1,42}/g)||[''])line(part)};
  for(const item of sale.items){
+  bold(true);size(1);wrapped(item.qty+' x '+ascii(item.name||'Item'));size(0);bold(false);
   const variant=[item.color,item.size].filter(Boolean).map(ascii).join(' / ');
-  line((item.qty+' x '+ascii(item.name||'Item')).slice(0,30)+(variant?'  '+variant.slice(0,24):''));
+  if(variant)wrapped(variant);
+  line(padAmount(item.qty+' x '+money(item.unit_cents),money(item.qty*cents(item.unit_cents))));
  }
+ line('-'.repeat(printColumns));
+ if(sale.discount_cents)line(padAmount('Discount','-'+money(sale.discount_cents)));
+ if(sale.tax_cents)line(padAmount('Tax',money(sale.tax_cents)));
  const method=ascii(sale.payment_method||'cash').replace(/_/g,' ').toUpperCase();
- bold(true);line(padAmount(method+' TOTAL',money(sale.total_cents)));bold(false);
+ line(method+' PAYMENT');
+ bold(true);size(0x11);line('TOTAL'.padEnd(21-money(sale.total_cents).length)+money(sale.total_cents));size(0);bold(false);
+ if(!sale.payment_method||sale.payment_method==='cash'){
+  line(padAmount('Cash received',money(sale.tendered_cents)));
+  line(padAmount('Change',money(sale.change_cents)));
+ }
+ center(true);line('');parts.push(returnBarcode(sale.sale_id));
+ line('KEEP FOR YOUR RECORDS');
  cmd(0x0a,0x0a,GS,0x56,0);return Buffer.concat(parts);
 }
 function drawerKick(opts={}){
