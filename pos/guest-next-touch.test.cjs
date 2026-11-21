@@ -88,3 +88,31 @@ test('touch scrolling does not activate Next',async()=>{
  next.emit('pointerup',{pointerType:'touch',clientX:1,clientY:40});
  assert.match(root.textContent,/Step 1 of 5/);
 });
+
+test('iPad Touch Events advance Next when Pointer Events and synthesized click are missing',async()=>{
+ const doc={createElement:tag=>new Element(tag,doc)};
+ const root=new Element('div',doc);
+ await createCustomerCheckout({
+  root,origin:'https://commandcenter-4yg.pages.dev',
+  cashierOrigin:'https://pos.persenapparel.com',
+  guestApi:{view:async()=>({checkoutId:'00000000-0000-4000-8000-000000000001',total:'$10.00',items:[{name:'Tee',quantity:1,lineTotal:'$10.00'}]}),submit:async()=>({accepted:true})}
+ }).start();
+ const next=root.querySelector('.guest-next');
+ next.emit('touchstart',{touches:[{identifier:4,clientX:50,clientY:30}]});
+ next.emit('touchend',{changedTouches:[{identifier:4,clientX:51,clientY:31}]});
+ next.click(); // iPad may still send a compatibility click; never advance twice
+ assert.match(root.textContent,/Step 2 of 5/);
+});
+test('iPad scrolling touch gesture never activates Next',async()=>{
+ const doc={createElement:tag=>new Element(tag,doc)};
+ const root=new Element('div',doc);
+ await createCustomerCheckout({
+  root,origin:'https://commandcenter-4yg.pages.dev',
+  cashierOrigin:'https://pos.persenapparel.com',
+  guestApi:{view:async()=>({checkoutId:'00000000-0000-4000-8000-000000000001',total:'$10.00',items:[{name:'Tee',quantity:1,lineTotal:'$10.00'}]}),submit:async()=>({accepted:true})}
+ }).start();
+ const next=root.querySelector('.guest-next');
+ next.emit('touchstart',{touches:[{identifier:5,clientX:50,clientY:30}]});
+ next.emit('touchend',{changedTouches:[{identifier:5,clientX:50,clientY:100}]});
+ assert.match(root.textContent,/Step 1 of 5/);
+});
