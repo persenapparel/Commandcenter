@@ -10,6 +10,10 @@ on:
       - 'pos-guest/_headers'
       - '_headers'
       - 'pos/tests/guest-pages-frame-headers.test.cjs'
+      - 'pos/tests/guest-next-browser.test.cjs'
+      - 'pos-guest/index.html'
+      - 'pos-guest/guest.css'
+      - 'pos-guest/holiday.css'
       - '.github/workflows/pos-guest-touch-focused.yml'
   workflow_dispatch:
 permissions:
@@ -32,3 +36,20 @@ jobs:
       - name: Confirm iPad touch, wizard progression and published bundle
         run: |
           node --test pos/guest-next-touch.test.cjs pos/tests/customer-wizard-flow.test.cjs pos/tests/isolated-guest-wizard-published.test.cjs pos/tests/guest-pages-frame-headers.test.cjs
+
+  isolated-iPad-touch-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout branch code
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify isolated customer checkout with browser touch input
+        run: node pos/tests/guest-next-browser.test.cjs
