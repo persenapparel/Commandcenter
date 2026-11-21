@@ -87,7 +87,8 @@
         if(!subject){msg('Enter a subject before continuing.');return;}
         const url='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(email)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(message);
         const tab=window.open(url,'_blank');
-        if(tab)tab.opener=null;
+        if(!tab){msg('Your browser blocked Gmail. Allow pop-ups or copy the message instead.');return;}
+        try{tab.opener=null;}catch{}
         msg('Gmail compose opened. Attach the document PDF, review, then send it yourself.');
       }else{
         let number;
