@@ -3,7 +3,7 @@
 # No database mutation, no old-job replay, no receipt claims during setup.
 $ErrorActionPreference = 'Stop'
 $Root = Join-Path $env:LOCALAPPDATA 'PersenApparel\EpsonStation'
-$SourceCommit = 'd0aaa24736f9daad906f87672aa846c805ad1a05'
+$SourceCommit = 'baa146bb61fad202f305d3ca415f685e30821c55'
 $RepoUrl = "https://raw.githubusercontent.com/persenapparel/Commandcenter/$SourceCommit/pos/epson-station"
 $PublishableKey = 'sb_publishable_2dmFx3Vnsz7eU8dxAxCXPQ_8wNuCiLO'
 Write-Host '=== Persen Apparel Epson printer setup (staging) ===' -ForegroundColor Cyan
