@@ -226,15 +226,6 @@
     const calc=invoiceTotalsFromForm(form),f=new FormData(form);
     const customer=String(f.get('customer_name')||'').trim();
     if(!customer||customer.length>150)throw Error('Enter a valid customer name.');
-    const latest=await PA.checked(PA.db.from('business_invoices').select('id,status,document_type,updated_at').eq('id',id).single());
-    if(!latest||latest.status!=='Draft'||latest.document_type!==fromList.document_type||latest.updated_at!==fromList.updated_at)
-      throw Error('The document changed; refresh to review.');
-    const [agreements,payments,converted]=await Promise.all([
-      PA.checked(PA.db.from('invoice_agreements').select('id').eq('invoice_id',id).limit(1)),
-      PA.checked(PA.db.from('invoice_payments').select('id').eq('invoice_id',id).limit(1)),
-      latest.document_type==='Estimate'?PA.checked(PA.db.from('business_invoices').select('id').eq('source_estimate_id',id).limit(1)):Promise.resolve([])
-    ]);
-    if(agreements.length||payments.length||converted.length)throw Error('This document has an agreement, payment, or converted invoice.');
     if(!confirm('Save the changes to draft '+fromList.invoice_number+'? Nothing will be sent to the customer.'))return false;
     const changes={contact_id:f.get('contact_id')||null,customer_name:customer,
       customer_email:String(f.get('customer_email')||'').trim().slice(0,250),
@@ -242,13 +233,10 @@
       due_date:f.get('due_date')||null,line_items:calc.items,
       subtotal:calc.subtotal,shipping:calc.shipping,tax_amount:calc.tax_amount,
       discount_type:calc.discount_type,discount_value:calc.discount_value,
-      discount_amount:calc.discount_amount,total:calc.total,
-      public_notes:String(f.get('public_notes')||'').slice(0,1500),updated_at:new Date().toISOString()};
-    const update=PA.db.from('business_invoices').update(changes).eq('id',id)
-      .eq('status','Draft').eq('document_type',latest.document_type);
-    const unchanged=latest.updated_at==null?update.is('updated_at',null):update.eq('updated_at',latest.updated_at);
-    const written=await PA.checked(unchanged.select('id'));
-    if(!written.length)throw Error('Update denied or document status changed.');
+      public_notes:String(f.get('public_notes')||'').slice(0,1500)};
+    await PA.checked(PA.db.rpc('persen_save_document_draft',{
+      p_id:id,p_expected_updated_at:fromList.updated_at??null,p_changes:changes
+    }));
   }
   async function reviseEstimate(id){
     const inv=data.invoices.find(x=>x.id===id);
