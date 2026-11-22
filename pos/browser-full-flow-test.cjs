@@ -88,7 +88,7 @@ const state=p=>p.evaluate(()=>__POS_TEST_DB.get());
   assert.equal(await cashier.locator('#swivel-guest-host iframe').count(),0);
   await cashier.locator('#swivel-badge').fill('TEST-BADGE-ONLY-0001');
   await cashier.locator('#swivel-pin').fill('wrong');await cashier.locator('#swivel-shift-submit').click();
-  await txt(cashier,'#swivel-shift-message','not verified');
+  await txt(cashier,'#swivel-shift-message','SHIFT-DENIED:');
   assert.equal(await cashier.locator('body').evaluate(e=>e.classList.contains('pos-register-closed')),true);
   await cashier.locator('#swivel-badge').fill('TEST-BADGE-ONLY-0001');
   await cashier.locator('#swivel-pin').fill('654321');await cashier.locator('#swivel-shift-submit').click();
