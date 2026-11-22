@@ -51,7 +51,19 @@ assert.ok(build.includes("writeFile(join(dest,'secure-handoff-browser.js')"),'Se
 assert.ok(build.includes("handoff-config.js"),'Staging handoff config must be generated into the POS output');
 assert.ok(!build.includes("'test-fake-supabase.js'")&&!build.includes("'browser-full-flow-test.cjs'"),'Mock test files must not deploy');
 const epsonCenter=read('epson-center.js');
-assert.ok(!/\.rpc\(|\.insert\(|\.update\(|\.delete\(/.test(epsonCenter),'Epson browser center must be read-only');
+// Queue refresh must remain read-only. The only authorized browser-side write
+// is the owner-confirmed receipt retry; the Windows agent alone drives hardware.
+const centerRpcCalls=[...epsonCenter.matchAll(/\\.rpc\\(\\s*['"]([^'"]+)['"]/g)].map(match=>match[1]);
+assert.deepEqual(centerRpcCalls,['pos_retry_print_job'],
+ 'Epson center may only request the approved, owner-confirmed receipt-only retry');
+assert.ok(!/\\.(?:insert|update|delete|upsert)\\(/.test(epsonCenter),
+ 'Epson center must not directly mutate queue rows');
+assert.match(epsonCenter,/window\\.confirm\\(/,
+ 'Receipt retry must require explicit physical no-paper confirmation');
+assert.match(epsonCenter,/isReceipt\\?retryType\\(job\\):''/,
+ 'Cash drawer jobs must never show receipt retry actions');
+assert.match(epsonCenter,/\\$\\('epson-refresh'\\)\\.addEventListener\\('click',\\(\\)=>void refresh\\(\\)\\)/,
+ 'Refresh control must stay read-only');
 assert.ok(!build.includes("'print-station.js'")&&!build.includes("'print-station.css'")&&!build.includes("'print-station.html'"),'Legacy browser printer route must not ship');
 require('./swivel-pairing-regression-test.cjs');
 console.log('PASS: '+checked+' named controls, four unique-ID checks, additional forms and generated controls');
