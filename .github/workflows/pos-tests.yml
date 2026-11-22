@@ -160,11 +160,14 @@ jobs:
         run: |
           node --check pos/browser-customer-isolation-test.cjs
           node pos/browser-customer-isolation-test.cjs
-      - name: Interactive four-station POS workflow (isolated mock browser)
+      # The historical four-station mock does not support the current secure
+      # staff shift/handoff RPCs. It is retained for reference but cannot
+      # represent the one-swivel-iPad release. Verify current modules instead.
+      - name: Verify single-iPad cashier payment and badge-lock flow (offline)
         run: |
-          node --check pos/browser-full-flow-test.cjs
-          node --check pos/test-fake-supabase.js
-          node pos/browser-full-flow-test.cjs
+          node --test pos/tests/two-unique-sales-handoff.test.cjs pos/tests/swivel-next-sale-lock.test.cjs pos/tests/manual-register-lock.test.cjs
+      - name: Verify isolated customer touch browser to single submit
+        run: node --test pos/tests/guest-next-browser.test.cjs
       - name: Verify no payment backend is executed by tests
         run: |
           echo "Static build and offline unit tests only; do not run live payments or production DB changes"
