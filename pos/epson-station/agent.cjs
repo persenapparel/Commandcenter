@@ -31,36 +31,6 @@ const logoRaster=require('node:zlib').inflateSync(Buffer.from('eJztmkGP47YVgB+HA
 const websiteQr=require('node:zlib').inflateSync(Buffer.from('eJztltGOQkEIQ/n/n8bsUgoza/b5JvdUM45w9IG0aARCCD1XWdL156inq0AF6axivU4VaKBqRh01y6kCXVDabcdHgW5oAvnPMN8M6XRF/osA2lB6fe1HDxboUoZX/p8ekDsaojd97GwCRScxa81np1Q/jkAnlD3LMd7hPaBretPe+x8oZLZynoA0BrSoZtbVSw3Iswzl0W9roR3OBPoNpNrdcEqBDtPpof8Q2d47w/lyqO3mqs23vwfIe72NlvLdlWCgsNWKKf8d8wSKzP7z2RNdNaC41b1OK9AJeW5lM7nt+kEA0tX57GTGucSAqljQupxbDGhBKurcDNBA+zohBRrI/SY1yvyS4BdDHUWhoVmO44AQQuip+gA3sXNE','base64'));
 // Three monochrome snowflakes for the thermal receipt header.
 const snowflakeStamp=Buffer.from('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAABgAAAAAYAAAAAAmAAAAAJgAAAACYAAAAAB2QAAAAdkAAAAHZAAAAAA+4AAAAPuAAAAD7gAAAAMfwAAADH8AAAAx/AAAABMPjAAATD4wAAEw+MAAAD8HDAAA/BwwAAPwcMAAAA+GDEAAPhgxAAD4YMQAAAeGGcAAHhhnAAB4YZwAAB/GHwAAfxh8AAH8YfAAABD2HAAAQ9hwAAEPYcAAAAA+P8AAAPj/AAAD4/wAAAAe4EAAAHuBAAAB7gQAAAAPgAAAAD4AAAAA+AAAAAA7gAAAAO4AAAADuAAAABBj4AAAQY+AAAEGPgAAAB+DMEAAfgzBAAH4MwQAAAfDD8AAHww/AAB8MPwAABzDDwAAcww8AAHMMPAAABDDDcAAQww3AAEMMNwAAAGHBkAABhwZAAAYcGQAAAGPhgAABj4YAAAY+GAAAAGfxgAABn8YAAAZ/GAAAAA74AAAAO+AAAADvgAAAAATcAAAAE3AAAABNwAAAAADIAAAAAyAAAAAMgAAAAADAAAAAAwAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA','base64');
-// ESC * uses three vertical bytes per column for each 24-dot strip.
-const hoodieIcon=Buffer.from('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAADAAADAAAHAAAGAAAOAAAcAAAYAAA4AABwAAHwAA/4AD/8Af78AfCeA8GOB4EPBwIHDwYDHgQDHAwBHAgBHBgAHBgAHBgAHBgAHBgAHBgBHBgBHhgDHwwDD4YGB8YOA+MMAfGcAP2YAH/4AA/wAAHwAABwAAA4AAAYAAAcAAAMAAAOAAAGAAAHAAADAAADAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAA/AAP/AD/8A//AP/wA/8AA/AAAwAAAAAAAAAAAAAAAAAAHAAA/AAD/AAD/AAD/AAAAAAAAAAAAAAAAAAAAAAAAgAAAgAeAx/+A//gA+AAA8AAAcAAAYAAA4AAA8AAA/wAAj/AAgP4AAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAD/AAD/AAA/AAAHAAAAAAAAAAAAAAAAwAAA/gAA/+AAP/8AAf/4AB//AAD/AAAHAAAAAAAAAAAAAAAAAAAAA4AAP8AA/8AA/MAAwOAAAGAAAGAAAGAAAHAAADAAADAAAfgAD/AA/8AA/gAA8//g///w///w+ABwAABwAABwAABwAYBwB4BwP4Bw8YBwwYBwwYBwwYBwwYBwwYBwwYBwwYBwwYBwwYBwwYBwwYBwwYBwwYBw4YBwOYBwD4BwA4BwAIBwAABwAABw+ABw///w///w8//g/gAA/8AAD/AAAfgAADAAADAAAHAAAGAAAGAAAGAAgOAA/MAA/8AAf8AAA4AAAAAA','base64');
-const tagIcon=Buffer.from('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAADAAAHAAAPAAAfAAA+AAB8AAD4AAHwAAPgAAfAAA+AAB8AAD4AAHwAAHgAAHAAAHAAAHAAAHAAAHAAAHAAAHAAAHAAAHAAAHAAAHAAAHAAAHAAAHAcAHA+AHBjAHBjAHBjAHA+AHAcAHgAAHwAAD4AAB8AAA+AAAfAAAPgAAH/AAD/AAB/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAfAAA/gAB/wAD74AHx8APg+AfAeA+APB8AHD4AHHwADPgABfAAA+AAA8AAA4AAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAADAAAHAAAPAAAfAAA+AAB8AAD4AAHwAAPgAAfA//+A//8A//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAwAAA4AAA8AAA+AAAfAAAPgAAHwAAD4AAB8AAA+AAAfAAAPAAAHgAADwAAD4AAB8AAA+AAAfAAAPgAAHAAAPgAAfAAA+AAB8AAD4AAHwAAPgAAfAAA+AAB8AAD4AAHwAAHgAAPAAAeAAA8AAA8AAA4AAAwAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA','base64');
-function productTag(item){
- const name=ascii(item.name||'Item');
- const icon=/hood(?:ie|y|ed)/i.test(name)?hoodieIcon:tagIcon;
- const wrap=value=>value.match(/.{1,29}(?:\s|$)|.{1,29}/g)?.map(part=>part.trim())||[];
- const details=[...wrap(name)];
- const variation=[item.color,item.size].filter(Boolean).map(ascii).join(' / ');
- if(variation)details.push(...wrap(variation));
- details.push(item.qty+' x '+money(item.unit_cents));
- const parts=[];
- const text=value=>parts.push(Buffer.from(value,'ascii'));
- const command=(...bytes)=>parts.push(Buffer.from(bytes));
- const seam='+'+'- '.repeat(20)+'+\n';
- text(seam);command(ESC,0x33,24);
- for(let row=0;row<Math.max(3,details.length);row++){
-  text('| ');
-  if(row<3){
-   command(ESC,0x2a,33,68,0);
-   parts.push(icon.subarray(row*204,(row+1)*204));
-  }
-  // Dot positions align the item copy and stitched edge across all strips.
-  command(ESC,0x24,104,0);command(ESC,0x45,row===0?1:0);
-  text(details[row]||'');command(ESC,0x45,0);
-  command(ESC,0x24,236,1);text('|\n');
- }
- command(ESC,0x32);text(seam);
- return Buffer.concat(parts);
-}
 // Code 128 set C stores the full sale UUID as 20 decimal pairs.
 const code128Widths='212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 132311 211313 231113 231311 112133 112331 132131 113123 113321 133121 313121 211331 231131 213113 213311 213131 311123 311321 331121 312113 312311 332111 314111 221411 431111 111224 111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 413111 241112 134111 111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 214121 412121 111143 111341 131141 114113 114311 411113 411311 113141 114131 311141 411131 211412 211214 211232 2331112'.split(' ');
 function returnBarcode(id){
@@ -85,10 +55,8 @@ function returnBarcode(id){
 const winterPatch=require('node:zlib').inflateSync(Buffer.from('eJzV2L9u2zgYAPCPoVFmKESPHQgpfYNOVw06K0BfJFu3wjfFwyFm0QLZnEe4Rzm5Gbylr6CiQ7ZC3VzUNY//ZNOyI33cegTi2NYPNvmZIvl9AJGNKlSrnC5xemMxwWGlpNF8g+tw2ZjHrEIOb20eb7DRsHCN7LjMzBfUKe6jZ0x3mVVXOP2M1jokROI0kToo6TMcBriaARTnWD0udOdfYfVzHY7mEqvPOEAtXaeGNWFAloDV8EHST3j9pqIf8fplxUZ4fVFzH+4pQo+bZGyfEMwtcT71mm5RWlzYJ8zddf1tlHudtQvAgL60T0rVDOuzPHdaqTVCi1ya//rWRAyTeG0WN/tGDjc8oY2OEVkLmLDbcP1oNW/XuRwUT9haa7Zxugn11OpM69pqou4W3Ghu9SoLxkOSv+Cg3zm5v1ukL/RMSJ4L+IOtRBF0fOG1BHcz5/T+80KA0SMB11qLXv3+80NuNAejH0XSrx+8rox+i9Sswelv+d9aUx2Tr7fXg/qd1WD1a6xOBSiEvsmF0YkgalUO6PuHiYnx9NzqrD/e5H4xSY1OUkGWWvf9luV3tUj1LqfnyTb7sVzxcJ7sdDtPykYlKbN6k/1cPvJwDp7QN0lq5zdrsp9S6+pYwxxzp+10DaIf/rY66YehJtX/VjO8pjJS8yg9j9EEs/HsNI/QTG88RqdQqM2E3almvi3NjGeSN/sTY6uJOtZbq8sNzOuOZoEuvVZOb0F1del2kpOaHGm/7ySQ6+u3soAZFFwa/SqjzdWh5qc0sxo4bQcZ6F/mPS6Qujad45OZ1qtDzeSxhp3+M9DmPfbPkV539HxjR6lbxv7t/DrmwLHTxaPVpdvL9RbbjWCmwOnXgfbnhOJYr905jF0H2h+1ZmzZdHTV6qnW13aU7Wc37H1Hm2Sgq4uJvURqJjs6P9BzpzN7iZ7W5o99bbQuQ80kTrv7mkvar7P9HNQBANqNSaDVxur51v/ypaLdeE+9pl9CXTlNdifLQJvlXn+pMhPkQMPTut5rWntdwmk90LxuYrS5iTFHU6dFmFQP6sZ+9mxYm5OpXo9NG1zBSWJOvT55JfWQtmfksX9V9FHYn6hdY/Ipt9OXwcuB3OFMiFCPn3JemwyG2SyADAfc5jtmgXW1iwE+ynXmNXIU9jvGE63N04hLSS6HNEcn6CZj1NkoepQXtc500aN8WeksGj3KN5XL0HGj/CDb7B/RdPYfWVmIq1rEVUTiqi1xlZy4KlFcBSquuhVZOYurysVV/OKqiXGVysgqaET7DwjEcOg=','base64'));
 function escposReceipt(sale){
  if(!sale||!UUID.test(String(sale.sale_id||''))||!Array.isArray(sale.items)||sale.items.length>80)throw Error('Invalid verified receipt payload');
- const items=[];
  for(const item of sale.items){
   if(!item||typeof item!=='object'||!Number.isSafeInteger(item.qty)||item.qty<1||item.qty>999)throw Error('Invalid item');
-  items.push(productTag(item));
  }
  const parts=[];
  const cmd=(...bytes)=>parts.push(Buffer.from(bytes));
@@ -96,6 +64,15 @@ function escposReceipt(sale){
  const center=on=>cmd(ESC,0x61,on?1:0);
  const bold=on=>cmd(ESC,0x45,on?1:0);
  const size=value=>cmd(GS,0x21,value);
+ function printItems(){
+ const wrapped=value=>{for(const part of ascii(value).match(/.{1,42}/g)||[''])line(part)};
+ for(const item of sale.items){
+  bold(true);size(1);wrapped(item.qty+' x '+ascii(item.name||'Item'));size(0);bold(false);
+  const variant=[item.color,item.size].filter(Boolean).map(ascii).join(' / ');
+  if(variant)wrapped(variant);
+  line(padAmount(item.qty+' x '+money(item.unit_cents),money(item.qty*cents(item.unit_cents))));
+ }
+ }
  cmd(ESC,0x40);center(true);
  // Monochrome raster from assets/persen-logo.png, packed MSB first for the Epson.
  cmd(GS,0x76,0x30,0,34,0,15,1);
@@ -109,7 +86,9 @@ function escposReceipt(sale){
  const date=new Date(sale.created_at);
  if(sale.created_at&&Number.isFinite(date.getTime()))line(date.toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'medium',timeStyle:'short'})+' ET');
  if(sale.cashier_first_name)line('Helped by '+ascii(sale.cashier_first_name).slice(0,32));
- for(const tag of items)parts.push(tag);
+ line('-'.repeat(printColumns));
+ printItems();
+ line('-'.repeat(printColumns));
  line(padAmount('Subtotal',money(sale.subtotal_cents)));
  if(sale.discount_cents)line(padAmount('Discount','-'+money(sale.discount_cents)));
  line(padAmount('Tax',money(sale.tax_cents)));
@@ -136,13 +115,7 @@ function escposReceipt(sale){
   line(date.toLocaleString('en-US',{timeZone:'America/New_York',dateStyle:'medium',timeStyle:'short'})+' ET');
  if(sale.cashier_first_name)line('Cashier: '+ascii(sale.cashier_first_name).slice(0,32));
  line('-'.repeat(printColumns));
- const wrapped=value=>{for(const part of ascii(value).match(/.{1,42}/g)||[''])line(part)};
- for(const item of sale.items){
-  bold(true);size(1);wrapped(item.qty+' x '+ascii(item.name||'Item'));size(0);bold(false);
-  const variant=[item.color,item.size].filter(Boolean).map(ascii).join(' / ');
-  if(variant)wrapped(variant);
-  line(padAmount(item.qty+' x '+money(item.unit_cents),money(item.qty*cents(item.unit_cents))));
- }
+ printItems();
  line('-'.repeat(printColumns));
  if(sale.discount_cents)line(padAmount('Discount','-'+money(sale.discount_cents)));
  if(sale.tax_cents)line(padAmount('Tax',money(sale.tax_cents)));
