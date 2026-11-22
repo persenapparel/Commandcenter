@@ -20,7 +20,13 @@ assert.doesNotMatch(guest,/localStorage|sessionStorage|document\.cookie|service_
 assert.match(headers,/Cache-Control: no-store/);
 assert.match(headers,/Referrer-Policy: no-referrer/);
 assert.match(headers,/connect-src https:\/\/naaqcspvbntzdtwuchrr\.supabase\.co/);
-assert.match(headers,/frame-ancestors https:\/\/persen-pos-staging\.pages\.dev https:\/\/\*\.persen-pos-staging\.pages\.dev/);
+const frameAncestors=headers.match(/frame-ancestors ([^;\n]+)/);
+assert.ok(frameAncestors,'Customer frame must have an explicit frame-ancestors policy');
+assert.deepEqual(frameAncestors[1].trim().split(/\s+/),[
+ 'https://pos.persenapparel.com',
+ 'https://persen-pos-staging.pages.dev',
+ 'https://*.persen-pos-staging.pages.dev'
+],'Only approved cashier origins may embed the customer checkout');
 assert.match(frame,/sandbox','allow-scripts allow-forms allow-same-origin'/);
 assert.match(frame,/referrerpolicy','no-referrer'/);
 assert.match(frame,/event\.origin!==guest\.origin/);
