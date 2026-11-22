@@ -68,7 +68,7 @@ jobs:
       - name: Verify paired live cart, tiles and scanner integrations
         run: node pos/live-cart-structure-test.cjs
       - name: Run connected barcode and receipt-safety tests (offline)
-        run: node --test pos/tests/*.test.cjs
+        run: node --test $(find pos/tests -maxdepth 1 -name '*.test.cjs' ! -name 'guest-next-browser.test.cjs' | sort)
       - name: Fail if a browser PIN is embedded in the staging home
         run: node pos/staging-access-guard.cjs
       - name: Test POS holiday and Simple Black appearance safeguards
@@ -152,6 +152,7 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
+          node --test pos/tests/guest-next-browser.test.cjs
           node pos/responsive-viewport-smoke.cjs
       - name: Audit cashier, laptop, customer and printer button wiring
         run: node pos/button-control-audit.cjs
@@ -159,11 +160,14 @@ jobs:
         run: |
           node --check pos/browser-customer-isolation-test.cjs
           node pos/browser-customer-isolation-test.cjs
-      - name: Interactive four-station POS workflow (isolated mock browser)
+      # The historical four-station mock does not support the current secure
+      # staff shift/handoff RPCs. It is retained for reference but cannot
+      # represent the one-swivel-iPad release. Verify current modules instead.
+      - name: Verify single-iPad cashier payment and badge-lock flow (offline)
         run: |
-          node --check pos/browser-full-flow-test.cjs
-          node --check pos/test-fake-supabase.js
-          node pos/browser-full-flow-test.cjs
+          node --test pos/tests/two-unique-sales-handoff.test.cjs pos/tests/swivel-next-sale-lock.test.cjs pos/tests/manual-register-lock.test.cjs
+      - name: Verify isolated customer touch browser to single submit
+        run: node --test pos/tests/guest-next-browser.test.cjs
       - name: Verify no payment backend is executed by tests
         run: |
           echo "Static build and offline unit tests only; do not run live payments or production DB changes"

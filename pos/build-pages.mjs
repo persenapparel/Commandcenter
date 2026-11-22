@@ -48,7 +48,7 @@ await mkdir(join(dest,'assets'),{recursive:true});
 await copyFile(join('assets','persen-logo.png'),join(dest,'assets','persen-logo.png'));
 await copyFile(join('pos','christmas-tree.svg'),join(dest,'christmas-tree.svg'));
 await copyFile(join('pos','christmas-garland.svg'),join(dest,'christmas-garland.svg'));
-for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashier.css','christmas-dashboard.css','christmas-dashboard.js','deployment-readiness.js','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','barcode-tender-model.js','register.js','swivel-mode.js','display.js','customer-guest-client.js','epson-center.js','epson-center.css','admin.css','admin.js','inventory.js','staff-test.css','staff-test.js']){
+for(const f of ['pos.css','cashier-focus.css','swivel-mode.css','christmas-cashier.css','christmas-dashboard.css','christmas-dashboard.js','deployment-readiness.js','pos.js','pos-core.js','pos-events.js','pos-receipt.js','pos-digital-receipt.js','pos-experience.js','checkout-flow.js','pos-cash.js','barcode-tender-model.js','register.js','swivel-mode.js','customer-guest-client.js','epson-center.js','epson-center.css','admin.css','admin.js','inventory.js','staff-test.css','staff-test.js']){
  await copyFile(join('pos',f),join(dest,f));
 }
 for(const f of ['backend.js','seasonal.js','inventory-hub.js','inventory-hub.css'])await copyFile(f,join(dest,f));
@@ -86,6 +86,12 @@ await writeFile(join(dest,'secure-handoff-browser.js'),secureHandoffBundle);
 const assetVersion=/^[a-f0-9]{40}$/i.test(commit||'')?commit.slice(0,12):'local';
 for(const f of ['register.html','display.html','index.html','admin.html','inventory.html','staff-test.html']){
  let s=await readFile(join('pos',f),'utf8');
+ if(f==='display.html'){
+  // Retire the legacy two-device display. It previously called anonymous
+  // pos_customer_* RPCs; the one-iPad guest uses a separate worker origin.
+  // Do not redirect legacy pairing tokens or embed an employee session.
+  s='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Persen POS | Checkout moved</title></head><body style="font:16px system-ui;margin:3rem auto;max-width:32rem;padding:1rem;color:#133258"><h1>Customer checkout has moved</h1><p>Please return the iPad to your cashier to continue your order. This older display page is no longer used.</p></body></html>';
+ }
  s=s.replaceAll('../config.js','config.js').replaceAll('../backend.js','backend.js').replaceAll('../seasonal.js','seasonal.js').replaceAll('../assets/persen-logo.png','assets/persen-logo.png');
  if(f==='register.html'){
   for(const script of ['register.js','secure-handoff-browser.js','swivel-mode.js']){
