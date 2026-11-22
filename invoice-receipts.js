@@ -32,17 +32,13 @@
 
   function invoiceEntries(inv) {
     const payments = invoicePayments(inv);
-    const unused = data.receipts.filter((r) => r.document_number === inv.invoice_number).slice();
+    const receipts = new Map(data.receipts
+      .filter((receipt) => receipt.source_type === 'invoice' && receipt.invoice_id === inv.id)
+      .map((receipt) => [receipt.source_payment_id, receipt]));
     let running = 0;
     return payments.map((payment) => {
       running += cents(payment.amount);
-      const idx = unused.findIndex((r) =>
-        (r.payment_id && r.payment_id === payment.id) ||
-        (cents(r.payment_amount) === cents(payment.amount) &&
-         String(r.payment_date || '').slice(0, 10) === String(payment.received_on || '').slice(0, 10) &&
-         String(r.payment_method || '').toLowerCase() === String(payment.method || '').toLowerCase()));
-      const official = idx >= 0 ? unused.splice(idx, 1)[0] : null;
-      return { inv, payment, official, running };
+      return { inv, payment, official: receipts.get(payment.id), running };
     });
   }
 
@@ -75,7 +71,7 @@
       actions.className = 'owner-actions';
       entries.forEach(({ payment }, index) => {
         actions.appendChild(createButton(
-          (entries.length > 1 ? 'Payment ' + (index + 1) + ': ' : '') + 'Print ' + amount(payment.amount),
+          'Print Receipt' + (entries.length > 1 ? ' · ' + dateText(payment.received_on) + ' · ' + amount(payment.amount) : ''),
           'invoice-payment', payment.id, index === entries.length - 1 ? 'primary' : 'ghost'
         ));
       });
@@ -91,29 +87,26 @@
   }
 
   function receiptDocument(inv, payment, official, running) {
-    const hasInvoice = !!inv;
-    const total = Number(hasInvoice ? inv.total : official.total || 0);
-    const paidSoFar = Number(official && official.total_paid != null ? official.total_paid : running || 0);
-    const balance = Number(official && official.balance_due != null
-      ? official.balance_due : Math.max(0, cents(total) - cents(paidSoFar)) / 100);
-    const lines = hasInvoice && Array.isArray(inv.line_items) ? inv.line_items :
-      (Array.isArray(official.line_items) ? official.line_items : []);
+    const snapshot = official || inv;
+    const total = Number(snapshot.total);
+    const paidSoFar = official ? Number(official.total_paid) : running;
     return {
-      documentNumber: hasInvoice ? inv.invoice_number : official.document_number,
-      documentTitle: hasInvoice ? 'Invoice' : official.document_title || 'Order',
-      customer: hasInvoice ? inv.customer_name : official.customer_name,
-      email: hasInvoice ? inv.customer_email : '',
-      receiptNumber: official && official.receipt_number ? official.receipt_number : '',
-      paymentId: payment ? String(payment.id || '') : '',
-      paymentDate: official && official.payment_date ? official.payment_date : (payment ? payment.received_on : ''),
-      paymentMethod: official && official.payment_method ? official.payment_method : (payment ? payment.method : ''),
-      paymentAmount: Number(official ? official.payment_amount : payment.amount),
+      documentNumber: official?.document_number ?? inv.invoice_number,
+      documentTitle: inv || official.source_type === 'invoice' ? 'Invoice' : 'Order',
+      customer: snapshot.customer_name,
+      receiptNumber: official?.receipt_number || '',
+      paymentId: payment?.id || '',
+      paymentDate: official?.payment_date ?? payment?.received_on,
+      paymentMethod: official?.payment_method ?? payment?.method,
+      paymentAmount: Number(official?.payment_amount ?? payment?.amount),
       invoiceTotal: total,
-      paidSoFar, balance, lines,
-      subtotal: hasInvoice ? inv.subtotal : null,
-      discount: Number(hasInvoice ? inv.discount_amount || 0 : official.discount_amount || 0),
-      tax: hasInvoice ? Number(inv.tax_amount || 0) : null,
-      shipping: hasInvoice ? Number(inv.shipping || 0) : null
+      paidSoFar,
+      balance: official ? Number(official.balance_due) : Math.max(0, cents(total) - cents(paidSoFar)) / 100,
+      lines: Array.isArray(snapshot.line_items) ? snapshot.line_items : [],
+      subtotal: snapshot.subtotal,
+      discount: Number(snapshot.discount_amount || 0),
+      tax: Number(snapshot.tax_amount || 0),
+      shipping: Number(snapshot.shipping || 0)
     };
   }
 
@@ -150,7 +143,7 @@
     return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<title>' + title + '</title><style>' +
-      '*{box-sizing:border-box}html{background:#f3f5f7}body{margin:20px auto;padding:0;width:76mm;font:12px/1.4 Arial,Helvetica,sans-serif;color:#111;background:white;box-shadow:0 8px 35px #0002;overflow-wrap:anywhere}' +
+      '*{box-sizing:border-box}html{background:#f3f5f7}body{margin:20px auto;padding:0;width:76mm;max-width:100%;font:12px/1.4 Arial,Helvetica,sans-serif;color:#111;background:white;box-shadow:0 8px 35px #0002;overflow-wrap:anywhere}' +
       '.receipt{padding:4mm 3mm 9mm} .no-print{margin:12px auto 0;max-width:76mm;text-align:center;font:13px Arial,sans-serif}' +
       '.no-print button{background:#13391f;border:0;border-radius:8px;color:#fff;font-weight:700;padding:12px 14px;cursor:pointer;width:100%}' +
       '.no-print p{line-height:1.5;color:#333}' +
@@ -158,11 +151,11 @@
       '.season{margin:8px 0;font-size:15px;letter-spacing:4px}.tagline{font-size:10px;font-weight:600;margin:4px 0}' +
       '.headline{text-align:center;padding:11px 3px;border-block:1px dashed #111;margin:10px 0}.headline h2{font-size:16px;margin:0 0 4px}.headline p{margin:0;font-size:11px}' +
       '.info{font-size:11px;margin:11px 0}.info div{margin:3px 0}.section{text-align:center;font-size:10px;letter-spacing:2px;border-block:1px dashed #111;padding:5px 0;margin:12px 0 4px}' +
-      '.item{padding:7px 0;border-bottom:1px dotted #777}.item-row,.money{display:flex;justify-content:space-between;gap:7px;align-items:start}.item-row strong{font-size:12px;flex:1}.item-row span{text-align:right;white-space:nowrap}.item-meta{font-size:10px;margin-top:3px;color:#333}.money{margin:7px 0;font-size:11px}.money strong{white-space:nowrap}' +
+      '.item{padding:7px 0;border-bottom:1px dotted #777}.item-row,.money{display:flex;justify-content:space-between;gap:7px;align-items:start}.item-row strong{font-size:14px;flex:1}.item-row span{text-align:right;white-space:nowrap}.item-meta{font-size:10px;margin-top:3px;color:#333}.money{margin:7px 0;font-size:11px}.money strong{white-space:nowrap}' +
       '.main-total{font-size:15px;border-top:2px solid #111;padding-top:9px;margin-top:10px}.paid{background:#eee}.partial{background:#f8f8f8}' +
       '.status{font-size:16px;letter-spacing:1px;text-align:center;padding:9px 2px;border:2px solid #111;margin:12px 0;font-weight:800}' +
       '.footer{text-align:center;border-top:2px dashed #111;margin-top:13px;padding-top:12px}.footer h3{font-size:15px;margin:0 0 7px}.footer p{font-size:10px;margin:4px 0}.footer .stars{letter-spacing:3px;font-size:14px;margin:10px 0}' +
-      '@media print{@page{margin:0}html,body{background:white!important;width:76mm;margin:0;padding:0;box-shadow:none!important}.receipt{padding:3mm 2mm 5mm}.no-print{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}' +
+      '@media print{@page{margin:0}html,body{background:white!important;width:72mm;margin:0;padding:0;box-shadow:none!important}.receipt{padding:3mm 2mm 5mm}.item{break-inside:avoid}.no-print{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}' +
       '</style></head><body>' +
       '<div class="no-print"><button type="button" onclick="window.print()">PRINT / SAVE PDF</button>' +
       '<p>For Epson: select the Epson printer, 80mm receipt paper, no headers or footers, and no margins. Save as PDF is also available.</p></div>' +
@@ -210,7 +203,7 @@
     if (action === 'official-receipt') {
       const receipt = data.receipts.find((x) => x.id === button.dataset.id);
       if (!receipt) { msg('Receipt not found. Refresh and try again.'); return; }
-      const inv = data.invoices.find((x) => x.invoice_number === receipt.document_number);
+      const inv = receipt.source_type === 'invoice' ? data.invoices.find((x) => x.id === receipt.invoice_id) : null;
       openReceipt(inv || null, null, receipt, Number(receipt.total_paid || 0));
     }
   });

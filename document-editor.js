@@ -39,9 +39,14 @@
     const kind=inv.document_type==='Estimate'?'estimate':'invoice';
     const name=String(inv.customer_name||'').trim().split(/\s+/)[0]||'there';
     const amount=usd(inv.total);
-    if(method==='sms')return 'Hi '+name+', this is Persen Apparel. Your '+kind+' '+inv.invoice_number+' totaling '+amount+' is ready to review. We can email you the PDF if needed. Please let us know if you have any questions. Thank you!';
-    const dates=inv.due_date?'\n'+(kind==='estimate'?'Valid until: ':'Due date: ')+inv.due_date+'.\n':'';
-    return 'Hello '+String(inv.customer_name||'there')+',\n\nPlease find your Persen Apparel '+kind+' '+inv.invoice_number+' for '+amount+'.\n'+dates+'\nPlease review the attached PDF for the complete itemized details, and let us know if you would like to discuss anything.\n\nThank you,\nPersen Apparel';
+    const paid=kind==='invoice'?data.payments.filter(p=>p.invoice_id===inv.id)
+      .reduce((sum,p)=>sum+Math.round(Number(p.amount)*100),0):0;
+    const balance=Math.max(0,Math.round(Number(inv.total)*100)-paid)/100;
+    const payment=kind==='invoice'?(balance>0?' Balance due: '+usd(balance)+'.':' Paid in full.'):'';
+    const timing=kind==='estimate'||balance>0;
+    if(method==='sms')return 'Hi '+name+', this is Persen Apparel. Your '+kind+' '+inv.invoice_number+' totaling '+amount+' is ready to review.'+payment+' We can email you the PDF if needed. Please let us know if you have any questions. Thank you!';
+    const dates=timing&&inv.due_date?'\n'+(kind==='estimate'?'Valid until: ':'Due date: ')+inv.due_date+'.\n':'';
+    return 'Hello '+String(inv.customer_name||'there')+',\n\nPlease find your Persen Apparel '+kind+' '+inv.invoice_number+' for '+amount+'.'+payment+'\n'+dates+'\nPlease review the attached PDF for the complete itemized details, and let us know if you would like to discuss anything.\n\nThank you,\nPersen Apparel';
   }
   function cleanPhone(raw){
     const num=String(raw||'').trim().replace(/[\s().-]/g,'');
@@ -59,25 +64,25 @@
     panel.className='owner-section';
     panel.dataset.documentOutreach=id;
     panel.style.cssText='border:2px solid #779bc9;border-radius:12px;margin:14px 0';
-    const channel=method==='sms'?'Text Customer':'Email via Gmail';
+    const channel=method==='copy'?'Copy Message':method==='sms'?'Text Customer':'Email via Gmail';
     const destinationLabel=method==='sms'?'CUSTOMER MOBILE NUMBER':'CUSTOMER EMAIL';
     const recipient=method==='sms'?(contact?.phone||''):(inv.customer_email||contact?.email||'');
     panel.innerHTML=[
       '<h3>'+safe(channel)+' · '+safe(inv.invoice_number)+'</h3>',
-      '<p class="owner-mini">Review the recipient and message before opening your '+(method==='sms'?'messaging app':'Gmail compose window')+'. Nothing is sent automatically by Command Center.</p>',
+      method==='copy'?'':'<p class="owner-mini">Review the recipient and message before opening your '+(method==='sms'?'messaging app':'Gmail compose window')+'.</p>',
       inv.status==='Draft'?'<p class="owner-mini"><strong>Draft document:</strong> Confirm the document is accurate and ready for the customer before sending anything.</p>':'',
       '<div class="owner-input-grid">',
-      '<div class="wide"><label class="form-label">'+destinationLabel+'</label><input class="field" data-outreach-to '+(method==='gmail'?'type="email"':'type="tel"')+' maxlength="250" value="'+safe(recipient)+'" placeholder="'+(method==='sms'?'Enter mobile number':'customer@example.com')+'"></div>',
+      method!=='copy'?'<div class="wide"><label class="form-label">'+destinationLabel+'</label><input class="field" data-outreach-to '+(method==='gmail'?'type="email"':'type="tel"')+' maxlength="250" value="'+safe(recipient)+'" placeholder="'+(method==='sms'?'Enter mobile number':'customer@example.com')+'"></div>':'',
       method==='gmail'?'<div class="wide"><label class="form-label">SUBJECT</label><input class="field" data-outreach-subject maxlength="200" value="'+safe('Persen Apparel '+(inv.document_type==='Estimate'?'Estimate':'Invoice')+' '+inv.invoice_number)+'"></div>':'',
       '<div class="wide"><label class="form-label">MESSAGE (EDIT BEFORE SENDING)</label><textarea class="textarea" data-outreach-body maxlength="5000" rows="7">'+safe(outreachMessage(inv,method))+'</textarea></div>',
       '<div class="wide" data-outreach-controls></div>',
       '</div>',
-      '<p class="owner-mini">'+(method==='gmail'?'Important: Gmail cannot attach the PDF automatically. Use Print / PDF on the document first, then attach the saved PDF yourself before sending.':'Texts open in your device’s messaging application. If your browser does not support SMS links, copy the message and send it manually.')+'</p>'
+      '<p class="owner-mini">'+(method!=='sms'?'Use Print / PDF on the document or save the payment receipt as a PDF, then attach it manually before sending.':'Texts open in your device’s messaging application. If your browser does not support SMS links, copy the message and send it manually.')+'</p>'
     ].join('');
     statusForm.before(panel);
     const to=panel.querySelector('[data-outreach-to]'),body=panel.querySelector('[data-outreach-body]');
     const controls=panel.querySelector('[data-outreach-controls]');
-    controls.appendChild(button(method==='sms'?'Open Messages':'Open Gmail',()=>{
+    if(method!=='copy')controls.appendChild(button(method==='sms'?'Open Messages':'Open Gmail',()=>{
       const message=body.value.trim();
       if(!message){msg('Enter a message before continuing.');return;}
       if(method==='gmail'){
@@ -109,6 +114,7 @@
       }
     }));
     controls.appendChild(button('Cancel',()=>panel.remove()));
+    if(method==='copy'){body.focus();body.select();}
     panel.scrollIntoView({behavior:'smooth',block:'start'});
   }
   function decorate(){
@@ -130,6 +136,8 @@
         sms.dataset.documentShare='sms';statusForm.appendChild(sms);
         const gmail=button('Email via Gmail',()=>openOutreach(id,'gmail'));
         gmail.dataset.documentShare='gmail';statusForm.appendChild(gmail);
+        const copy=button('Copy Message',()=>openOutreach(id,'copy'));
+        copy.dataset.documentShare='copy';statusForm.appendChild(copy);
       }
     }
   }
@@ -218,8 +226,8 @@
     const calc=invoiceTotalsFromForm(form),f=new FormData(form);
     const customer=String(f.get('customer_name')||'').trim();
     if(!customer||customer.length>150)throw Error('Enter a valid customer name.');
-    const latest=await PA.checked(PA.db.from('business_invoices').select('id,status,document_type').eq('id',id).single());
-    if(!latest||latest.status!=='Draft'||latest.document_type!==fromList.document_type)
+    const latest=await PA.checked(PA.db.from('business_invoices').select('id,status,document_type,updated_at').eq('id',id).single());
+    if(!latest||latest.status!=='Draft'||latest.document_type!==fromList.document_type||latest.updated_at!==fromList.updated_at)
       throw Error('The document changed; refresh to review.');
     const [agreements,payments,converted]=await Promise.all([
       PA.checked(PA.db.from('invoice_agreements').select('id').eq('invoice_id',id).limit(1)),
@@ -236,7 +244,10 @@
       discount_type:calc.discount_type,discount_value:calc.discount_value,
       discount_amount:calc.discount_amount,total:calc.total,
       public_notes:String(f.get('public_notes')||'').slice(0,1500),updated_at:new Date().toISOString()};
-    const written=await PA.checked(PA.db.from('business_invoices').update(changes).eq('id',id).eq('status','Draft').select('id'));
+    const update=PA.db.from('business_invoices').update(changes).eq('id',id)
+      .eq('status','Draft').eq('document_type',latest.document_type);
+    const unchanged=latest.updated_at==null?update.is('updated_at',null):update.eq('updated_at',latest.updated_at);
+    const written=await PA.checked(unchanged.select('id'));
     if(!written.length)throw Error('Update denied or document status changed.');
   }
   async function reviseEstimate(id){
