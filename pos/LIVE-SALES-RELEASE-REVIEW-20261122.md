@@ -74,3 +74,31 @@ The release is NOT live just because the branch or SQL audit exists. Do not
 remove staging restrictions in `pos/build-pages.mjs` or `pos/guest-checkout-worker.mjs`
 by replacing project IDs or deleting safety checks. A verified, controlled
 release mode must be introduced after the preceding blockers are resolved.
+
+## November 22 dedicated POS database read-only preflight
+
+The following are snapshots, **not proof of launch readiness**. No inventory,
+sales, queue jobs, or customer rows were modified by these queries.
+
+- 36 completed POS sale rows; 0 open unpaid checkouts.
+- 17 stock variants, 9 currently in stock (122 counted units in total).
+- 2 active, priced Sales catalog products corresponding to 8 in-stock
+  variants. Check that these are the exact products and sizes intended for
+  the first customers; do not assume all 17 stock rows are sellable.
+- 7 receipt jobs in `failed` and 4 in `queued`, all older than 24 hours;
+  the Windows Epson agent filters queued jobs older than 24 hours in
+  `pos/epson-station/agent.cjs`. No unattended requeue of historical jobs.
+- 0 drawer jobs in `queued`; historical `claimed` or `unconfirmed`
+  records require physical reconciliation, **never automatic drawer replay**.
+- 0 manual refund, return or exchange records as of this snapshot.
+
+Before first customer, have the authorized owner inspect the Epson queue
+and actual paper output. Do not press Retry failed/Release held for old
+jobs without confirming no duplicate receipt was previously printed.
+Confirm printer and drawer armed settings in Windows and manually count
+the opening drawer. The database snapshot alone cannot establish that
+physical cash and paper totals match.
+
+Record the first actual live sale's unique receipt/time in the owner's
+daily log. Keep historical test transactions for reconciliation and
+separate them in reporting; **do not delete or modify them to look live**.
