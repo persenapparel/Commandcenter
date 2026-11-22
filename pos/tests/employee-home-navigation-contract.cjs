@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'..');
 const register=fs.readFileSync(path.join(root,'register.js'),'utf8');
 const swivel=fs.readFileSync(path.join(root,'swivel-mode.js'),'utf8');
 const focus=fs.readFileSync(path.join(root,'cashier-focus.css'),'utf8');
-const body=register.slice(register.indexOf('function closeEmployeeSalesViewForHome(){'),register.indexOf('function activeStaffRole(){'));
+const body=register.slice(register.indexOf('function closeEmployeeSalesViewForHome('),register.indexOf('function activeStaffRole(){'));
 assert.ok(body.startsWith('function closeEmployeeSalesViewForHome('),'register must have secure exit action');
 assert.match(body,/if\(checkout\|\|pendingCash\)throw/,'active checkout may not be hidden');
 assert.match(body,/if\(cart.length&&!preserveUnfinishedCart\)throw/,'nonempty cart may only be preserved with an explicit option');
