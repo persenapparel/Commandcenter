@@ -18,6 +18,7 @@ begin
  select * into o from holiday_shop.orders where request_id=p_request;
  if found then
   if o.fingerprint<>fingerprint then raise exception 'This checkout reference belongs to a different request';end if;
+  if o.status in ('expired','cancelled') then raise exception 'This order is no longer active. Contact service@persenapparel.com before placing a new order';end if;
  else
   perform holiday_shop.expire();
   insert into holiday_shop.orders(request_id,fingerprint,customer_id,contact_name,email,phone,fulfillment,address,total,expires_at,method)
