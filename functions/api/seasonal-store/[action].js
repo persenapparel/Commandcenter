@@ -64,10 +64,19 @@ export async function onRequest({ request, params }) {
       return problem(502, 'Store service unavailable.');
     }
     return new Response(response.body, { status: response.status, headers: responseHeaders });
-  } catch {
-    return controller.signal.aborted
-      ? problem(504, 'Store service took too long to respond.')
-      : problem(503, 'Store service unavailable.');
+  } catch (error) {
+    if (controller.signal.aborted) return problem(504, 'Store service took too long to respond.');
+    const cause = String(error?.message || '');
+    const reason = /redirect/i.test(cause) ? 'redirect'
+      : /tls|ssl|certificate/i.test(cause) ? 'tls'
+      : /dns|resolve/i.test(cause) ? 'dns'
+      : /network|connect|fetch failed/i.test(cause) ? 'network'
+      : /signal|abort/i.test(cause) ? 'signal'
+      : 'transport';
+    return Response.json({ error: 'Store service unavailable.' }, {
+      status: 503,
+      headers: { ...responseHeaders, 'X-Store-Error': reason },
+    });
   } finally {
     clearTimeout(timeout);
   }
