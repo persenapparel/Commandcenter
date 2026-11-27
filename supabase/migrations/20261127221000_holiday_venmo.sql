@@ -64,7 +64,7 @@ begin
   when 'confirm','ready','fulfill' then
    if o.status not in ('reserved','confirmed','ready') or (action='confirm' and o.status='ready') or (action='fulfill' and o.paid<>o.total) then raise exception 'Check order and payment status first';end if;
    if o.method='venmo' and o.paid<>o.total then raise exception 'Verify the Venmo payment first';end if;
-   update holiday_shop.orders set status=case action when 'confirm' then 'confirmed' when 'ready' then 'ready' else 'fulfilled' end,expires_at=null where id=o.id;
+   update holiday_shop.orders set status=case action when 'confirm' then 'confirmed' when 'ready' then 'ready' else 'fulfilled' end,expires_at=case when o.paid=o.total then null else o.expires_at end where id=o.id;
   when 'paid' then
    if o.method='venmo' and ((p_change->>'method') is distinct from 'venmo' or (p_change->>'cents')::int is distinct from o.total) then raise exception 'Enter the exact Venmo payment received';end if;
    if o.status not in ('reserved','confirmed','ready') or o.paid<>0 then raise exception 'This order cannot accept this payment';end if;
@@ -94,4 +94,28 @@ AS $function$
  with candidates as (select order_id,kind from holiday_shop.mail where sent_at is null and retry_at<=now() and attempts<20 order by retry_at limit 8 for update skip locked),
  claimed as (update holiday_shop.mail m set attempts=attempts+1,retry_at=now()+interval '5 minutes' from candidates c where m.order_id=c.order_id and m.kind=c.kind returning m.order_id,m.kind)
  select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'email',o.email,'kind',m.kind,'total',o.total,'fulfillment',o.fulfillment,'status',o.status,'method',o.method)),'[]') from claimed m join holiday_shop.orders o on o.id=m.order_id
+$function$;
+
+
+-- Keep unpaid reservations bounded even when staff confirm or prepare the order.
+UPDATE holiday_shop.orders
+SET expires_at = now() + interval '24 hours'
+WHERE status IN ('reserved', 'confirmed', 'ready') AND paid = 0 AND expires_at IS NULL;
+
+CREATE OR REPLACE FUNCTION holiday_shop.expire()
+RETURNS void
+LANGUAGE plpgsql
+SET search_path TO ''
+AS $function$
+DECLARE o record;
+BEGIN
+  FOR o IN SELECT id FROM holiday_shop.orders
+    WHERE status IN ('reserved', 'confirmed', 'ready') AND paid = 0 AND expires_at <= now()
+    ORDER BY expires_at FOR UPDATE SKIP LOCKED
+  LOOP
+    PERFORM holiday_shop.release_order(o.id);
+    UPDATE holiday_shop.orders SET status = 'expired', expires_at = null WHERE id = o.id;
+  END LOOP;
+  DELETE FROM holiday_shop.traffic WHERE resets_at < now() - interval '1 day';
+END
 $function$;
