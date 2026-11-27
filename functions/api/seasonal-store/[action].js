@@ -50,12 +50,14 @@ export async function onRequest({ request, params }) {
     headers.set('Content-Type', 'application/json');
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(origin + '/' + params.action, {
       method,
       headers,
       body,
-      signal: AbortSignal.timeout(15000),
+      signal: controller.signal,
       redirect: 'error',
     });
     if (!response.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) {
@@ -63,6 +65,10 @@ export async function onRequest({ request, params }) {
     }
     return new Response(response.body, { status: response.status, headers: responseHeaders });
   } catch {
-    return problem(503, 'Store service unavailable.');
+    return controller.signal.aborted
+      ? problem(504, 'Store service took too long to respond.')
+      : problem(503, 'Store service unavailable.');
+  } finally {
+    clearTimeout(timeout);
   }
 }
