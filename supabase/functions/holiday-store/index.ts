@@ -51,7 +51,13 @@ async function sendMail(){
   for(const job of jobs){
     const reference=job.id.slice(0,8).toUpperCase();const studio=job.kind==='studio';
     const amount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(job.total/100);
-    const plain=studio?'A new '+job.fulfillment+' order for '+amount+' is ready to review in Command Center.':'We received your '+job.fulfillment+' order. Your merchandise subtotal is '+amount+'. '+(job.method==='venmo'?'Payment is awaiting verification. Refer to your order confirmation for the Venmo instructions.':'Cash is due at handoff.')+' We’ll contact you with fulfillment details.';
+    const formatMoney=cents=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
+    const items=(job.items||[]).map(item=>item.name+' · '+item.color+' · '+item.size+' × '+item.qty+' — '+formatMoney(item.unit_price*item.qty)).join('\n');
+    const payment=job.method==='venmo'
+      ?'Payment status: Awaiting verification. Send '+amount+' to @persenapparel on Venmo and include order reference '+job.id+'.'
+      :'Payment status: Awaiting cash at '+(job.fulfillment==='pickup'?'pickup':'delivery')+'.';
+    const destination=job.fulfillment==='delivery'&&job.address?'Delivery address: '+job.address:'Fulfillment: Pickup';
+    const plain=(studio?'A new Christmas order is ready to review in Command Center.':'Thank you, '+job.name+'! We received your order.')+'\n\n'+items+'\n\nMerchandise total: '+amount+'\n'+destination+'\n'+payment+'\nWe will contact you to arrange fulfillment.';
     const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json','Idempotency-Key':'holiday-'+job.kind+'-'+job.id},body:JSON.stringify({from,to:[studio?'service@persenapparel.com':job.email],reply_to:'service@persenapparel.com',subject:(studio?'New Christmas order ':'Your Persen Apparel order ')+reference,text:plain+'\n\nOrder reference '+job.id+'\nPersen Apparel · Long Island, NY'})});
     if(r.ok)await rpc('mail_sent',{p_order:job.id,p_kind:job.kind});
   }
