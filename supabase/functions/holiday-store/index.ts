@@ -21,7 +21,7 @@ async function identity(request,owner=false,optional=false) {
   const response=await fetch(prod+'/auth/v1/user',{headers:h});
   if(!response.ok)throw error(401,'Please sign in again.');
   const user=await response.json();
-  if(!user.id||!user.email_confirmed_at)throw error(403,'Verify your account email first.');
+  if(!user.id||!user.email||!user.email_confirmed_at||user.is_anonymous)throw error(403,'Verify your account email first.');
   if(owner){
     const r=await fetch(prod+'/rest/v1/admin_users?select=user_id&user_id=eq.'+encodeURIComponent(user.id),{headers:h});
     if(!r.ok || !(await r.json()).some(row=>row.user_id===user.id))throw error(403,'Owner access required.');
@@ -82,13 +82,13 @@ async function execute(req) {
     return reply({video:await signRead(paths.video),poster:await signRead(paths.poster)});
   }
   if(post&&path==='order'){
-    const user=await identity(req,false,true), b=await readBody(req);
+    const user=await identity(req), b=await readBody(req);
     if(!b.details||!Array.isArray(b.lines)||!b.request)throw error(400,'Check your bag and contact details.');
-    if(user)b.details.email=user.email;
+    b.details.email=user.email;
     const ip=(req.headers.get('x-forwarded-for')||'direct').split(',').at(-1).trim();
     const bucket=await digest(service+ip+'|'+String(b.details.email??'').trim().toLowerCase());
     if(!await rpc('rate',{p_bucket:bucket}))throw error(429,'Too many attempts. Try again in 15 minutes.');
-    const placed=await rpc('order',{p_request:b.request,p_customer:user?.id??null,p_details:b.details,p_lines:b.lines});
+    const placed=await rpc('order',{p_request:b.request,p_customer:user.id,p_details:b.details,p_lines:b.lines});
     EdgeRuntime.waitUntil(sendMail().catch(()=>{}));
     return reply(placed,201);
   }
