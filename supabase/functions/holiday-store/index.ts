@@ -57,7 +57,7 @@ async function sendMail(){
       ?'Payment status: Awaiting verification. Send '+amount+' to @persenapparel on Venmo and include order reference '+job.id+'.'
       :'Payment status: Awaiting cash at pickup.';
     const destination=job.fulfillment==='shipping'?'Shipping address: '+job.address:job.fulfillment==='delivery'?'Historical delivery address: '+job.address:'Fulfillment: Free local pickup';
-    const plain=(studio?'A new Christmas order is ready to review in Command Center.':'Thank you, '+job.name+'! We received your order.')+'\n\n'+items+'\n\nMerchandise subtotal: '+formatMoney(job.subtotal??job.total)+'\nShipping: '+formatMoney(job.shipping??0)+'\nTotal before applicable tax: '+amount+'\n'+destination+'\n'+payment+'\nWe will contact you to arrange fulfillment.';
+    const plain=(studio?'A new Christmas order is ready to review in Command Center.':'Thank you, '+job.name+'! We received your order.')+'\n\n'+items+'\n\nMerchandise subtotal: '+formatMoney(job.subtotal??job.total)+'\nDiscount: '+formatMoney(job.discount??0)+'\nShipping: '+formatMoney(job.shipping??0)+'\nTotal before applicable tax: '+amount+'\n'+destination+'\n'+payment+'\nWe will contact you to arrange fulfillment.';
     const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json','Idempotency-Key':'holiday-'+job.kind+'-'+job.id},body:JSON.stringify({from,to:[studio?'service@persenapparel.com':job.email],reply_to:'service@persenapparel.com',subject:(studio?'New Christmas order ':'Your Persen Apparel order ')+reference,text:plain+'\n\nOrder reference '+job.id+'\nPersen Apparel · Long Island, NY'})});
     if(r.ok)await rpc('mail_sent',{p_order:job.id,p_kind:job.kind});
   }
@@ -65,12 +65,13 @@ async function sendMail(){
 async function execute(req) {
   const path=new URL(req.url).pathname.split('/holiday-store').pop().replace(/^\/+|\/+$/g,'');
   const get=req.method==='GET',post=req.method==='POST';
-  if ((get && path === 'health') || ['catalog','order','film'].includes(path) || path.startsWith('media/')) {
+  if ((get && path === 'health') || ['catalog','order','film','quote','options'].includes(path) || path.startsWith('media/')) {
     const status = await rpc('release_status');
     if (!status || !['countdown','open'].includes(status.phase) || Date.parse(status.release_at)!==opens) throw error(503,'Store service temporarily unavailable.');
     if (get && path === 'health') return reply({phase:status.phase, releaseAt:status.release_at, emailConfigured:!!(getEnv('RESEND_TRANSACTIONAL_API_KEY')&&getEnv('RESEND_RECEIPTS_FROM'))});
     if (status.phase !== 'open') return reply({error:'The collection is not yet available.'},423);
   }
+  if(get&&path==='options')return reply({shipping:getEnv('HOLIDAY_SHIPPING_APPROVED')==='true'&&getEnv('HOLIDAY_MERCHANT_PAYMENT_APPROVED')==='true',venmo:getEnv('HOLIDAY_MERCHANT_PAYMENT_APPROVED')==='true'});
   if(get&&path==='catalog')return reply(await rpc('catalog'));
   if(get&&path.startsWith('media/')){
     const key=path.slice(6);if(!/^[a-z0-9-]{1,70}$/.test(key))return reply({error:'Image unavailable.'},404);
@@ -81,6 +82,7 @@ async function execute(req) {
     const paths=await rpc('film');if(!paths)return reply(null);
     return reply({video:await signRead(paths.video),poster:await signRead(paths.poster)});
   }
+  if(post&&path==='quote'){const user=await identity(req),b=await readBody(req);if(!Array.isArray(b.lines)||typeof b.code!=='string'||b.code.length>32||!['shipping','pickup'].includes(b.fulfillment))throw error(400,'Check your discount code and bag.');const bucket=await digest(service+'|quote|'+user.id);if(!await rpc('rate',{p_bucket:bucket}))throw error(429,'Too many attempts. Try again in 15 minutes.');return reply(await rpc('quote',{p_customer:user.id,p_code:b.code,p_lines:b.lines,p_fulfillment:b.fulfillment}));}
   if(post&&path==='order'){
     const user=await identity(req), b=await readBody(req);
     if(!b.details||!Array.isArray(b.lines)||!b.request)throw error(400,'Check your bag and contact details.');
@@ -100,8 +102,9 @@ async function execute(req) {
     await sendMail();return reply({ok:true});
   }
   if(get&&path==='account'){const u=await identity(req);return reply(await rpc('account',{p_customer:u.id}));}
-  if(!['manage','dashboard','upload'].includes(path))throw error(404,'Page unavailable.');
+  if(!['manage','dashboard','upload','discounts'].includes(path))throw error(404,'Page unavailable.');
   const owner=await identity(req,true);
+  if(get&&path==='discounts')return reply(await rpc('discounts'));
   if(get&&path==='dashboard')return reply(await rpc('dashboard'));
   if(!post)throw error(405,'Method unavailable.');
   const b=await readBody(req);
