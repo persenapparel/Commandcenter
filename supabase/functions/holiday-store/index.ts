@@ -105,7 +105,7 @@ async function execute(req) {
   if(!['manage','dashboard','upload','discounts'].includes(path))throw error(404,'Page unavailable.');
   const owner=await identity(req,true);
   if(get&&path==='discounts')return reply(await rpc('discounts'));
-  if(get&&path==='dashboard')return reply(await rpc('dashboard'));
+  if(get&&path==='dashboard'){const dashboard=await rpc('dashboard');return reply({...dashboard,discounts:await rpc('discounts')});}
   if(!post)throw error(405,'Method unavailable.');
   const b=await readBody(req);
   if(path==='upload'){
