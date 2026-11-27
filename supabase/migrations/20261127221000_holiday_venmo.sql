@@ -147,3 +147,14 @@ BEGIN
   DELETE FROM holiday_shop.traffic WHERE resets_at < now() - interval '1 day';
 END
 $function$;
+
+-- Customer account returns only orders belonging to the verified identity supplied by the edge function.
+CREATE OR REPLACE FUNCTION public.holiday_account(p_customer uuid)
+RETURNS jsonb LANGUAGE sql STABLE SET search_path TO ''
+AS $account$
+ select coalesce(jsonb_agg(to_jsonb(q) order by created_at desc),'[]') from
+ (select o.id,o.created_at,o.status,o.total,o.shipping_cents,o.paid,o.refunded,o.fulfillment,o.estimated_date,o.carrier,o.tracking_number,o.shipped_at
+  from holiday_shop.orders o where o.customer_id=p_customer order by o.created_at desc limit 100) q
+$account$;
+REVOKE ALL ON FUNCTION public.holiday_account(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.holiday_account(uuid) TO service_role;
