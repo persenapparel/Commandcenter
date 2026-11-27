@@ -38,7 +38,7 @@ begin
  perform holiday_shop.expire();
  select * into o from holiday_shop.orders where request_id=p_request;
  if found then
-  if o.fingerprint<>fingerprint then raise exception 'This checkout reference belongs to a different request';end if;
+  if o.customer_id is distinct from p_customer or o.fingerprint<>fingerprint then raise exception 'This checkout reference belongs to a different request';end if;
   if o.status in ('expired','cancelled') then raise exception 'This order is no longer active. Contact service@persenapparel.com before placing a new order';end if;
  else
   insert into holiday_shop.orders(request_id,fingerprint,customer_id,contact_name,email,phone,fulfillment,address,total,expires_at,method,gift_message)
@@ -90,6 +90,7 @@ begin
    update holiday_shop.orders set carrier=p_change->>'carrier',tracking_number=p_change->>'tracking',shipped_at=now(),status='fulfilled',expires_at=null where id=o.id;
   when 'confirm','ready','fulfill' then
    if action='fulfill' and o.fulfillment='shipping' then raise exception 'Record carrier and tracking to mark shipped';end if;
+   if action='fulfill' and (o.status<>'ready' or o.refunded<>0) then raise exception 'Only a ready, fully paid, unrefunded order can be fulfilled';end if;
    if o.status not in ('reserved','confirmed','ready') or (action='confirm' and o.status='ready') or (action='fulfill' and o.paid<>o.total) then raise exception 'Check order and payment status first';end if;
    if o.method='venmo' and o.paid<>o.total then raise exception 'Verify the Venmo payment first';end if;
    update holiday_shop.orders set status=case action when 'confirm' then 'confirmed' when 'ready' then 'ready' else 'fulfilled' end,expires_at=case when o.paid=o.total then null else o.expires_at end where id=o.id;
@@ -153,7 +154,8 @@ CREATE OR REPLACE FUNCTION public.holiday_account(p_customer uuid)
 RETURNS jsonb LANGUAGE sql STABLE SET search_path TO ''
 AS $account$
  select coalesce(jsonb_agg(to_jsonb(q) order by created_at desc),'[]') from
- (select o.id,o.created_at,o.status,o.total,o.shipping_cents,o.paid,o.refunded,o.fulfillment,o.estimated_date,o.carrier,o.tracking_number,o.shipped_at
+ (select o.id,o.created_at,o.status,o.total,o.shipping_cents,o.paid,o.refunded,o.fulfillment,o.estimated_date,o.carrier,o.tracking_number,o.shipped_at,
+  (select coalesce(jsonb_agg(jsonb_build_object('name',l.name,'color',l.color,'size',l.size,'qty',l.qty,'unit_price',l.unit_price) order by l.name,l.color,l.size),'[]'::jsonb) from holiday_shop.lines l where l.order_id=o.id) as items
   from holiday_shop.orders o where o.customer_id=p_customer order by o.created_at desc limit 100) q
 $account$;
 REVOKE ALL ON FUNCTION public.holiday_account(uuid) FROM PUBLIC,anon,authenticated;
