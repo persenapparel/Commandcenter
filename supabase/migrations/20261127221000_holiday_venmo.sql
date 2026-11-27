@@ -8,6 +8,7 @@ CREATE OR REPLACE FUNCTION holiday_shop.shipping_fee(p_subtotal integer,p_fulfil
 RETURNS integer LANGUAGE sql IMMUTABLE STRICT SET search_path TO ''
 AS $ SELECT CASE WHEN p_fulfillment='pickup' OR p_subtotal>=8500 THEN 0 ELSE 895 END $;
 REVOKE ALL ON FUNCTION holiday_shop.shipping_fee(integer,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION holiday_shop.shipping_fee(integer,text) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.holiday_order(p_request uuid, p_customer uuid, p_details jsonb, p_lines jsonb)
  RETURNS jsonb
