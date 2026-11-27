@@ -15,12 +15,12 @@ begin
  if exists(select from jsonb_array_elements(p_lines) j where (j->>'qty') is null or (j->>'qty') !~ '^[1-9][0-9]{0,2}$' or (j->>'id') is null or (j->>'id') !~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$') or (select count(distinct lower(j->>'id')) from jsonb_array_elements(p_lines) j)<>jsonb_array_length(p_lines) then raise exception 'Check the sizes and quantities in your bag';end if;
  select encode(sha256(convert_to((jsonb_build_array(p_customer,n,e,ph,f,addr,(select jsonb_agg(jsonb_build_array((j->>'id')::uuid,(j->>'qty')::int) order by j->>'id') from jsonb_array_elements(p_lines) j)) || case when payment_method='venmo' then jsonb_build_array(payment_method) else '[]'::jsonb end)::text,'UTF8')),'hex') into fingerprint;
  perform pg_advisory_xact_lock(hashtextextended(p_request::text,3));
+ perform holiday_shop.expire();
  select * into o from holiday_shop.orders where request_id=p_request;
  if found then
   if o.fingerprint<>fingerprint then raise exception 'This checkout reference belongs to a different request';end if;
   if o.status in ('expired','cancelled') then raise exception 'This order is no longer active. Contact service@persenapparel.com before placing a new order';end if;
  else
-  perform holiday_shop.expire();
   insert into holiday_shop.orders(request_id,fingerprint,customer_id,contact_name,email,phone,fulfillment,address,total,expires_at,method)
   values(p_request,fingerprint,p_customer,n,e,ph,f,addr,0,now()+interval '24 hours',payment_method) returning * into o;
   for l in select (j->>'id')::uuid id,(j->>'qty')::int qty from jsonb_array_elements(p_lines) j order by 1 loop
