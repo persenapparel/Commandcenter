@@ -93,7 +93,7 @@ CREATE OR REPLACE FUNCTION public.holiday_mail_claim()
 AS $function$
  with candidates as (select order_id,kind from holiday_shop.mail where sent_at is null and retry_at<=now() and attempts<20 order by retry_at limit 8 for update skip locked),
  claimed as (update holiday_shop.mail m set attempts=attempts+1,retry_at=now()+interval '5 minutes' from candidates c where m.order_id=c.order_id and m.kind=c.kind returning m.order_id,m.kind)
- select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'email',o.email,'kind',m.kind,'total',o.total,'fulfillment',o.fulfillment,'status',o.status,'method',o.method)),'[]') from claimed m join holiday_shop.orders o on o.id=m.order_id
+ select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'email',o.email,'kind',m.kind,'total',o.total,'fulfillment',o.fulfillment,'status',o.status,'method',o.method,'name',o.contact_name,'address',o.address,'items',(select coalesce(jsonb_agg(jsonb_build_object('name',l.name,'color',l.color,'size',l.size,'qty',l.qty,'unit_price',l.unit_price) order by l.name,l.color,l.size),'[]'::jsonb) from holiday_shop.lines l where l.order_id=o.id))),'[]') from claimed m join holiday_shop.orders o on o.id=m.order_id
 $function$;
 
 
