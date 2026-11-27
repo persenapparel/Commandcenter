@@ -55,9 +55,9 @@ async function sendMail(){
     const items=(job.items||[]).map(item=>item.name+' · '+item.color+' · '+item.size+' × '+item.qty+' — '+formatMoney(item.unit_price*item.qty)).join('\n');
     const payment=job.method==='venmo'
       ?'Payment status: Awaiting verification. Send '+amount+' to @persenapparel on Venmo and include order reference '+job.id+'.'
-      :'Payment status: Awaiting cash at '+(job.fulfillment==='pickup'?'pickup':'delivery')+'.';
-    const destination=job.fulfillment==='delivery'&&job.address?'Delivery address: '+job.address:'Fulfillment: Pickup';
-    const plain=(studio?'A new Christmas order is ready to review in Command Center.':'Thank you, '+job.name+'! We received your order.')+'\n\n'+items+'\n\nMerchandise total: '+amount+'\n'+destination+'\n'+payment+'\nWe will contact you to arrange fulfillment.';
+      :'Payment status: Awaiting cash at pickup.';
+    const destination=job.fulfillment==='shipping'?'Shipping address: '+job.address:job.fulfillment==='delivery'?'Historical delivery address: '+job.address:'Fulfillment: Free local pickup';
+    const plain=(studio?'A new Christmas order is ready to review in Command Center.':'Thank you, '+job.name+'! We received your order.')+'\n\n'+items+'\n\nMerchandise subtotal: '+formatMoney(job.subtotal??job.total)+'\nShipping: '+formatMoney(job.shipping??0)+'\nTotal before applicable tax: '+amount+'\n'+destination+'\n'+payment+'\nWe will contact you to arrange fulfillment.';
     const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json','Idempotency-Key':'holiday-'+job.kind+'-'+job.id},body:JSON.stringify({from,to:[studio?'service@persenapparel.com':job.email],reply_to:'service@persenapparel.com',subject:(studio?'New Christmas order ':'Your Persen Apparel order ')+reference,text:plain+'\n\nOrder reference '+job.id+'\nPersen Apparel · Long Island, NY'})});
     if(r.ok)await rpc('mail_sent',{p_order:job.id,p_kind:job.kind});
   }
@@ -84,6 +84,8 @@ async function execute(req) {
   if(post&&path==='order'){
     const user=await identity(req), b=await readBody(req);
     if(!b.details||!Array.isArray(b.lines)||!b.request)throw error(400,'Check your bag and contact details.');
+    if(b.details.fulfillment==='shipping'&&getEnv('HOLIDAY_SHIPPING_APPROVED')!=='true')throw error(409,'Shipping is not yet available. Please choose local pickup.');
+    if(b.details.method==='venmo'&&getEnv('HOLIDAY_MERCHANT_PAYMENT_APPROVED')!=='true')throw error(409,'This payment method is not yet available.');
     b.details.email=user.email;
     const ip=(req.headers.get('x-forwarded-for')||'direct').split(',').at(-1).trim();
     const bucket=await digest(service+ip+'|'+String(b.details.email??'').trim().toLowerCase());
