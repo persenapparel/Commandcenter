@@ -58,8 +58,15 @@ export async function onRequest({ request, params }) {
       headers,
       body,
       signal: controller.signal,
-      redirect: 'error',
+      redirect: 'manual',
     });
+    if (response.status >= 300 && response.status < 400) {
+      const target = new URL(response.headers.get('Location') || '/', origin);
+      return Response.json({ error: 'Store service returned an unexpected redirect.' }, {
+        status: 502,
+        headers: { ...responseHeaders, 'X-Store-Redirect-Host': target.hostname, 'X-Store-Redirect-Path': target.pathname === new URL(origin + '/' + params.action).pathname ? 'same' : 'different' },
+      });
+    }
     if (!response.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) {
       return problem(502, 'Store service unavailable.');
     }
