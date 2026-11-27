@@ -14,13 +14,79 @@ AS $fee$ SELECT CASE WHEN p_fulfillment='pickup' OR p_subtotal>=8500 THEN 0 ELSE
 REVOKE ALL ON FUNCTION holiday_shop.shipping_fee(integer,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION holiday_shop.shipping_fee(integer,text) TO service_role;
 
+-- Discount rules are private and inactive until explicitly configured by authorized staff.
+CREATE TABLE holiday_shop.discount_codes (
+ code text PRIMARY KEY CHECK (code ~ '^[A-Z0-9-]{3,32}$'),
+ kind text NOT NULL CHECK(kind IN ('fixed','percent')),
+ value integer NOT NULL CHECK(value>0 AND ((kind='fixed' AND value<=100000) OR (kind='percent' AND value<=90))),
+ minimum_cents integer NOT NULL DEFAULT 0 CHECK(minimum_cents>=0),
+ max_uses integer NOT NULL CHECK(max_uses BETWEEN 1 AND 100000),
+ per_customer integer NOT NULL DEFAULT 1 CHECK(per_customer BETWEEN 1 AND 100),
+ starts_at timestamptz NOT NULL DEFAULT now(),
+ ends_at timestamptz NOT NULL CHECK(ends_at>starts_at),
+ active boolean NOT NULL DEFAULT false
+);
+ALTER TABLE holiday_shop.discount_codes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON holiday_shop.discount_codes FROM PUBLIC,anon,authenticated;
+GRANT SELECT,INSERT,UPDATE ON holiday_shop.discount_codes TO service_role;
+ALTER TABLE holiday_shop.orders ADD COLUMN discount_code text REFERENCES holiday_shop.discount_codes(code);
+ALTER TABLE holiday_shop.orders ADD COLUMN discount_cents integer NOT NULL DEFAULT 0 CHECK(discount_cents>=0);
+CREATE INDEX holiday_orders_discount_lookup ON holiday_shop.orders(discount_code,customer_id) WHERE discount_code IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION holiday_shop.discount_amount(p_code text,p_customer uuid,p_subtotal integer,p_lock boolean)
+RETURNS integer LANGUAGE plpgsql SET search_path TO ''
+AS $discount$
+DECLARE rule holiday_shop.discount_codes%rowtype; used integer; own integer; amount integer;
+BEGIN
+ IF coalesce(p_code,'')='' THEN RETURN 0; END IF;
+ IF p_customer IS NULL OR p_subtotal<=0 OR p_code !~ '^[A-Z0-9-]{3,32}$' THEN RAISE EXCEPTION 'Discount code unavailable'; END IF;
+ IF p_lock THEN SELECT * INTO rule FROM holiday_shop.discount_codes WHERE code=p_code FOR UPDATE;
+ ELSE SELECT * INTO rule FROM holiday_shop.discount_codes WHERE code=p_code; END IF;
+ IF NOT FOUND OR NOT rule.active OR now()<rule.starts_at OR now()>=rule.ends_at OR p_subtotal<rule.minimum_cents THEN RAISE EXCEPTION 'Discount code unavailable'; END IF;
+ SELECT count(*),count(*) FILTER(WHERE customer_id=p_customer) INTO used,own FROM holiday_shop.orders
+ WHERE discount_code=p_code AND status NOT IN ('cancelled','expired') AND (paid>0 OR expires_at>now());
+ IF used>=rule.max_uses OR own>=rule.per_customer THEN RAISE EXCEPTION 'Discount code unavailable'; END IF;
+ amount:=CASE WHEN rule.kind='fixed' THEN rule.value ELSE (p_subtotal::bigint*rule.value/100)::integer END;
+ RETURN greatest(0,least(amount,p_subtotal-1));
+END $discount$;
+REVOKE ALL ON FUNCTION holiday_shop.discount_amount(text,uuid,integer,boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION holiday_shop.discount_amount(text,uuid,integer,boolean) TO service_role;
+
+-- Quote is read-only; order submission repeats all checks and locks the code.
+CREATE OR REPLACE FUNCTION public.holiday_quote(p_customer uuid,p_code text,p_lines jsonb,p_fulfillment text)
+RETURNS jsonb LANGUAGE plpgsql SET search_path TO ''
+AS $quote$
+DECLARE l record; v record; subtotal integer:=0; discount integer; shipping integer; normalized text:=upper(trim(coalesce(p_code,'')));
+BEGIN
+ IF now()<holiday_shop.online_opens() THEN RAISE EXCEPTION 'Collection not available'; END IF;
+ IF p_customer IS NULL OR p_fulfillment IS NULL OR p_fulfillment NOT IN ('pickup','shipping') OR jsonb_typeof(p_lines) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Check your bag'; END IF;
+ IF jsonb_array_length(p_lines) NOT BETWEEN 1 AND 24 THEN RAISE EXCEPTION 'Check your bag'; END IF;
+ IF EXISTS(SELECT FROM jsonb_array_elements(p_lines) j WHERE coalesce(j->>'qty','') !~ '^[1-9][0-9]{0,2}$' OR coalesce(j->>'id','') !~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$') OR (SELECT count(DISTINCT lower(j->>'id')) FROM jsonb_array_elements(p_lines) j)<>jsonb_array_length(p_lines) THEN RAISE EXCEPTION 'Check your bag'; END IF;
+ FOR l IN SELECT (j->>'id')::uuid id,(j->>'qty')::int qty FROM jsonb_array_elements(p_lines) j ORDER BY 1 LOOP
+  SELECT s.quantity,c.price_cents INTO v FROM holiday_shop.variants vv JOIN public.stock_items s ON s.id=vv.stock_id JOIN public.pos_variant_details d ON d.stock_id=s.id JOIN public.inventory_catalog c ON c.name=s.product_name AND c.is_active AND c.inventory_type='sales' AND c.price_cents>0 WHERE s.id=l.id;
+  IF NOT FOUND OR v.quantity<l.qty THEN RAISE EXCEPTION 'An item is unavailable'; END IF;
+  subtotal:=subtotal+l.qty*v.price_cents;
+ END LOOP;
+ discount:=holiday_shop.discount_amount(normalized,p_customer,subtotal,false);
+ shipping:=holiday_shop.shipping_fee(subtotal-discount,p_fulfillment);
+ RETURN jsonb_build_object('subtotal',subtotal,'discount',discount,'shipping',shipping,'total',subtotal-discount+shipping,'code',normalized);
+END $quote$;
+REVOKE ALL ON FUNCTION public.holiday_quote(uuid,text,jsonb,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.holiday_quote(uuid,text,jsonb,text) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.holiday_discounts()
+RETURNS jsonb LANGUAGE sql STABLE SET search_path TO ''
+AS $codes$ SELECT coalesce(jsonb_agg(to_jsonb(d) ORDER BY d.code),'[]'::jsonb) FROM holiday_shop.discount_codes d $codes$;
+REVOKE ALL ON FUNCTION public.holiday_discounts() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.holiday_discounts() TO service_role;
+
 CREATE OR REPLACE FUNCTION public.holiday_order(p_request uuid, p_customer uuid, p_details jsonb, p_lines jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
  SET search_path TO ''
 AS $function$
 declare o holiday_shop.orders%rowtype; l record; v record; fingerprint text;
- n text:=trim(p_details->>'name');e text:=lower(trim(p_details->>'email'));ph text:=trim(p_details->>'phone'); f text:=p_details->>'fulfillment';payment_method text:=p_details->>'method';addr text:=''; street text:=trim(coalesce(p_details->>'street','')); city text:=trim(coalesce(p_details->>'city','')); st text:=upper(trim(coalesce(p_details->>'state',''))); zip text:=trim(coalesce(p_details->>'zip','')); country text:=p_details->>'country'; expected integer; gift text:=trim(coalesce(p_details->>'gift_message',''));
+ n text:=trim(p_details->>'name');e text:=lower(trim(p_details->>'email'));ph text:=trim(p_details->>'phone'); f text:=p_details->>'fulfillment';payment_method text:=p_details->>'method';addr text:=''; street text:=trim(coalesce(p_details->>'street','')); city text:=trim(coalesce(p_details->>'city','')); st text:=upper(trim(coalesce(p_details->>'state',''))); zip text:=trim(coalesce(p_details->>'zip','')); country text:=p_details->>'country'; expected integer; expected_discount integer; code text:=upper(trim(coalesce(p_details->>'discount_code',''))); gift text:=trim(coalesce(p_details->>'gift_message',''));
 begin
  if now()<holiday_shop.online_opens() then raise exception 'Collection opens December 1 at midnight Eastern';end if;
  if p_customer is null then raise exception 'A verified customer account is required';end if;
@@ -31,9 +97,12 @@ begin
  end if;
  if coalesce(p_details->>'expected_subtotal','') !~ '^[0-9]{1,9}$' then raise exception 'Refresh checkout to confirm pricing';end if;
  expected:=(p_details->>'expected_subtotal')::integer;
+ if coalesce(p_details->>'expected_discount','0') !~ '^[0-9]{1,9}$' then raise exception 'Refresh checkout to confirm pricing';end if;
+ expected_discount:=coalesce(p_details->>'expected_discount','0')::integer;
+ if code<>'' and code !~ '^[A-Z0-9-]{3,32}$' then raise exception 'Discount code unavailable';end if;
  if jsonb_typeof(p_lines) is distinct from 'array' or jsonb_array_length(p_lines) not between 1 and 24 then raise exception 'Check the items in your bag';end if;
  if exists(select from jsonb_array_elements(p_lines) j where (j->>'qty') is null or (j->>'qty') !~ '^[1-9][0-9]{0,2}$' or (j->>'id') is null or (j->>'id') !~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$') or (select count(distinct lower(j->>'id')) from jsonb_array_elements(p_lines) j)<>jsonb_array_length(p_lines) then raise exception 'Check the sizes and quantities in your bag';end if;
- select encode(sha256(convert_to((jsonb_build_array(p_customer,n,e,ph,f,addr,(select jsonb_agg(jsonb_build_array((j->>'id')::uuid,(j->>'qty')::int) order by j->>'id') from jsonb_array_elements(p_lines) j)) || case when payment_method='venmo' then jsonb_build_array(payment_method) else '[]'::jsonb end || case when gift<>'' then jsonb_build_array(gift) else '[]'::jsonb end)::text,'UTF8')),'hex') into fingerprint;
+ select encode(sha256(convert_to((jsonb_build_array(p_customer,n,e,ph,f,addr,(select jsonb_agg(jsonb_build_array((j->>'id')::uuid,(j->>'qty')::int) order by j->>'id') from jsonb_array_elements(p_lines) j)) || case when payment_method='venmo' then jsonb_build_array(payment_method) else '[]'::jsonb end || case when gift<>'' then jsonb_build_array(gift) else '[]'::jsonb end || case when code<>'' then jsonb_build_array('discount',code,expected_discount) else '[]'::jsonb end)::text,'UTF8')),'hex') into fingerprint;
  perform pg_advisory_xact_lock(hashtextextended(p_request::text,3));
  perform holiday_shop.expire();
  select * into o from holiday_shop.orders where request_id=p_request;
@@ -52,12 +121,14 @@ begin
    o.total:=o.total+l.qty*v.price_cents;
   end loop;
   if o.total<>expected then raise exception 'Price changed. Review your bag before continuing';end if;
-  o.shipping_cents:=holiday_shop.shipping_fee(o.total,f);
-  o.total:=o.total+o.shipping_cents;
-  update holiday_shop.orders set total=o.total, shipping_cents=o.shipping_cents where id=o.id;
+  o.discount_cents:=holiday_shop.discount_amount(code,p_customer,o.total,true);
+  if o.discount_cents<>expected_discount then raise exception 'Discount changed. Review your bag before continuing';end if;
+  o.shipping_cents:=holiday_shop.shipping_fee(o.total-o.discount_cents,f);
+  o.total:=o.total-o.discount_cents+o.shipping_cents;
+  update holiday_shop.orders set total=o.total, shipping_cents=o.shipping_cents,discount_code=nullif(code,''),discount_cents=o.discount_cents where id=o.id;
   insert into holiday_shop.mail(order_id,kind) values(o.id,'customer'),(o.id,'studio');
  end if;
- return jsonb_build_object('id',o.id,'total',o.total,'subtotal',o.total-o.shipping_cents,'shipping',o.shipping_cents,'fulfillment',o.fulfillment,'status',o.status,'payment',case when o.paid=0 then 'unpaid' else 'paid' end,'expires',o.expires_at,'method',o.method);
+ return jsonb_build_object('id',o.id,'total',o.total,'subtotal',o.total-o.shipping_cents+o.discount_cents,'discount',o.discount_cents,'shipping',o.shipping_cents,'fulfillment',o.fulfillment,'status',o.status,'payment',case when o.paid=0 then 'unpaid' else 'paid' end,'expires',o.expires_at,'method',o.method);
 end$function$;
 
 CREATE OR REPLACE FUNCTION public.holiday_manage(p_actor uuid, p_request uuid, p_change jsonb)
@@ -79,6 +150,12 @@ begin
    update public.stock_items set quantity=n,updated_at=now() where id=v_id and quantity=(p_change->>'expected')::int;
    if not found then raise exception 'Inventory changed. Refresh before editing the count';end if;
   else update holiday_shop.variants set unit_cost=n where stock_id=v_id;end if;
+ elsif action='discount_create' then
+  insert into holiday_shop.discount_codes(code,kind,value,minimum_cents,max_uses,per_customer,starts_at,ends_at,active) values(upper(trim(p_change->>'code')),p_change->>'kind',(p_change->>'value')::integer,(p_change->>'minimum')::integer,(p_change->>'max_uses')::integer,(p_change->>'per_customer')::integer,(p_change->>'starts_at')::timestamptz,(p_change->>'ends_at')::timestamptz,false);
+ elsif action='discount_status' then
+  if jsonb_typeof(p_change->'active') is distinct from 'boolean' then raise exception 'Check discount status';end if;
+  update holiday_shop.discount_codes set active=(p_change->>'active')::boolean where code=upper(trim(p_change->>'code'));
+  if not found then raise exception 'Discount code unavailable';end if;
  elsif action='film' then
   update holiday_shop.settings set video_path=nullif(p_change->>'video',''),poster_path=nullif(p_change->>'poster','');
  else
@@ -122,7 +199,7 @@ CREATE OR REPLACE FUNCTION public.holiday_mail_claim()
 AS $function$
  with candidates as (select order_id,kind from holiday_shop.mail where sent_at is null and retry_at<=now() and attempts<20 order by retry_at limit 8 for update skip locked),
  claimed as (update holiday_shop.mail m set attempts=attempts+1,retry_at=now()+interval '5 minutes' from candidates c where m.order_id=c.order_id and m.kind=c.kind returning m.order_id,m.kind)
- select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'email',o.email,'kind',m.kind,'total',o.total,'subtotal',o.total-o.shipping_cents,'shipping',o.shipping_cents,'fulfillment',o.fulfillment,'status',o.status,'method',o.method,'name',o.contact_name,'address',o.address,'items',(select coalesce(jsonb_agg(jsonb_build_object('name',l.name,'color',l.color,'size',l.size,'qty',l.qty,'unit_price',l.unit_price) order by l.name,l.color,l.size),'[]'::jsonb) from holiday_shop.lines l where l.order_id=o.id))),'[]') from claimed m join holiday_shop.orders o on o.id=m.order_id
+ select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'email',o.email,'kind',m.kind,'total',o.total,'subtotal',o.total-o.shipping_cents+o.discount_cents,'discount',o.discount_cents,'shipping',o.shipping_cents,'fulfillment',o.fulfillment,'status',o.status,'method',o.method,'name',o.contact_name,'address',o.address,'items',(select coalesce(jsonb_agg(jsonb_build_object('name',l.name,'color',l.color,'size',l.size,'qty',l.qty,'unit_price',l.unit_price) order by l.name,l.color,l.size),'[]'::jsonb) from holiday_shop.lines l where l.order_id=o.id))),'[]') from claimed m join holiday_shop.orders o on o.id=m.order_id
 $function$;
 
 
@@ -154,7 +231,7 @@ CREATE OR REPLACE FUNCTION public.holiday_account(p_customer uuid)
 RETURNS jsonb LANGUAGE sql STABLE SET search_path TO ''
 AS $account$
  select coalesce(jsonb_agg(to_jsonb(q) order by created_at desc),'[]') from
- (select o.id,o.created_at,o.status,o.total,o.shipping_cents,o.paid,o.refunded,o.fulfillment,o.estimated_date,o.carrier,o.tracking_number,o.shipped_at,
+ (select o.id,o.created_at,o.status,o.total,o.shipping_cents,o.discount_cents,o.paid,o.refunded,o.fulfillment,o.estimated_date,o.carrier,o.tracking_number,o.shipped_at,
   (select coalesce(jsonb_agg(jsonb_build_object('name',l.name,'color',l.color,'size',l.size,'qty',l.qty,'unit_price',l.unit_price) order by l.name,l.color,l.size),'[]'::jsonb) from holiday_shop.lines l where l.order_id=o.id) as items
   from holiday_shop.orders o where o.customer_id=p_customer order by o.created_at desc limit 100) q
 $account$;
