@@ -61,29 +61,16 @@ export async function onRequest({ request, params }) {
       redirect: 'manual',
     });
     if (response.status >= 300 && response.status < 400) {
-      const target = new URL(response.headers.get('Location') || '/', origin);
-      return Response.json({ error: 'Store service returned an unexpected redirect.' }, {
-        status: 502,
-        headers: { ...responseHeaders, 'X-Store-Redirect-Host': target.hostname, 'X-Store-Redirect-Path': target.pathname === new URL(origin + '/' + params.action).pathname ? 'same' : 'different' },
-      });
+      return problem(502, 'Store service returned an unexpected redirect.');
     }
     if (!response.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) {
       return problem(502, 'Store service unavailable.');
     }
     return new Response(response.body, { status: response.status, headers: responseHeaders });
-  } catch (error) {
-    if (controller.signal.aborted) return problem(504, 'Store service took too long to respond.');
-    const cause = String(error?.message || '');
-    const reason = /redirect/i.test(cause) ? 'redirect'
-      : /tls|ssl|certificate/i.test(cause) ? 'tls'
-      : /dns|resolve/i.test(cause) ? 'dns'
-      : /network|connect|fetch failed/i.test(cause) ? 'network'
-      : /signal|abort/i.test(cause) ? 'signal'
-      : 'transport';
-    return Response.json({ error: 'Store service unavailable.' }, {
-      status: 503,
-      headers: { ...responseHeaders, 'X-Store-Error': reason },
-    });
+  } catch {
+    return controller.signal.aborted
+      ? problem(504, 'Store service took too long to respond.')
+      : problem(503, 'Store service unavailable.');
   } finally {
     clearTimeout(timeout);
   }
