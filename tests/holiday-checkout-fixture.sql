@@ -8,7 +8,7 @@ CREATE ROLE authenticated;
 CREATE ROLE service_role;
 CREATE SCHEMA holiday_shop;
 CREATE TABLE holiday_shop.orders (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(), request_id uuid UNIQUE NOT NULL, fingerprint text NOT NULL, customer_id uuid, contact_name text, email text, phone text, fulfillment text CONSTRAINT orders_fulfillment_check CHECK(fulfillment IN ('pickup','delivery')), address text, total int NOT NULL DEFAULT 0, paid int NOT NULL DEFAULT 0, refunded int NOT NULL DEFAULT 0, status text NOT NULL DEFAULT 'reserved', created_at timestamptz DEFAULT now(), expires_at timestamptz, estimated_date date
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), request_id uuid UNIQUE NOT NULL, fingerprint text NOT NULL, customer_id uuid, contact_name text, email text, phone text, fulfillment text CONSTRAINT orders_fulfillment_check CHECK(fulfillment IN ('pickup','delivery')), address text, total int NOT NULL DEFAULT 0, paid int NOT NULL DEFAULT 0, refunded int NOT NULL DEFAULT 0, status text NOT NULL DEFAULT 'reserved' CHECK(status IN ('reserved','confirmed','ready','fulfilled','cancelled','expired')), CHECK(total>=0 AND 0<=refunded AND refunded<=paid AND paid<=total), created_at timestamptz DEFAULT now(), expires_at timestamptz, estimated_date date
 );
 CREATE TABLE public.stock_items(id uuid PRIMARY KEY, product_name text, color text, size text, quantity int CHECK(quantity>=0), updated_at timestamptz DEFAULT now());
 CREATE TABLE public.pos_variant_details(stock_id uuid PRIMARY KEY);
@@ -27,7 +27,7 @@ INSERT INTO pos_variant_details VALUES('00000000-0000-4000-8000-000000000001');
 INSERT INTO inventory_catalog VALUES('Test Hoodie',true,'sales',4000);
 INSERT INTO holiday_shop.variants VALUES('00000000-0000-4000-8000-000000000001',1600);
 DO $tests$
-DECLARE customer uuid:='00000000-0000-4000-8000-000000000011'; other_customer uuid:='00000000-0000-4000-8000-000000000012'; request uuid:='00000000-0000-4000-8000-000000000021'; placed jsonb; replay jsonb; quote jsonb; details jsonb; items jsonb:='[{"id":"00000000-0000-4000-8000-000000000001","qty":3}]'; orderid uuid; rejected boolean;
+DECLARE customer uuid:='00000000-0000-4000-8000-000000000011'; other_customer uuid:='00000000-0000-4000-8000-000000000012'; request uuid:='00000000-0000-4000-8000-000000000021'; placed jsonb; replay jsonb; quote jsonb; details jsonb; items jsonb:='[{"id":"00000000-0000-4000-8000-000000000001","qty":3}]'; orderid uuid; rejected boolean; invalid jsonb; temporary jsonb; temporary_id uuid; pickup jsonb;
 BEGIN
  IF holiday_shop.shipping_fee(8499,'shipping')<>895 OR holiday_shop.shipping_fee(8500,'shipping')<>0 OR holiday_shop.shipping_fee(8501,'shipping')<>0 OR holiday_shop.shipping_fee(1,'pickup')<>0 THEN RAISE EXCEPTION 'Shipping boundary failed'; END IF;
  IF has_table_privilege('anon','holiday_shop.discount_codes','SELECT') OR has_function_privilege('authenticated','public.holiday_quote(uuid,text,jsonb,text)','EXECUTE') THEN RAISE EXCEPTION 'Direct discount access allowed'; END IF;
@@ -41,6 +41,14 @@ BEGIN
  rejected:=false;
  BEGIN PERFORM public.holiday_order(request,customer,details||'{"expected_discount":10000}',items); EXCEPTION WHEN raise_exception THEN rejected:=true; END;
  IF NOT rejected OR (SELECT quantity FROM stock_items LIMIT 1)<>12 THEN RAISE EXCEPTION 'Tampering not rejected or rollback failed'; END IF;
+ FOR invalid IN SELECT * FROM jsonb_array_elements('[{"country":"CA"},{"state":"AK"},{"state":"HI"},{"state":"PR"},{"fulfillment":"delivery"},{"method":"cash"},{"zip":"INVALID"}]'::jsonb) LOOP
+  rejected:=false;
+  BEGIN PERFORM public.holiday_order(request,customer,details||invalid,items); EXCEPTION WHEN raise_exception THEN rejected:=true; END;
+  IF NOT rejected OR (SELECT quantity FROM stock_items LIMIT 1)<>12 THEN RAISE EXCEPTION 'Unsupported fulfillment accepted: %',invalid; END IF;
+ END LOOP;
+ rejected:=false;
+ BEGIN PERFORM public.holiday_order(request,customer,details||jsonb_build_object('gift_message',repeat('x',251)),items); EXCEPTION WHEN raise_exception THEN rejected:=true; END;
+ IF NOT rejected THEN RAISE EXCEPTION 'Oversized gift message accepted'; END IF;
  placed:=public.holiday_order(request,customer,details,items);orderid:=(placed->>'id')::uuid;
  IF placed->>'total'<>'8895' OR placed->>'discount'<>'4000' OR placed->>'shipping'<>'895' OR (SELECT quantity FROM stock_items LIMIT 1)<>9 THEN RAISE EXCEPTION 'Order totals or stock failed'; END IF;
  replay:=public.holiday_order(request,customer,details,items);
@@ -58,6 +66,22 @@ BEGIN
  IF (SELECT tracking_number FROM holiday_shop.orders WHERE id=orderid)<>'TEST12345' OR (SELECT status FROM holiday_shop.orders WHERE id=orderid)<>'fulfilled' THEN RAISE EXCEPTION 'Shipment recording failed'; END IF;
  IF (SELECT gift_message FROM holiday_shop.orders WHERE id=orderid)<>'Happy holidays' OR (SELECT count(*) FROM holiday_shop.mail WHERE order_id=orderid)<>5 THEN RAISE EXCEPTION 'Gift or order email outbox failed'; END IF;
  IF NOT EXISTS(SELECT 1 FROM holiday_shop.mail WHERE order_id=orderid AND snapshot->>'event'='ship' AND snapshot->>'tracking_number'='TEST12345') THEN RAISE EXCEPTION 'Shipment notification snapshot failed'; END IF;
+ pickup:=details||'{"fulfillment":"pickup","method":"cash","discount_code":"","expected_discount":0}';
+ temporary:=public.holiday_order(gen_random_uuid(),other_customer,pickup,items);temporary_id:=(temporary->>'id')::uuid;
+ IF (SELECT quantity FROM stock_items LIMIT 1)<>6 THEN RAISE EXCEPTION 'Second reservation failed'; END IF;
+ PERFORM public.holiday_manage(customer,gen_random_uuid(),jsonb_build_object('action','cancel','order',temporary_id));
+ IF (SELECT quantity FROM stock_items LIMIT 1)<>9 THEN RAISE EXCEPTION 'Cancellation did not restore inventory'; END IF;
+ temporary:=public.holiday_order(gen_random_uuid(),other_customer,pickup,items);temporary_id:=(temporary->>'id')::uuid;
+ UPDATE holiday_shop.orders SET expires_at=now()-interval '1 minute' WHERE id=temporary_id;
+ PERFORM holiday_shop.expire();
+ IF (SELECT quantity FROM stock_items LIMIT 1)<>9 OR (SELECT status FROM holiday_shop.orders WHERE id=temporary_id)<>'expired' THEN RAISE EXCEPTION 'Expiry did not restore inventory'; END IF;
+ PERFORM public.holiday_manage(customer,gen_random_uuid(),jsonb_build_object('action','refund','order',orderid,'cents',4000));
+ PERFORM public.holiday_manage(customer,gen_random_uuid(),jsonb_build_object('action','return','order',orderid,'variant','00000000-0000-4000-8000-000000000001','qty',1,'restock',true));
+ IF (SELECT quantity FROM stock_items LIMIT 1)<>10 OR (SELECT refunded FROM holiday_shop.orders WHERE id=orderid)<>4000 THEN RAISE EXCEPTION 'Refund/restock failed'; END IF;
+ INSERT INTO holiday_shop.discount_codes(code,kind,value,max_uses,per_customer,starts_at,ends_at,active) VALUES ('EXPIRED','percent',10,10,1,now()-interval '2 days',now()-interval '1 day',true);
+ rejected:=false;
+ BEGIN PERFORM public.holiday_quote(other_customer,'EXPIRED',items,'pickup'); EXCEPTION WHEN raise_exception THEN rejected:=true; END;
+ IF NOT rejected THEN RAISE EXCEPTION 'Expired code accepted'; END IF;
  RAISE NOTICE 'All isolated holiday checkout assertions passed';
 END $tests$;
 ROLLBACK;
