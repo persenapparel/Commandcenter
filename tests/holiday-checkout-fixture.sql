@@ -15,7 +15,7 @@ CREATE TABLE public.pos_variant_details(stock_id uuid PRIMARY KEY);
 CREATE TABLE public.inventory_catalog(name text PRIMARY KEY,is_active bool,inventory_type text,price_cents int);
 CREATE TABLE holiday_shop.variants(stock_id uuid PRIMARY KEY,unit_cost int);
 CREATE TABLE holiday_shop.lines(order_id uuid,stock_id uuid,name text,color text,size text,qty int,unit_price int,unit_cost int,returned int DEFAULT 0,PRIMARY KEY(order_id,stock_id));
-CREATE TABLE holiday_shop.mail(order_id uuid,kind text,sent_at timestamptz,retry_at timestamptz DEFAULT now(),attempts int DEFAULT 0,PRIMARY KEY(order_id,kind));
+CREATE TABLE holiday_shop.mail(order_id uuid,kind text CONSTRAINT mail_kind_check CHECK(kind IN ('customer','studio')),sent_at timestamptz,retry_at timestamptz DEFAULT now(),attempts int DEFAULT 0,PRIMARY KEY(order_id,kind));
 CREATE TABLE holiday_shop.actions(id uuid PRIMARY KEY,actor uuid,request jsonb,created_at timestamptz);
 CREATE TABLE holiday_shop.settings(video_path text,poster_path text);
 CREATE TABLE holiday_shop.traffic(resets_at timestamptz);
@@ -56,7 +56,8 @@ BEGIN
  PERFORM public.holiday_manage(customer,gen_random_uuid(),jsonb_build_object('action','ready','order',orderid));
  PERFORM public.holiday_manage(customer,gen_random_uuid(),jsonb_build_object('action','ship','order',orderid,'carrier','USPS','tracking','TEST12345'));
  IF (SELECT tracking_number FROM holiday_shop.orders WHERE id=orderid)<>'TEST12345' OR (SELECT status FROM holiday_shop.orders WHERE id=orderid)<>'fulfilled' THEN RAISE EXCEPTION 'Shipment recording failed'; END IF;
- IF (SELECT gift_message FROM holiday_shop.orders WHERE id=orderid)<>'Happy holidays' OR (SELECT count(*) FROM holiday_shop.mail WHERE order_id=orderid)<>2 THEN RAISE EXCEPTION 'Gift or order email outbox failed'; END IF;
+ IF (SELECT gift_message FROM holiday_shop.orders WHERE id=orderid)<>'Happy holidays' OR (SELECT count(*) FROM holiday_shop.mail WHERE order_id=orderid)<>5 THEN RAISE EXCEPTION 'Gift or order email outbox failed'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM holiday_shop.mail WHERE order_id=orderid AND snapshot->>'event'='ship' AND snapshot->>'tracking_number'='TEST12345') THEN RAISE EXCEPTION 'Shipment notification snapshot failed'; END IF;
  RAISE NOTICE 'All isolated holiday checkout assertions passed';
 END $tests$;
 ROLLBACK;
