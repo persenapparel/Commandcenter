@@ -53,12 +53,13 @@ async function sendMail(){
     const amount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(job.total/100);
     const formatMoney=cents=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
     const items=(job.items||[]).map(item=>item.name+' · '+item.color+' · '+item.size+' × '+item.qty+' — '+formatMoney(item.unit_price*item.qty)).join('\n');
-    const payment=job.method==='venmo'
-      ?'Payment status: Awaiting verification. Send '+amount+' to @persenapparel on Venmo and include order reference '+job.id+'.'
-      :'Payment status: Awaiting cash at pickup.';
+    const payment=job.refunded>0?'Recorded payment: '+formatMoney(job.paid||0)+'. Recorded refunds: '+formatMoney(job.refunded)+'.':job.paid===job.total?'Payment recorded in full.':job.status==='cancelled'||job.status==='expired'?'No payment requested.':job.method==='venmo'?'Payment is pending verification. Review your order in your Persen Apparel account.':'Payment pending at pickup.';
     const destination=job.fulfillment==='shipping'?'Shipping address: '+job.address:job.fulfillment==='delivery'?'Historical delivery address: '+job.address:'Fulfillment: Free local pickup';
-    const plain=(studio?'A new Christmas order is ready to review in Command Center.':'Thank you, '+job.name+'! We received your order.')+'\n\n'+items+'\n\nMerchandise subtotal: '+formatMoney(job.subtotal??job.total)+'\nDiscount: '+formatMoney(job.discount??0)+'\nShipping: '+formatMoney(job.shipping??0)+'\nTotal before applicable tax: '+amount+'\n'+destination+'\n'+payment+'\nWe will contact you to arrange fulfillment.';
-    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json','Idempotency-Key':'holiday-'+job.kind+'-'+job.id},body:JSON.stringify({from,to:[studio?'service@persenapparel.com':job.email],reply_to:'service@persenapparel.com',subject:(studio?'New Christmas order ':'Your Persen Apparel order ')+reference,text:plain+'\n\nOrder reference '+job.id+'\nPersen Apparel · Long Island, NY'})});
+    const updates={paid:'Payment recorded',estimate:'Estimated fulfillment updated',ready:job.fulfillment==='shipping'?'Ready for shipment':'Ready for pickup',ship:'Your order has shipped',cancel:'Your order was cancelled',fulfill:'Your order was collected'};
+    const title=studio?'New Christmas order':updates[job.event]||'Your Persen Apparel order';
+    const detail=job.event==='estimate'?(job.estimated_date?'Estimated date (not guaranteed): '+job.estimated_date:'The estimated date is being reviewed.'):job.event==='ship'?'Carrier: '+job.carrier+'\nTracking number: '+job.tracking_number:job.event==='cancel'?'Your order has been cancelled. Contact us with any questions.':job.event==='ready'?(job.fulfillment==='shipping'?'Your items are ready for dispatch. Tracking will follow once shipped.':'Your order is ready for pickup. Contact us to coordinate collection.'):'Review current status in your account.';
+    const plain=(studio?'A new Christmas order is ready to review in Command Center.':title+'.')+'\n\n'+items+'\n\nMerchandise subtotal: '+formatMoney(job.subtotal??job.total)+'\nDiscount: '+formatMoney(job.discount??0)+'\nShipping: '+formatMoney(job.shipping??0)+'\nTotal before applicable tax: '+amount+'\n'+destination+'\n'+payment+'\n'+detail+'\nhttps://persenapparel.com/#/account';
+    const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json','Idempotency-Key':'holiday-'+job.kind+'-'+job.id},body:JSON.stringify({from,to:[studio?'service@persenapparel.com':job.email],reply_to:'service@persenapparel.com',subject:title+' '+reference,text:plain+'\n\nOrder reference '+job.id+'\nPersen Apparel · Long Island, NY'})});
     if(r.ok)await rpc('mail_sent',{p_order:job.id,p_kind:job.kind});
   }
 }
@@ -123,7 +124,7 @@ async function execute(req) {
         const check=await fetch(storageUrl('/object/info/'+mediaBucket+'/'+key),{method:'GET',headers});if(!check.ok)throw error(400,'Finish uploading both files first.');
       }
     }
-    await rpc('manage',{p_actor:owner.id,p_request:b.request,p_change:b.change});return reply({ok:true});
+    await rpc('manage',{p_actor:owner.id,p_request:b.request,p_change:b.change});EdgeRuntime.waitUntil(sendMail().catch(()=>{}));return reply({ok:true});
   }
   throw error(405,'Method unavailable.');
 }
