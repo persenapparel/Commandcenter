@@ -5,6 +5,9 @@ ALTER TABLE holiday_shop.orders ADD COLUMN gift_message text NOT NULL DEFAULT ''
 ALTER TABLE holiday_shop.orders ADD COLUMN carrier text CHECK (carrier IN ('USPS','UPS','FedEx','Other'));
 ALTER TABLE holiday_shop.orders ADD COLUMN tracking_number text CHECK (tracking_number ~ '^[A-Za-z0-9-]{5,64}$');
 ALTER TABLE holiday_shop.orders ADD COLUMN shipped_at timestamptz;
+ALTER TABLE holiday_shop.mail DROP CONSTRAINT mail_kind_check;
+ALTER TABLE holiday_shop.mail ADD CONSTRAINT mail_kind_check CHECK (kind IN ('customer','studio') OR kind ~ '^event-(paid|estimate|ready|ship|cancel|fulfill)-[0-9a-f-]{36}$');
+ALTER TABLE holiday_shop.mail ADD COLUMN snapshot jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE holiday_shop.orders DROP CONSTRAINT orders_fulfillment_check;
 -- Historical delivery rows remain readable; new orders accept pickup or shipping only.
 ALTER TABLE holiday_shop.orders ADD CONSTRAINT orders_fulfillment_check CHECK (fulfillment IN ('pickup','delivery','shipping'));
@@ -188,6 +191,11 @@ begin
    update holiday_shop.lines set returned=returned+n where order_id=o.id and stock_id=l.stock_id;
    if p_change->>'restock'='true' then update public.stock_items set quantity=quantity+n,updated_at=now() where id=l.stock_id;end if;
   else raise exception 'Unknown order action';end case;
+  if action in ('paid','estimate','ready','ship','cancel','fulfill') then
+   insert into holiday_shop.mail(order_id,kind,snapshot)
+   select id,'event-'||action||'-'||p_request::text,jsonb_build_object('status',status,'paid',paid,'refunded',refunded,'estimated_date',estimated_date,'carrier',carrier,'tracking_number',tracking_number,'shipped_at',shipped_at,'event',action) from holiday_shop.orders where id=o.id
+   on conflict(order_id,kind) do nothing;
+  end if;
  end if;
  return true;
 end$function$;
@@ -198,8 +206,8 @@ CREATE OR REPLACE FUNCTION public.holiday_mail_claim()
  SET search_path TO ''
 AS $function$
  with candidates as (select order_id,kind from holiday_shop.mail where sent_at is null and retry_at<=now() and attempts<20 order by retry_at limit 8 for update skip locked),
- claimed as (update holiday_shop.mail m set attempts=attempts+1,retry_at=now()+interval '5 minutes' from candidates c where m.order_id=c.order_id and m.kind=c.kind returning m.order_id,m.kind)
- select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'email',o.email,'kind',m.kind,'total',o.total,'subtotal',o.total-o.shipping_cents+o.discount_cents,'discount',o.discount_cents,'shipping',o.shipping_cents,'fulfillment',o.fulfillment,'status',o.status,'method',o.method,'name',o.contact_name,'address',o.address,'items',(select coalesce(jsonb_agg(jsonb_build_object('name',l.name,'color',l.color,'size',l.size,'qty',l.qty,'unit_price',l.unit_price) order by l.name,l.color,l.size),'[]'::jsonb) from holiday_shop.lines l where l.order_id=o.id))),'[]') from claimed m join holiday_shop.orders o on o.id=m.order_id
+ claimed as (update holiday_shop.mail m set attempts=attempts+1,retry_at=now()+interval '5 minutes' from candidates c where m.order_id=c.order_id and m.kind=c.kind returning m.order_id,m.kind,m.snapshot)
+ select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'email',o.email,'kind',m.kind,'total',o.total,'subtotal',o.total-o.shipping_cents+o.discount_cents,'discount',o.discount_cents,'shipping',o.shipping_cents,'fulfillment',o.fulfillment,'status',o.status,'paid',o.paid,'refunded',o.refunded,'method',o.method,'name',o.contact_name,'address',o.address,'items',(select coalesce(jsonb_agg(jsonb_build_object('name',l.name,'color',l.color,'size',l.size,'qty',l.qty,'unit_price',l.unit_price) order by l.name,l.color,l.size),'[]'::jsonb) from holiday_shop.lines l where l.order_id=o.id)) || m.snapshot),'[]') from claimed m join holiday_shop.orders o on o.id=m.order_id
 $function$;
 
 
