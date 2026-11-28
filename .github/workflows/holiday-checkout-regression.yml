@@ -1,0 +1,36 @@
+name: Holiday checkout regression
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261127221000_holiday_venmo.sql'
+      - 'tests/holiday-checkout-fixture.sql'
+      - '.github/workflows/holiday-checkout-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checkout-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture_only
+          POSTGRES_DB: holiday_checkout_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d holiday_checkout_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run isolated SQL assertions
+        env:
+          PGPASSWORD: fixture_only
+        run: psql -h 127.0.0.1 -p 5432 -U postgres -d holiday_checkout_test -v ON_ERROR_STOP=1 -f tests/holiday-checkout-fixture.sql
